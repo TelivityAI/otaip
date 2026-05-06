@@ -1,6 +1,6 @@
 {
   "name": "@otaip/agents-reference",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "OTAIP Stage 0 agents — reference data resolvers (airport codes, airline codes, fare basis, etc.)",
   "type": "module",
   "main": "./dist/index.js",
