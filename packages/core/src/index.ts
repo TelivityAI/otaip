@@ -127,6 +127,10 @@ export type { Idempotent, Cancellable, Checkpointable } from './mixins/index.js'
 export type { CacheAdapter, CacheConfig } from './cache/index.js';
 export { LRUCacheAdapter } from './cache/index.js';
 
+// Filesystem-only agent discovery — used by the CLI and the OTA server.
+export { discoverAgents } from './discovery/agent-discovery.js';
+export type { DiscoveredAgent } from './discovery/agent-discovery.js';
+
 export type {
   PassengerType,
   PassengerCount,
