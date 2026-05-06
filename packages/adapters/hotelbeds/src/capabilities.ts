@@ -54,3 +54,68 @@ export const hotelbedsCapabilities: LodgingChannelCapability = {
   testEnvDailyRequestLimit: 50,
   updatedAt: '2026-04-18',
 };
+
+// ---------------------------------------------------------------------------
+// Activities + Transfers capability manifests
+//
+// These are intentionally narrower than the lodging capability shape —
+// neither API has a check_rate / list_bookings step in the surface this
+// session adds. The shape is local; promote it to `@otaip/core` when more
+// adapters need a non-lodging activities/transfers manifest.
+// ---------------------------------------------------------------------------
+
+export type ActivitiesChannelKind = 'activities-bedbank';
+
+export interface ActivitiesChannelCapability {
+  channelId: string;
+  channelKind: ActivitiesChannelKind;
+  supportedMarkets: string[];
+  supportedFunctions: Array<'availability' | 'book' | 'cancel'>;
+  /** True when the channel sets retail price; Hotelbeds returns net. */
+  setsRetailPrice: false;
+  /**
+   * Whether this surface returns `'ON_REQUEST'` statuses in addition to
+   * `'CONFIRMED'`. Hotelbeds does — see DQ-A3 in the activities KB.
+   */
+  supportsOnRequest: boolean;
+  testEnvDailyRequestLimit?: number;
+  updatedAt: string;
+}
+
+export type TransfersChannelKind = 'transfers-bedbank';
+
+export interface TransfersChannelCapability {
+  channelId: string;
+  channelKind: TransfersChannelKind;
+  supportedMarkets: string[];
+  supportedFunctions: Array<'availability' | 'book' | 'cancel'>;
+  setsRetailPrice: false;
+  supportsOnRequest: boolean;
+  /** Whether the channel supports `inbound` (return-leg) — out of scope here. */
+  supportsRoundTrip: boolean;
+  testEnvDailyRequestLimit?: number;
+  updatedAt: string;
+}
+
+export const hotelbedsActivitiesCapabilities: ActivitiesChannelCapability = {
+  channelId: 'hotelbeds-activities',
+  channelKind: 'activities-bedbank',
+  supportedMarkets: ['*'],
+  supportedFunctions: ['availability', 'book', 'cancel'],
+  setsRetailPrice: false,
+  supportsOnRequest: true,
+  testEnvDailyRequestLimit: 50,
+  updatedAt: '2026-05-06',
+};
+
+export const hotelbedsTransfersCapabilities: TransfersChannelCapability = {
+  channelId: 'hotelbeds-transfers',
+  channelKind: 'transfers-bedbank',
+  supportedMarkets: ['*'],
+  supportedFunctions: ['availability', 'book', 'cancel'],
+  setsRetailPrice: false,
+  supportsOnRequest: true,
+  supportsRoundTrip: false,
+  testEnvDailyRequestLimit: 50,
+  updatedAt: '2026-05-06',
+};

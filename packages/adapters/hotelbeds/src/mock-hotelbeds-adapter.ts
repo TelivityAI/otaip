@@ -27,6 +27,20 @@ import type {
   HotelbedsHotel,
   HotelbedsRate,
 } from './types.js';
+import type {
+  ActivityBookRequest,
+  ActivityBookResponse,
+  ActivityCancelResponse,
+  ActivityOffer,
+  ActivitySearchRequest,
+} from './activities-types.js';
+import type {
+  TransferBookRequest,
+  TransferBookResponse,
+  TransferCancelResponse,
+  TransferOffer,
+  TransferSearchRequest,
+} from './transfers-types.js';
 import type { HotelSearchParams, HotelSourceAdapter } from './lodging-source-interface.js';
 import type { RawHotelResult } from '@otaip/agents-lodging';
 
@@ -109,6 +123,69 @@ const RECHECK_REPRICED: Record<string, HotelbedsRate> = {
 };
 
 // ---------------------------------------------------------------------------
+// Activities + Transfers fixtures
+//
+// Synthetic data only — exercises the canonical types the field-mappers
+// produce. Real shape comes from the live sandbox; see KB files.
+// ---------------------------------------------------------------------------
+
+const ACTIVITIES_BY_DESTINATION: Record<string, ActivityOffer[]> = {
+  BCN: [
+    {
+      activityCode: 'E-A10-000100301',
+      name: 'Sagrada Família — Skip-the-Line Tour',
+      description: 'Guided tour of Gaudí’s basilica with priority entry.',
+      duration: 'PT1H30M',
+      location: { latitude: 41.4036, longitude: 2.1744 },
+      images: ['https://example.invalid/img/sagrada-1.jpg'],
+      cancellationPolicy: 'NOR',
+      modalities: [
+        {
+          code: 'TOUR_GUIDE|EN|1',
+          name: 'English Group Tour',
+          price: { amount: '45.00', currency: 'EUR' },
+          childPrice: { amount: '20.00', currency: 'EUR' },
+          maxPax: 25,
+          schedule: ['09:00', '11:00', '14:00'],
+        },
+        {
+          code: 'TOUR_PRIVATE|EN|1',
+          name: 'English Private Tour',
+          price: { amount: '180.00', currency: 'EUR' },
+          maxPax: 6,
+        },
+      ],
+    },
+  ],
+};
+
+const TRANSFERS_BY_FROM: Record<string, TransferOffer[]> = {
+  // Keyed by `${type}:${code}` for the `from` location.
+  'IATA:BCN': [
+    {
+      transferCode: 'mock-trf-BCN-private-sedan',
+      transferType: 'PRIVATE',
+      vehicleType: 'Sedan',
+      maxPassengers: 3,
+      price: { amount: '54.00', currency: 'EUR' },
+      pickupInfo: { location: 'BCN T1 Arrivals', time: '14:30' },
+      dropoffInfo: { location: 'Hotel Avenida Palace', estimatedTime: '15:30' },
+      cancellationPolicy: 'Free cancellation up to 48h before pickup.',
+    },
+    {
+      transferCode: 'mock-trf-BCN-shared-shuttle',
+      transferType: 'SHARED',
+      vehicleType: 'Shuttle Van 8pax',
+      maxPassengers: 8,
+      price: { amount: '12.00', currency: 'EUR' },
+      pickupInfo: { location: 'BCN T1 Arrivals (Shared)', time: '15:00' },
+      dropoffInfo: { location: 'Hotel Avenida Palace', estimatedTime: '16:15' },
+      cancellationPolicy: 'Non-refundable.',
+    },
+  ],
+};
+
+// ---------------------------------------------------------------------------
 // Mock adapter
 // ---------------------------------------------------------------------------
 
@@ -118,7 +195,11 @@ export class MockHotelbedsAdapter implements HotelSourceAdapter {
 
   private available = true;
   private readonly bookings = new Map<string, HotelbedsBooking>();
+  private readonly activityBookings = new Map<string, ActivityBookResponse>();
+  private readonly transferBookings = new Map<string, TransferBookResponse>();
   private nextRef = 1;
+  private nextActivityRef = 1;
+  private nextTransferRef = 1;
 
   setAvailable(available: boolean): void {
     this.available = available;
@@ -245,6 +326,95 @@ export class MockHotelbedsAdapter implements HotelSourceAdapter {
     this.bookings.set(reference, cancelled);
     return { booking: cancelled };
   }
+
+  // -------------------------------------------------------------------------
+  // Activities API
+  // -------------------------------------------------------------------------
+
+  async searchActivities(request: ActivitySearchRequest): Promise<ActivityOffer[]> {
+    this.assertAvailable();
+    if (request.signal?.aborted) {
+      throw new Error('Hotelbeds (mock) searchActivities aborted before dispatch');
+    }
+    return ACTIVITIES_BY_DESTINATION[request.destination.toUpperCase()] ?? [];
+  }
+
+  async bookActivity(request: ActivityBookRequest): Promise<ActivityBookResponse> {
+    this.assertAvailable();
+    if (request.signal?.aborted) {
+      throw new Error('Hotelbeds (mock) bookActivity aborted before dispatch');
+    }
+    const reference = `MOCK-ACT-${String(this.nextActivityRef++).padStart(6, '0')}`;
+    const result: ActivityBookResponse = {
+      bookingReference: reference,
+      status: 'CONFIRMED',
+      clientReference: request.clientReference,
+      voucherUrl: `https://example.invalid/voucher/${reference}.pdf`,
+    };
+    this.activityBookings.set(reference, result);
+    return result;
+  }
+
+  async cancelActivity(bookingReference: string): Promise<ActivityCancelResponse> {
+    this.assertAvailable();
+    const booking = this.activityBookings.get(bookingReference);
+    if (!booking) {
+      throw new Error(`Hotelbeds (mock) cancelActivity: unknown reference ${bookingReference}`);
+    }
+    this.activityBookings.delete(bookingReference);
+    return {
+      status: 'CANCELLED',
+      cancellationReference: `CXL-${bookingReference}`,
+    };
+  }
+
+  // -------------------------------------------------------------------------
+  // Transfers API
+  // -------------------------------------------------------------------------
+
+  async searchTransfers(request: TransferSearchRequest): Promise<TransferOffer[]> {
+    this.assertAvailable();
+    if (request.signal?.aborted) {
+      throw new Error('Hotelbeds (mock) searchTransfers aborted before dispatch');
+    }
+    const key = `${request.from.type}:${request.from.code.toUpperCase()}`;
+    return TRANSFERS_BY_FROM[key] ?? [];
+  }
+
+  async bookTransfer(request: TransferBookRequest): Promise<TransferBookResponse> {
+    this.assertAvailable();
+    if (request.signal?.aborted) {
+      throw new Error('Hotelbeds (mock) bookTransfer aborted before dispatch');
+    }
+    const reference = `MOCK-TRF-${String(this.nextTransferRef++).padStart(6, '0')}`;
+    const result: TransferBookResponse = {
+      bookingReference: reference,
+      status: 'CONFIRMED',
+      clientReference: request.clientReference,
+      pickupDetails: {
+        location: 'BCN T1 Arrivals',
+        time: '14:30',
+        instructions: 'Driver will meet you at the meeting point with a sign.',
+      },
+    };
+    this.transferBookings.set(reference, result);
+    return result;
+  }
+
+  async cancelTransfer(bookingReference: string): Promise<TransferCancelResponse> {
+    this.assertAvailable();
+    const booking = this.transferBookings.get(bookingReference);
+    if (!booking) {
+      throw new Error(`Hotelbeds (mock) cancelTransfer: unknown reference ${bookingReference}`);
+    }
+    this.transferBookings.delete(bookingReference);
+    return {
+      status: 'CANCELLED',
+      cancellationReference: `CXL-${bookingReference}`,
+    };
+  }
+
+  // -------------------------------------------------------------------------
 
   async availabilityRawResults(
     request: HotelbedsAvailabilityRequest,

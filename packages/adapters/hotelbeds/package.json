@@ -1,7 +1,7 @@
 {
   "name": "@otaip/adapter-hotelbeds",
-  "version": "0.6.4",
-  "description": "OTAIP distribution adapter for the Hotelbeds APItude (Hotels) bedbank API",
+  "version": "0.7.0",
+  "description": "OTAIP distribution adapter for the Hotelbeds APItude APIs — Hotels, Activities, and Transfers",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
