@@ -17,8 +17,7 @@
  * only the booking's `paymentId` is recorded in the adapter.
  */
 
-import type { MockOtaAdapter } from '../mock-ota-adapter.js';
-import type { PaymentResult } from '../types.js';
+import type { BookingLifecycle, OtaAdapter, PaymentResult } from '../types.js';
 import type { SqliteStore } from '../persistence/sqlite-store.js';
 
 // ---------------------------------------------------------------------------
@@ -80,11 +79,11 @@ export interface CreateIntentResult {
 }
 
 export class PaymentService {
-  private readonly adapter: MockOtaAdapter;
+  private readonly adapter: OtaAdapter & BookingLifecycle;
   private readonly stripe?: StripeLike;
   private readonly store?: SqliteStore;
 
-  constructor(adapter: MockOtaAdapter, options: PaymentServiceOptions = {}) {
+  constructor(adapter: OtaAdapter & BookingLifecycle, options: PaymentServiceOptions = {}) {
     this.adapter = adapter;
     if (options.stripe) this.stripe = options.stripe;
     if (options.store) this.store = options.store;

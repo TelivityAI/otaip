@@ -13,13 +13,24 @@ pnpm install
 # Option A: Run with mock data (no API key needed)
 pnpm --filter @otaip/ota-example dev
 
-# Option B: Run with live Duffel sandbox data
+# Option B: Run with live Duffel sandbox (real search, price, and booking)
 cp examples/ota/.env.example examples/ota/.env
-# Edit .env and add your Duffel API token (free at duffel.com/docs/getting-started)
+# Edit .env and set DUFFEL_API_KEY (free at duffel.com/docs/getting-started)
 pnpm --filter @otaip/ota-example dev
 ```
 
 Open http://localhost:3000 in your browser.
+
+### Live mode (DUFFEL_API_KEY)
+
+When `DUFFEL_API_KEY` is set, search / price / book run against the Duffel
+sandbox via `DuffelOtaAdapter` — same path the `pnpm --filter @otaip/demo book`
+demo proves works. Payment and ticketing remain in-memory mocks because real
+Stripe + e-ticketing are out of scope for the reference OTA. Cancellation is
+local-only; sandbox orders stay on Duffel until they expire.
+
+`DUFFEL_API_TOKEN` is still accepted as a deprecated alias for backwards
+compatibility.
 
 ## What Happens When You Search
 

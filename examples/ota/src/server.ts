@@ -17,7 +17,7 @@ import fastifyRateLimit from '@fastify/rate-limit';
 import Stripe from 'stripe';
 import type { DistributionAdapter } from '@otaip/core';
 import { createAdapter, createMultiAdapter } from './config/adapters.js';
-import type { OtaAdapter } from './types.js';
+import type { BookingLifecycle, OtaAdapter } from './types.js';
 import { MockOtaAdapter } from './mock-ota-adapter.js';
 import { SqliteStore } from './persistence/sqlite-store.js';
 import type { StripeLike } from './services/payment-service.js';
@@ -64,7 +64,7 @@ export function filterBookingAdapters(
 
 export interface BuildAppOptions {
   /** Override the adapter (useful for testing with MockOtaAdapter). */
-  adapter?: OtaAdapter;
+  adapter?: OtaAdapter & BookingLifecycle;
   /**
    * Optional SqliteStore for durable persistence. If not provided and
    * `DATABASE_PATH` env var is set, one is constructed automatically.
@@ -226,17 +226,13 @@ export async function buildApp(options: BuildAppOptions = {}) {
   // Build services
   const searchService = new SearchService(adapter);
   const offerService = new OfferService(searchService);
-  const bookingService = new BookingService(
-    adapter as MockOtaAdapter,
-    searchService,
-    bookingAdapters,
-  );
-  const paymentService = new PaymentService(adapter as MockOtaAdapter, {
+  const bookingService = new BookingService(adapter, searchService, bookingAdapters);
+  const paymentService = new PaymentService(adapter, {
     ...(stripe ? { stripe } : {}),
     ...(store ? { store } : {}),
   });
-  const ticketingService = new TicketingService(adapter as MockOtaAdapter);
-  const manageService = new ManageService(adapter as MockOtaAdapter);
+  const ticketingService = new TicketingService(adapter);
+  const manageService = new ManageService(adapter);
 
   // Optionally initialize airport code resolver
   if (options.initResolver !== false) {
