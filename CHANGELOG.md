@@ -1,6 +1,48 @@
 # Changelog
 
-> **Versioning policy:** Pre-v1.0, every release is a patch bump (`0.6.0 → 0.6.1 → 0.6.2 → …`). See [VERSIONING.md](VERSIONING.md) for the full policy and an explanation of the early-history version jumps (0.3.4 → 0.5.0 → 0.5.1 → 0.6.0) that predate this rule.
+> **Versioning policy:** Pre-v1.0, every release is a patch bump (`0.6.0 → 0.6.1 → 0.6.2 → …`). See [VERSIONING.md](VERSIONING.md) for the full policy and an explanation of the early-history version jumps (0.3.4 → 0.5.0 → 0.5.1 → 0.6.0) that predate this rule. v0.6.4 → v0.7.0 is the one post-policy exception — see VERSIONING.md.
+
+## 0.7.0 — Reference OTA hardening + Hotelbeds Activities/Transfers
+
+Re-sync release. `@otaip/adapter-hotelbeds@0.7.0` shipped as a single-package minor bump in [#90](https://github.com/telivity-otaip/otaip/pull/90) ahead of the repo-wide release; this PR aligns root + every other workspace package with that version so the GitHub front page, npm, and `package.json` files all agree. Per-package, the only API surface change since v0.6.4 lives in `@otaip/adapter-hotelbeds`. The rest of the work in this window targeted the reference OTA — see below.
+
+### `@otaip/adapter-hotelbeds` — Activities + Transfers ([#90](https://github.com/telivity-otaip/otaip/pull/90))
+
+`HotelbedsAdapter` now spans the full APItude product family. New direct methods on the same class:
+
+- **Activities** (`/activity-api/3.0`) — `searchActivities`, `bookActivity`, `cancelActivity`. Cancellation policy narrows to `'NOR' | 'NRF'`; unknown values default to `'NRF'` per DQ-A5.
+- **Transfers** (`/transfer-api/1.0`) — `searchTransfers`, `bookTransfer`, `cancelTransfer`. Unknown `transferType` values pass through verbatim rather than being coerced into the documented `PRIVATE | SHARED | LUXURY` set.
+- The shared `request()` helper now accepts an optional `AbortSignal` (pre-flight check; in-flight cancel needs an upstream change to `fetchWithRetry` and is left as future work).
+
+New canonical types (`ActivityOffer`, `ActivityModality`, `TransferOffer`, etc.), wire types, mappers (`decimal.js` for all amounts), capability manifests (`hotelbedsActivitiesCapabilities`, `hotelbedsTransfersCapabilities`), `MockHotelbedsAdapter` fixtures for both surfaces, and unit + sandbox-gated integration tests. Domain knowledge captured verbatim from the vendor brief in `docs/knowledge-base/activities.md` and `docs/knowledge-base/transfers.md` with 13 numbered `DOMAIN_QUESTION` markers (DQ-A1..A5, DQ-T1..T8) for the gaps the brief leaves open. Per the constitution's no-invent rule, those questions are surfaced rather than guessed.
+
+### Reference OTA — Path B hardening ([#88](https://github.com/telivity-otaip/otaip/pull/88))
+
+Three pieces:
+
+- **Durable persistence** — `MockOtaAdapter` now optionally stores bookings in SQLite via `node:sqlite` (Node 24+). Auto-loads when `DATABASE_PATH` is set; falls back to in-memory otherwise. Survives process restarts.
+- **Real Stripe payments** — `PaymentService` runs against Stripe when `STRIPE_SECRET_KEY` is set. PaymentIntents created at booking time, confirmed at pay time. Mock-mode preserved when no key.
+- **Security headers + input schemas** — `helmet`, `@fastify/cors` (env-driven), `@fastify/rate-limit` (100/min global, 20/min on `/api/book`, 10/min on `/api/pay`), AJV body schemas on every state-mutating route, custom error formatter that preserves the existing `{ error, details }` envelope.
+
+### Reference OTA — wire real DuffelAdapter ([#89](https://github.com/telivity-otaip/otaip/pull/89))
+
+When `DUFFEL_API_KEY` is set, `examples/ota`'s search/price/book flow now runs against the live Duffel sandbox via a new `DuffelOtaAdapter` wrapper. Without the key it falls back to `MockOtaAdapter` exactly as before. New `BookingLifecycle` interface lets `Payment` / `Ticketing` / `Manage` services type against `OtaAdapter & BookingLifecycle` instead of the concrete mock — drops the `as MockOtaAdapter` casts in `server.ts`. Standardizes the env var to `DUFFEL_API_KEY` (matches the demo); `DUFFEL_API_TOKEN` still works with a deprecation warning. `ADAPTERS=duffel` is now a valid value for live multi-source search.
+
+### Docs & CI
+
+- **README** — "Build on OTAIP" promoted to the hero slot; the domain-flex framing pushed to the bottom ([#87](https://github.com/telivity-otaip/otaip/pull/87)).
+- **Publish CI** — verify step now auto-discovers packages from the workspace instead of being hand-maintained, and `repository.url` is canonicalized across every `package.json` ([#86](https://github.com/telivity-otaip/otaip/pull/86)).
+
+### Verification
+
+- Workspace typecheck clean.
+- `@otaip/adapter-hotelbeds`: 100 unit tests pass, 14 sandbox-gated tests skip without credentials.
+- `examples/ota`: 88 tests pass.
+- All PRs in the v0.7.0 window were merged green individually before this release PR was cut.
+
+### Versioning note
+
+The patch-bump-only rule from VERSIONING.md was broken when `@otaip/adapter-hotelbeds` shipped as 0.7.0 in the per-package PR. This release ratifies that bump for the rest of the workspace and updates VERSIONING.md to acknowledge the deviation. **Going forward, all releases are patch bumps off v0.7.x until v1.0** — the next release is v0.7.1.
 
 ## 0.6.4 — Hotelbeds Distribution Adapter
 

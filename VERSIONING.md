@@ -35,10 +35,13 @@ Our early history has version jumps that don't follow the patch-bump rule. These
 | v0.5.0 | Sprint F — OTA Booking, Payment, Ticketing | 2026-04-17 | Should have been v0.3.5 under the current policy |
 | v0.5.1 | Sprint G — Offers & Orders (AIDM 24.1) | 2026-04-17 | Should have been v0.3.6 |
 | v0.6.0 | Sprint H — OOSD-Native + Multi-Adapter | 2026-04-17 | Should have been v0.3.7 |
+| v0.7.0 | Reference OTA hardening + Hotelbeds Activities/Transfers | 2026-05-06 | Should have been v0.6.5 under the patch-bump rule. Bumped to 0.7.0 to re-sync the workspace after `@otaip/adapter-hotelbeds@0.7.0` was published as a single-package minor bump in PR #90 ahead of the repo-wide release. |
 
 The jumps from 0.3.4 to 0.5.0 and 0.5.1 to 0.6.0 came from mechanically following a planning document's "target versions" instead of applying consistent semver. They're preserved as historical git tags because nothing downstream consumes the registry (packages are not yet published to npm).
 
-**Going forward, all releases are patch bumps off v0.6.x until v1.0.** The next release is v0.6.1.
+The v0.6.4 → v0.7.0 jump is the one exception that came after this policy document was written. It exists because `@otaip/adapter-hotelbeds@0.7.0` was published to npm as a per-package minor bump before the corresponding repo-wide release was cut; rather than leave the rest of the ecosystem stuck behind a non-existent v0.6.5 tag, we ratify the bump and re-sync.
+
+**Going forward, all releases are patch bumps off v0.7.x until v1.0.** The next release is v0.7.1.
 
 ## How to bump
 
