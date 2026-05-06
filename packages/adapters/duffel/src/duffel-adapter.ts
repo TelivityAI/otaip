@@ -23,6 +23,28 @@ import type {
 import { fetchWithRetry } from '@otaip/core';
 import Decimal from 'decimal.js';
 
+import type {
+  CarBookRequest,
+  CarBookResponse,
+  CarCancelResponse,
+  CarQuote,
+  CarSearchRequest,
+  CarSearchResult,
+  DuffelCarsBookingRequest,
+  DuffelCarsBookingResponse,
+  DuffelCarsCancelResponse,
+  DuffelCarsQuoteRequest,
+  DuffelCarsQuoteResponse,
+  DuffelCarsSearchRequest,
+  DuffelCarsSearchResponse,
+} from './cars-types.js';
+import {
+  mapBookingResponse as mapCarBookingResponse,
+  mapCancelResponse as mapCarCancelResponse,
+  mapQuoteResponse as mapCarQuoteResponse,
+  mapSearchResponse as mapCarSearchResponse,
+} from './cars-mapper.js';
+
 const DUFFEL_BASE_URL = 'https://api.duffel.com';
 
 /**
@@ -351,11 +373,125 @@ export class DuffelAdapter implements DistributionAdapter {
     };
   }
 
+  // -------------------------------------------------------------------------
+  // Cars API — search → quote → book
+  //
+  // Three-step flow (search → quote → book), unlike the two-step flight
+  // flow (search → book). Geo-coordinate based, not IATA codes. See
+  // `docs/knowledge-base/cars.md` for the authoritative domain input
+  // and outstanding DOMAIN_QUESTIONs.
+  // -------------------------------------------------------------------------
+
+  async searchCars(request: CarSearchRequest): Promise<CarSearchResult> {
+    const body: DuffelCarsSearchRequest = {
+      data: {
+        pickup_date: request.pickupDate,
+        pickup_time: request.pickupTime,
+        pickup_location: {
+          ...(request.pickupLocation.radius !== undefined
+            ? { radius: request.pickupLocation.radius }
+            : {}),
+          geographic_coordinates: {
+            latitude: request.pickupLocation.latitude,
+            longitude: request.pickupLocation.longitude,
+          },
+        },
+        dropoff_date: request.dropoffDate,
+        dropoff_time: request.dropoffTime,
+        dropoff_location: {
+          ...(request.dropoffLocation.radius !== undefined
+            ? { radius: request.dropoffLocation.radius }
+            : {}),
+          geographic_coordinates: {
+            latitude: request.dropoffLocation.latitude,
+            longitude: request.dropoffLocation.longitude,
+          },
+        },
+        driver: {
+          age: request.driver.age,
+          residence_country_code: request.driver.residenceCountryCode,
+        },
+      },
+    };
+    const response = (await this.request(
+      'POST',
+      '/cars/search',
+      body as unknown as Record<string, unknown>,
+      request.signal ? { signal: request.signal } : {},
+    )) as DuffelCarsSearchResponse;
+    return mapCarSearchResponse(response);
+  }
+
+  async quoteCar(rateId: string, signal?: AbortSignal): Promise<CarQuote> {
+    const body: DuffelCarsQuoteRequest = { data: { rate_id: rateId } };
+    const response = (await this.request(
+      'POST',
+      '/cars/quotes',
+      body as unknown as Record<string, unknown>,
+      signal ? { signal } : {},
+    )) as DuffelCarsQuoteResponse;
+    return mapCarQuoteResponse(response);
+  }
+
+  async bookCar(request: CarBookRequest): Promise<CarBookResponse> {
+    const body: DuffelCarsBookingRequest = {
+      data: {
+        quote_id: request.quoteId,
+        driver: {
+          given_name: request.driver.givenName,
+          family_name: request.driver.familyName,
+          email: request.driver.email,
+          phone_number: request.driver.phoneNumber,
+          ...(request.driver.dateOfBirth ? { date_of_birth: request.driver.dateOfBirth } : {}),
+        },
+        ...(request.payment ? { payment: request.payment } : {}),
+        ...(request.metadata ? { metadata: request.metadata } : {}),
+        ...(request.inboundFlightNumber
+          ? { inbound_flight_number: request.inboundFlightNumber }
+          : {}),
+      },
+    };
+    const response = (await this.request(
+      'POST',
+      '/cars/bookings',
+      body as unknown as Record<string, unknown>,
+      request.signal ? { signal: request.signal } : {},
+    )) as DuffelCarsBookingResponse;
+    return mapCarBookingResponse(response);
+  }
+
+  async getCarBooking(bookingId: string, signal?: AbortSignal): Promise<CarBookResponse> {
+    const response = (await this.request(
+      'GET',
+      `/cars/bookings/${encodeURIComponent(bookingId)}`,
+      undefined,
+      signal ? { signal } : {},
+    )) as DuffelCarsBookingResponse;
+    return mapCarBookingResponse(response);
+  }
+
+  async cancelCarBooking(
+    bookingId: string,
+    signal?: AbortSignal,
+  ): Promise<CarCancelResponse> {
+    const response = (await this.request(
+      'POST',
+      `/cars/bookings/${encodeURIComponent(bookingId)}/actions/cancel`,
+      undefined,
+      signal ? { signal } : {},
+    )) as DuffelCarsCancelResponse;
+    return mapCarCancelResponse(response);
+  }
+
   private async request(
     method: string,
     path: string,
     body?: Record<string, unknown>,
+    options: { signal?: AbortSignal } = {},
   ): Promise<unknown> {
+    if (options.signal?.aborted) {
+      throw new Error('Duffel API request aborted before dispatch');
+    }
     const url = `${this.baseUrl}${path}`;
     const headers: Record<string, string> = {
       Authorization: `Bearer ${this.apiKey}`,

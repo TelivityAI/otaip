@@ -15,6 +15,16 @@ import type {
   PriceResponse,
 } from '@otaip/core';
 
+import type {
+  CarBookRequest,
+  CarBookResponse,
+  CarCancelResponse,
+  CarQuote,
+  CarRate,
+  CarSearchRequest,
+  CarSearchResult,
+} from './cars-types.js';
+
 // ---------------------------------------------------------------------------
 // Mock flight data
 // ---------------------------------------------------------------------------
@@ -330,4 +340,208 @@ export class MockDuffelAdapter implements DistributionAdapter {
   async isAvailable(): Promise<boolean> {
     return this.available;
   }
+
+  // -------------------------------------------------------------------------
+  // Cars — synthetic three-step (search → quote → book) flow
+  //
+  // Same interface as the live `DuffelAdapter`. State is in-memory and
+  // shared across calls so the search/quote/book chain works without
+  // hitting the network.
+  // -------------------------------------------------------------------------
+
+  private nextSearchSeq = 1;
+  private nextQuoteSeq = 1;
+  private nextBookingSeq = 1;
+  private readonly carQuotes = new Map<string, CarQuote>();
+  private readonly carBookings = new Map<string, CarBookResponse>();
+  /** Maps a synthetic rate ID back to the underlying mock car so we can quote it. */
+  private readonly carRatesById = new Map<string, CarRate>();
+
+  async searchCars(request: CarSearchRequest): Promise<CarSearchResult> {
+    if (request.signal?.aborted) {
+      throw new Error('Mock Duffel Cars searchCars aborted before dispatch');
+    }
+    const searchId = `seh_mock_${String(this.nextSearchSeq++).padStart(6, '0')}`;
+    const rates: CarRate[] = MOCK_CAR_FIXTURES.map((fixture, i) => ({
+      ...fixture,
+      rateId: `rae_mock_${searchId}_${i}`,
+      searchId,
+      pickupLocation: {
+        ...fixture.pickupLocation,
+        latitude: request.pickupLocation.latitude,
+        longitude: request.pickupLocation.longitude,
+      },
+      dropoffLocation: {
+        ...fixture.dropoffLocation,
+        latitude: request.dropoffLocation.latitude,
+        longitude: request.dropoffLocation.longitude,
+      },
+    }));
+    for (const rate of rates) this.carRatesById.set(rate.rateId, rate);
+    return { searchId, rates };
+  }
+
+  async quoteCar(rateId: string, signal?: AbortSignal): Promise<CarQuote> {
+    if (signal?.aborted) {
+      throw new Error('Mock Duffel Cars quoteCar aborted before dispatch');
+    }
+    const rate = this.carRatesById.get(rateId);
+    if (!rate) throw new Error(`Mock Duffel Cars: unknown rateId ${rateId}`);
+    const quoteId = `qut_mock_${String(this.nextQuoteSeq++).padStart(6, '0')}`;
+    const quote: CarQuote = {
+      quoteId,
+      rateId: rate.rateId,
+      searchId: rate.searchId,
+      car: rate.car,
+      supplier: rate.supplier,
+      pickupLocation: rate.pickupLocation,
+      dropoffLocation: rate.dropoffLocation,
+      totalAmount: rate.totalAmount,
+      conditions: [
+        {
+          title: 'Free cancellation',
+          text: 'Cancel up to 48 hours before pickup for a full refund.',
+        },
+        { title: 'Fuel policy', text: 'Full-to-full. Return with a full tank.' },
+      ],
+      charges: [
+        {
+          amount: '5.00',
+          currency: rate.totalAmount.currency,
+          description: 'Mock airport surcharge',
+        },
+      ],
+      mileage: { unlimited: true },
+      privacyPolicies: [
+        'Mock supplier privacy policy: data is shared with the rental agency.',
+      ],
+    };
+    this.carQuotes.set(quoteId, quote);
+    return quote;
+  }
+
+  async bookCar(request: CarBookRequest): Promise<CarBookResponse> {
+    if (request.signal?.aborted) {
+      throw new Error('Mock Duffel Cars bookCar aborted before dispatch');
+    }
+    const quote = this.carQuotes.get(request.quoteId);
+    if (!quote) throw new Error(`Mock Duffel Cars: unknown quoteId ${request.quoteId}`);
+    const bookingId = `boo_mock_${String(this.nextBookingSeq++).padStart(6, '0')}`;
+    const booking: CarBookResponse = {
+      bookingId,
+      status: 'confirmed',
+      reference: `MOCK-CAR-${bookingId.slice(-6).toUpperCase()}`,
+      confirmedAt: new Date().toISOString(),
+      car: quote.car,
+      supplier: quote.supplier,
+      pickupLocation: quote.pickupLocation,
+      dropoffLocation: quote.dropoffLocation,
+      totalAmount: quote.totalAmount,
+    };
+    this.carBookings.set(bookingId, booking);
+    return booking;
+  }
+
+  async getCarBooking(bookingId: string, signal?: AbortSignal): Promise<CarBookResponse> {
+    if (signal?.aborted) {
+      throw new Error('Mock Duffel Cars getCarBooking aborted before dispatch');
+    }
+    const booking = this.carBookings.get(bookingId);
+    if (!booking) {
+      throw new Error(`Mock Duffel Cars: unknown bookingId ${bookingId}`);
+    }
+    return booking;
+  }
+
+  async cancelCarBooking(
+    bookingId: string,
+    signal?: AbortSignal,
+  ): Promise<CarCancelResponse> {
+    if (signal?.aborted) {
+      throw new Error('Mock Duffel Cars cancelCarBooking aborted before dispatch');
+    }
+    const booking = this.carBookings.get(bookingId);
+    if (!booking) {
+      throw new Error(`Mock Duffel Cars: unknown bookingId ${bookingId}`);
+    }
+    if (booking.status === 'cancelled') {
+      throw new Error(`Mock Duffel Cars: booking ${bookingId} already cancelled`);
+    }
+    this.carBookings.set(bookingId, { ...booking, status: 'cancelled' });
+    return { status: 'cancelled', cancelledAt: new Date().toISOString() };
+  }
 }
+
+// ---------------------------------------------------------------------------
+// Mock car fixtures
+//
+// Each fixture is location-agnostic — coordinates are filled in from the
+// search request so the response matches what the caller asked for.
+// ---------------------------------------------------------------------------
+
+const MOCK_CAR_FIXTURES: ReadonlyArray<Omit<CarRate, 'rateId' | 'searchId'>> = [
+  {
+    car: {
+      name: 'Toyota Corolla',
+      category: 'compact',
+      type: 'four_door',
+      transmission: 'automatic',
+      fuel: 'petrol',
+      acrissCode: 'CDAR',
+      maxPassengers: 5,
+      baggage: { small: 2, large: 1 },
+      airConditioning: true,
+      images: ['https://example.invalid/img/corolla.jpg'],
+    },
+    supplier: { name: 'Mock Rentals', logoUrl: 'https://example.invalid/logo/mock.png' },
+    pickupLocation: {
+      address: 'Mock Airport Pickup Counter',
+      latitude: 0,
+      longitude: 0,
+      phone: '+1-555-0100',
+      openingHours: '06:00–22:00',
+    },
+    dropoffLocation: {
+      address: 'Mock Airport Dropoff Counter',
+      latitude: 0,
+      longitude: 0,
+      phone: '+1-555-0100',
+      openingHours: '06:00–22:00',
+    },
+    baseAmount: { amount: '180.00', currency: 'USD' },
+    totalAmount: { amount: '212.40', currency: 'USD' },
+    paymentType: 'prepaid',
+  },
+  {
+    car: {
+      name: 'Volkswagen Tiguan',
+      category: 'suv',
+      type: 'suv',
+      transmission: 'automatic',
+      fuel: 'diesel',
+      acrissCode: 'IFAD',
+      maxPassengers: 5,
+      baggage: { small: 3, large: 2 },
+      airConditioning: true,
+      images: ['https://example.invalid/img/tiguan.jpg'],
+    },
+    supplier: { name: 'Mock Rentals', logoUrl: 'https://example.invalid/logo/mock.png' },
+    pickupLocation: {
+      address: 'Mock Airport Pickup Counter',
+      latitude: 0,
+      longitude: 0,
+      phone: '+1-555-0100',
+      openingHours: '06:00–22:00',
+    },
+    dropoffLocation: {
+      address: 'Mock Airport Dropoff Counter',
+      latitude: 0,
+      longitude: 0,
+      phone: '+1-555-0100',
+      openingHours: '06:00–22:00',
+    },
+    baseAmount: { amount: '320.00', currency: 'USD' },
+    totalAmount: { amount: '378.00', currency: 'USD' },
+    paymentType: 'guarantee',
+  },
+];
