@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Smooth focus rings on the dark sidebar links */
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+  body {
+    @apply font-sans text-slate-900 antialiased;
+  }
+  pre,
+  code {
+    @apply font-mono;
+  }
+}

@@ -28,6 +28,8 @@ import { BookingService } from './services/booking-service.js';
 import { PaymentService } from './services/payment-service.js';
 import { TicketingService } from './services/ticketing-service.js';
 import { ManageService } from './services/manage-service.js';
+import { PlatformService } from './services/platform-service.js';
+import { PlaygroundService } from './services/playground-service.js';
 import { registerSearchRoute } from './routes/search.js';
 import { registerOffersRoute } from './routes/offers.js';
 import { registerHealthRoute } from './routes/health.js';
@@ -35,6 +37,8 @@ import { registerBookRoute } from './routes/book.js';
 import { registerPayRoute } from './routes/pay.js';
 import { registerTicketRoute } from './routes/ticket.js';
 import { registerManageRoutes } from './routes/manage.js';
+import { registerPlatformRoutes } from './routes/platform.js';
+import { registerPlaygroundRoutes } from './routes/playground.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -233,11 +237,19 @@ export async function buildApp(options: BuildAppOptions = {}) {
   });
   const ticketingService = new TicketingService(adapter);
   const manageService = new ManageService(adapter);
+  const platformService = new PlatformService();
+  const playgroundService = new PlaygroundService(adapter, searchService);
 
   // Optionally initialize airport code resolver
   if (options.initResolver !== false) {
     await searchService.initializeResolver();
   }
+
+  // Track every request so the dashboard health endpoint has honest
+  // last-request data. Hook returns void; never blocks.
+  app.addHook('onRequest', async () => {
+    platformService.recordRequest();
+  });
 
   // Register routes — Sprint E
   registerSearchRoute(app, searchService, multiSearch);
@@ -249,6 +261,10 @@ export async function buildApp(options: BuildAppOptions = {}) {
   registerPayRoute(app, paymentService);
   registerTicketRoute(app, ticketingService);
   registerManageRoutes(app, manageService);
+
+  // Platform UI surface — read-only telemetry + interactive playground
+  registerPlatformRoutes(app, platformService);
+  registerPlaygroundRoutes(app, playgroundService);
 
   return app;
 }
