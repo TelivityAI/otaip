@@ -2,6 +2,34 @@
 
 > **Versioning policy:** Pre-v1.0, every release is a patch bump (`0.6.0 → 0.6.1 → 0.6.2 → …`). See [VERSIONING.md](VERSIONING.md) for the full policy and an explanation of the early-history version jumps (0.3.4 → 0.5.0 → 0.5.1 → 0.6.0) that predate this rule. v0.6.4 → v0.7.0 is the one post-policy exception — see VERSIONING.md.
 
+## 0.7.1 — Platform UI + agent-discovery promoted to `@otaip/core`
+
+Patch bump per the policy reset in v0.7.0. The headline of this window is the **Platform UI** ([#93](https://github.com/telivity-otaip/otaip/pull/93)) — a new React/Vite app at `examples/platform-ui/` that gives developers a visual control plane for an OTAIP instance: agent registry, adapter status, health sidebar, and an interactive Playground for searches/agents/adapters. The Platform UI is private (`examples/*` is not published to npm); the npm-visible delta is one additive export on `@otaip/core`.
+
+### Published-package changes
+
+- **`@otaip/core`** — new `discoverAgents()` / `DiscoveredAgent` exports under `src/discovery/`. Filesystem-only walk of the workspace; no agent code executes. Repo root is resolved by walking up to `pnpm-workspace.yaml` rather than by counting parent directories, so the helper works the same way from `src/` (tsx/vitest) and from `dist/` (built consumer).
+- **`@otaip/cli`** — `agent-discovery.ts` now re-exports from `@otaip/core`. Behavior unchanged; every existing import path keeps working. The `pnpm cli agents` output is byte-identical.
+- All other published packages bumped 0.7.0 → 0.7.1 with no source changes — workspace-wide version sync.
+
+### Reference OTA additions ([#93](https://github.com/telivity-otaip/otaip/pull/93))
+
+`examples/ota` (private) gains the read-only telemetry routes the dashboard consumes: `/api/platform/{agents,adapters,health,stats}` (rate limit raised to 5 000/min so dashboard polling cannot trip the global cap) and `/api/playground/{catalog,search,agent,adapter}`. Catalog surfaces every discovered agent plus an `executable_ids` whitelist; the playground starts at one wired agent (`0.1` AirportCodeResolver — the canonical reference pattern from CLAUDE.md). Non-whitelisted IDs return a clear `501` rather than pretending to run. 12 new tests across `platform.test.ts` + `playground.test.ts` follow the existing Fastify `inject()` + `MockOtaAdapter` shape.
+
+### Dependency hygiene ([#95](https://github.com/telivity-otaip/otaip/pull/95))
+
+Dependabot bumped `postcss` 8.5.8 → 8.5.10 (dev-only, transitive through `tailwindcss`).
+
+### Verification
+
+- `pnpm -r typecheck` — clean across the workspace.
+- `pnpm exec vitest run examples/ota` — 100 passed across 9 files.
+- `pnpm --filter @otaip/platform-ui typecheck` — clean.
+
+### Versioning note
+
+Patch bump off v0.7.0 per the rule reaffirmed in the v0.7.0 release. The next release is **v0.7.2**.
+
 ## 0.7.0 — Reference OTA hardening + Hotelbeds Activities/Transfers
 
 Re-sync release. `@otaip/adapter-hotelbeds@0.7.0` shipped as a single-package minor bump in [#90](https://github.com/telivity-otaip/otaip/pull/90) ahead of the repo-wide release; this PR aligns root + every other workspace package with that version so the GitHub front page, npm, and `package.json` files all agree. Per-package, the only API surface change since v0.6.4 lives in `@otaip/adapter-hotelbeds`. The rest of the work in this window targeted the reference OTA — see below.
