@@ -2,17 +2,16 @@
  * Manage Service — retrieve and cancel bookings.
  */
 
-import type { MockOtaAdapter } from '../mock-ota-adapter.js';
-import type { BookingResult, CancelResult } from '../types.js';
+import type { BookingResult, CancelResult, OtaAdapter } from '../types.js';
 
 // ---------------------------------------------------------------------------
 // Service
 // ---------------------------------------------------------------------------
 
 export class ManageService {
-  private readonly adapter: MockOtaAdapter;
+  private readonly adapter: OtaAdapter;
 
-  constructor(adapter: MockOtaAdapter) {
+  constructor(adapter: OtaAdapter) {
     this.adapter = adapter;
   }
 

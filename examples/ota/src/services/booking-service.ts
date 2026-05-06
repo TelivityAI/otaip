@@ -9,16 +9,20 @@
  * than silently routed elsewhere.
  */
 
-import type { MockOtaAdapter } from '../mock-ota-adapter.js';
 import type { SearchService } from './search-service.js';
-import type { BookingResult, OtaAdapter, PassengerDetail } from '../types.js';
+import type {
+  BookingLifecycle,
+  BookingResult,
+  OtaAdapter,
+  PassengerDetail,
+} from '../types.js';
 
 // ---------------------------------------------------------------------------
 // Service
 // ---------------------------------------------------------------------------
 
 export class BookingService {
-  private readonly defaultAdapter: MockOtaAdapter;
+  private readonly defaultAdapter: OtaAdapter & BookingLifecycle;
   private readonly searchService: SearchService;
   /**
    * Per-source booking adapters, keyed by the same `adapterSource` names
@@ -29,7 +33,7 @@ export class BookingService {
   private readonly bookingAdapters: Map<string, OtaAdapter>;
 
   constructor(
-    defaultAdapter: MockOtaAdapter,
+    defaultAdapter: OtaAdapter & BookingLifecycle,
     searchService: SearchService,
     bookingAdapters?: Map<string, OtaAdapter>,
   ) {
@@ -68,10 +72,10 @@ export class BookingService {
       contactPhone,
     });
 
-    // Update the booking with the actual price from the offer. The
-    // price-update API is MockOtaAdapter-specific; the multi-adapter routing
-    // path reaches it only when the resolved adapter is a MockOtaAdapter.
-    if (isMockOtaAdapter(adapter)) {
+    // Update the booking with the actual price from the offer. Adapters that
+    // implement BookingLifecycle (mock + DuffelOtaAdapter) participate;
+    // search-only multi-adapter sources are filtered out before this point.
+    if (hasBookingLifecycle(adapter)) {
       adapter.updateBookingPrice(
         result.bookingReference,
         offer.price.total.toFixed(2),
@@ -98,8 +102,8 @@ export class BookingService {
   }
 }
 
-function isMockOtaAdapter(adapter: OtaAdapter): adapter is MockOtaAdapter {
-  return typeof (adapter as Partial<MockOtaAdapter>).updateBookingPrice === 'function';
+function hasBookingLifecycle(adapter: OtaAdapter): adapter is OtaAdapter & BookingLifecycle {
+  return typeof (adapter as Partial<BookingLifecycle>).updateBookingPrice === 'function';
 }
 
 // ---------------------------------------------------------------------------

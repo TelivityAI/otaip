@@ -99,3 +99,21 @@ export interface OtaAdapter extends DistributionAdapter {
   getBooking(reference: string): Promise<BookingResult | null>;
   cancelBooking(reference: string): Promise<CancelResult>;
 }
+
+// ---------------------------------------------------------------------------
+// Booking lifecycle — in-memory hooks that Payment/Ticketing/Manage services
+// use to advance a booking through its post-book states. Both MockOtaAdapter
+// and DuffelOtaAdapter implement this; services type against the union so
+// the same code path serves mock and live Duffel.
+// ---------------------------------------------------------------------------
+
+export interface BookingLifecycle {
+  updateBookingPrice(reference: string, totalAmount: string, currency: string): void;
+  /**
+   * Record a payment against a booking. The optional `paymentIntentId`
+   * carries the Stripe PaymentIntent reference when payments run through
+   * Stripe; mock-mode payments leave it undefined.
+   */
+  recordPayment(reference: string, paymentId: string, paymentIntentId?: string): void;
+  issueTickets(reference: string): string[] | null;
+}

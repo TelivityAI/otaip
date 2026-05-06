@@ -4,17 +4,16 @@
  * Follows Option B: check booking status first, only issue if not yet ticketed.
  */
 
-import type { MockOtaAdapter } from '../mock-ota-adapter.js';
-import type { TicketResult } from '../types.js';
+import type { BookingLifecycle, OtaAdapter, TicketResult } from '../types.js';
 
 // ---------------------------------------------------------------------------
 // Service
 // ---------------------------------------------------------------------------
 
 export class TicketingService {
-  private readonly adapter: MockOtaAdapter;
+  private readonly adapter: OtaAdapter & BookingLifecycle;
 
-  constructor(adapter: MockOtaAdapter) {
+  constructor(adapter: OtaAdapter & BookingLifecycle) {
     this.adapter = adapter;
   }
 
