@@ -102,8 +102,19 @@ jobs:
 
       - name: Create release
         if: steps.check.outputs.exists == 'false'
+        # Why RELEASE_PAT instead of GITHUB_TOKEN:
+        # GitHub Actions silently DOES NOT trigger downstream workflows
+        # for events created by GITHUB_TOKEN (the default Actions token).
+        # Without this, `gh release create` fires a `release: published`
+        # event that the Publish-to-npm workflow never sees, and packages
+        # never get published. Using a personal access token makes the
+        # event "user-fired", which propagates correctly.
+        # If RELEASE_PAT isn't configured the workflow falls back to
+        # GITHUB_TOKEN so the release still gets created — but the
+        # publish step won't auto-fire and someone will have to trigger
+        # it manually via workflow_dispatch.
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
         run: |
           gh release create "${{ steps.version.outputs.tag }}" \
             --title "${{ steps.version.outputs.tag }}" \
