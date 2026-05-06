@@ -2,19 +2,23 @@
 /**
  * Single source of truth for the agent count + per-stage breakdown.
  *
- * Walks the workspace exactly the same way the CLI does
- * (packages/cli/src/agent-discovery.ts), so README claims, docs counts,
- * and the release-notes pipeline cannot drift apart.
+ * Walks the workspace exactly the same way the CLI does — `discoverAgents`
+ * lives in `@otaip/core` since v0.7.1, with the CLI re-exporting it.
+ * README claims, docs counts, and the release-notes pipeline all read
+ * from this script so they cannot drift apart.
  *
  * Usage:
  *   pnpm tsx scripts/count-agents.ts            # plain text
  *   pnpm tsx scripts/count-agents.ts --json     # machine-readable
  *
- * The previous release.yml `find` command undercounted by skipping
- * packages/agents-platform and packages/agents-tmc; this script does not.
+ * Imports the helper directly from its source path rather than through
+ * the `@otaip/core` package specifier. The Release workflow's "Count
+ * agents" step runs before any build, so a bare `import from '@otaip/core'`
+ * fails with `ERR_PACKAGE_PATH_NOT_EXPORTED` when `dist/index.js` doesn't
+ * yet exist on the runner.
  */
 
-import { discoverAgents } from '../packages/cli/src/agent-discovery.js';
+import { discoverAgents } from '../packages/core/src/discovery/agent-discovery.js';
 
 interface Counts {
   total: number;
