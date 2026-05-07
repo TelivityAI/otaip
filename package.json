@@ -1,6 +1,6 @@
 {
   "name": "otaip",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "private": true,
   "description": "Open Travel AI Platform — domain-specific AI agent orchestration for the travel industry",
   "homepage": "https://telivity.app",
