@@ -12,7 +12,7 @@
     "book:amadeus": "tsx book-flight-amadeus.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.82.0",
+    "@anthropic-ai/sdk": "^0.91.1",
     "@otaip/core": "workspace:*",
     "@otaip/adapter-duffel": "workspace:*",
     "@otaip/agents-search": "workspace:*",
