@@ -1,6 +1,6 @@
 {
   "name": "@otaip/cli",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "description": "OTAIP command-line interface — search, price, book, validate, and inspect agents",
   "type": "module",
   "main": "./dist/index.js",

@@ -41,7 +41,7 @@ The jumps from 0.3.4 to 0.5.0 and 0.5.1 to 0.6.0 came from mechanically followin
 
 The v0.6.4 → v0.7.0 jump is the one exception that came after this policy document was written. It exists because `@otaip/adapter-hotelbeds@0.7.0` was published to npm as a per-package minor bump before the corresponding repo-wide release was cut; rather than leave the rest of the ecosystem stuck behind a non-existent v0.6.5 tag, we ratify the bump and re-sync.
 
-**Going forward, all releases are patch bumps off v0.7.x until v1.0.** The next release is v0.7.2.
+**Going forward, all releases are patch bumps off v0.7.x until v1.0.** The next release is v0.7.3.
 
 ## How to bump
 

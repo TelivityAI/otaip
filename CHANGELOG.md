@@ -2,6 +2,38 @@
 
 > **Versioning policy:** Pre-v1.0, every release is a patch bump (`0.6.0 → 0.6.1 → 0.6.2 → …`). See [VERSIONING.md](VERSIONING.md) for the full policy and an explanation of the early-history version jumps (0.3.4 → 0.5.0 → 0.5.1 → 0.6.0) that predate this rule. v0.6.4 → v0.7.0 is the one post-policy exception — see VERSIONING.md.
 
+## 0.7.2 — Duffel Cars + auto-publish workflow + post-#93 release fix
+
+Patch bump. Three pieces of substantive work in this window:
+
+### `@otaip/adapter-duffel` — Cars API ([#99](https://github.com/telivity-otaip/otaip/pull/99))
+
+Duffel launched **Cars** as a full API vertical alongside Flights and Stays. `DuffelAdapter` now spans both surfaces. Five new direct methods on the same class:
+
+- **Cars** (`/cars/`) — `searchCars`, `quoteCar`, `bookCar`, `getCarBooking`, `cancelCarBooking`. Three-step flow (search → quote → book) unlike the two-step flight flow. Geo-coordinate based — no IATA codes — per the brief; IATA-to-coordinate conversion is explicitly deferred (DQ-C8).
+- The shared private `request()` helper now accepts an optional `AbortSignal` (pre-flight check; in-flight cancel needs an upstream change to `fetchWithRetry`, same caveat the Hotelbeds adapter carries).
+
+New canonical types (`CarRate`, `CarQuote`, `CarBookResponse`, etc.), wire types, decimal.js-backed mapper, and a full mock three-step flow on `MockDuffelAdapter` (two synthetic fixtures: Toyota Corolla compact + VW Tiguan SUV). 18 new test cases covering body shapes, headers, mapper output, abort handling, 429 retry-then-error, and round-trip mock flow. Domain knowledge captured verbatim in `docs/knowledge-base/cars.md` with **8 numbered DOMAIN_QUESTION markers (DQ-C1..C8)** for the gaps the brief leaves open. Per the constitution's no-invent rule, those are surfaced rather than guessed.
+
+### Auto-publish workflow wiring ([#97](https://github.com/telivity-otaip/otaip/pull/97), [#98](https://github.com/telivity-otaip/otaip/pull/98))
+
+Post-mortem on why `@otaip/core` etc. sat at v0.6.4 on npm despite v0.7.0 and v0.7.1 GitHub releases existing:
+
+- **#97** — `scripts/count-agents.ts` had been importing `discoverAgents` through the CLI re-export added in [#93](https://github.com/telivity-otaip/otaip/pull/93). The Release workflow's *Count agents* step ran before any package was built, and the indirection forced tsx to resolve `@otaip/core` through its `package.json` `exports` map → `dist/index.js` (which doesn't exist on the runner) → `ERR_PACKAGE_PATH_NOT_EXPORTED`. Result: every push-to-main since #93 was failing the Release workflow silently, blocking tag creation. Fixed by importing directly from the source path.
+- **#98** — The Release workflow's `gh release create` was authenticated with `GITHUB_TOKEN`, but [GitHub Actions intentionally does not trigger downstream workflows for events fired by `GITHUB_TOKEN`](https://docs.github.com/en/actions/security-guides/automatic-token-authentication#using-the-github_token-in-a-workflow). That's why the Publish workflow never auto-fired off `release: published` for v0.7.0 or v0.7.1 — packages only made it to npm when someone clicked *Run workflow* manually. Switched the create-release step to a Personal Access Token (`RELEASE_PAT` secret) so the event is "user-fired" and propagates. Falls back to `GITHUB_TOKEN` when the secret is unset, so the workflow still functions in environments without the PAT.
+
+After v0.7.2 merges and tags, this is the first release that will auto-publish to npm without a manual workflow_dispatch.
+
+### Verification
+
+- `pnpm exec vitest run packages/adapters/duffel` — 58 passed / 3 skipped (sandbox-gated).
+- `pnpm -r typecheck` — clean across the workspace.
+- `pnpm exec eslint packages/adapters/duffel/src` — clean.
+
+### Versioning note
+
+Patch bump off v0.7.1 per VERSIONING.md. The Cars vendor brief asked for a "next minor" (0.8.0) bump; we honoured the policy and stuck with 0.7.2 instead. The next release is **v0.7.3**.
+
 ## 0.7.1 — Platform UI + agent-discovery promoted to `@otaip/core`
 
 Patch bump per the policy reset in v0.7.0. The headline of this window is the **Platform UI** ([#93](https://github.com/telivity-otaip/otaip/pull/93)) — a new React/Vite app at `examples/platform-ui/` that gives developers a visual control plane for an OTAIP instance: agent registry, adapter status, health sidebar, and an interactive Playground for searches/agents/adapters. The Platform UI is private (`examples/*` is not published to npm); the npm-visible delta is one additive export on `@otaip/core`.

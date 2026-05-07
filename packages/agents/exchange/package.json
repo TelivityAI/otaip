@@ -1,6 +1,6 @@
 {
   "name": "@otaip/agents-exchange",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "description": "OTAIP Stage 5 agents — change management, exchange/reissue, involuntary rebook",
   "type": "module",
   "main": "./dist/index.js",
