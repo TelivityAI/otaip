@@ -5,7 +5,6 @@
  * request handler injection pattern for testability.
  */
 
-import { createRequire } from 'node:module';
 import type {
   ProviderConfig,
   CircuitState,
@@ -18,6 +17,10 @@ import type {
   ApiAbstractionInput,
   ApiAbstractionOutput,
 } from './types.js';
+// JSON imported directly so esbuild inlines it into dist/index.js — using
+// createRequire on the bundled output would fail with MODULE_NOT_FOUND when
+// this package is consumed as a built dep.
+import providerConfigsJson from './data/provider-configs.json';
 
 // ---------------------------------------------------------------------------
 // Data loading
@@ -27,8 +30,7 @@ interface ProviderData {
   providers: Record<string, ProviderConfig>;
 }
 
-const require = createRequire(import.meta.url);
-const providerData = require('./data/provider-configs.json') as ProviderData;
+const providerData = providerConfigsJson as unknown as ProviderData;
 
 // ---------------------------------------------------------------------------
 // Circuit breaker state (per provider, in-memory)

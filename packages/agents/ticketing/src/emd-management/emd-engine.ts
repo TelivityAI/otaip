@@ -3,7 +3,6 @@
  */
 
 import Decimal from 'decimal.js';
-import { createRequire } from 'node:module';
 import type {
   EmdManagementInput,
   EmdManagementOutput,
@@ -11,11 +10,12 @@ import type {
   EmdCoupon,
   CouponStatus,
 } from './types.js';
+// JSON imported directly so esbuild inlines it into dist/index.js — using
+// createRequire on the bundled output would fail with MODULE_NOT_FOUND when
+// this package is consumed as a built dep.
+import prefixJson from '../ticket-issuance/data/airline-ticket-prefixes.json';
 
-const require = createRequire(import.meta.url);
-const prefixData = require('../ticket-issuance/data/airline-ticket-prefixes.json') as {
-  prefixes: Record<string, string>;
-};
+const prefixData = prefixJson as unknown as { prefixes: Record<string, string> };
 
 function generateEmdSerial(recordLocator: string, salt: string): string {
   let hash = 0;

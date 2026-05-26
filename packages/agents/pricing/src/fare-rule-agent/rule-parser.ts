@@ -4,7 +4,6 @@
  * Loads ATPCO tariff snapshot and parses rules into structured format.
  */
 
-import { createRequire } from 'node:module';
 import type {
   FareRuleInput,
   FareRuleResult,
@@ -17,6 +16,10 @@ import type {
   SeasonalityRule,
   BlackoutPeriod,
 } from './types.js';
+// JSON imported directly so esbuild inlines it into dist/index.js — using
+// createRequire on the bundled output would fail with MODULE_NOT_FOUND when
+// this package is consumed as a built dep.
+import tariffJson from './data/atpco-tariff-snapshot.json';
 
 // ---------------------------------------------------------------------------
 // Types for raw JSON data
@@ -44,9 +47,7 @@ interface TariffSnapshot {
   rules: RawRule[];
 }
 
-// Load JSON via createRequire to avoid TS strictness issues with JSON imports
-const require = createRequire(import.meta.url);
-const tariffData = require('./data/atpco-tariff-snapshot.json') as TariffSnapshot;
+const tariffData = tariffJson as unknown as TariffSnapshot;
 
 // ---------------------------------------------------------------------------
 // Rule matching
