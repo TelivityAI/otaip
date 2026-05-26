@@ -16,7 +16,6 @@
  * // require GDS for groups, corporate fares, and post-booking servicing.
  */
 
-import { createRequire } from 'node:module';
 import type {
   GdsNdcRouterInput,
   GdsNdcRouterOutput,
@@ -30,6 +29,10 @@ import type {
   RoutingSegment,
   TransactionType,
 } from './types.js';
+// JSON imported directly so esbuild inlines it into dist/index.js — using
+// createRequire on the bundled output would fail with MODULE_NOT_FOUND when
+// this package is consumed as a built dep.
+import carrierChannelsJson from './data/carrier-channels.json';
 
 // ---------------------------------------------------------------------------
 // Data loading
@@ -40,8 +43,7 @@ interface CarrierData {
   codeshare_rules: { default_strategy: string; fallback_strategy: string };
 }
 
-const require = createRequire(import.meta.url);
-const carrierData = require('./data/carrier-channels.json') as CarrierData;
+const carrierData = carrierChannelsJson as unknown as CarrierData;
 
 /** Transaction types whose channel capability is covered by the built-in carrier map. */
 const BUILTIN_TRANSACTION_TYPES: ReadonlySet<TransactionType> = new Set<TransactionType>([

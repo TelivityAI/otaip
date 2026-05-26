@@ -19,7 +19,6 @@
  */
 
 import { Decimal } from 'decimal.js';
-import { createRequire } from 'node:module';
 import { domainInputRequired, isDomainInputRequired } from '@otaip/core';
 import type {
   FareConstructionInput,
@@ -31,6 +30,12 @@ import type {
   CtmCheck,
   AuditStep,
 } from './types.js';
+// JSON imported directly so esbuild inlines it into dist/index.js — using
+// createRequire on the bundled output would fail with MODULE_NOT_FOUND when
+// this package is consumed as a built dep.
+import mileageJson from './data/mileage-data.json';
+import roeJson from './data/roe-rates.json';
+import roundingJson from './data/rounding-rules.json';
 
 export { isDomainInputRequired };
 
@@ -59,10 +64,9 @@ interface RoundingData {
   default: RoundingRule;
 }
 
-const require = createRequire(import.meta.url);
-const mileageData = require('./data/mileage-data.json') as MileageData;
-const roeData = require('./data/roe-rates.json') as RoeData;
-const roundingData = require('./data/rounding-rules.json') as RoundingData;
+const mileageData = mileageJson as unknown as MileageData;
+const roeData = roeJson as unknown as RoeData;
+const roundingData = roundingJson as unknown as RoundingData;
 
 // ---------------------------------------------------------------------------
 // Helpers
