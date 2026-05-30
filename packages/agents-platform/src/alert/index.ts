@@ -1,5 +1,5 @@
 /**
- * Alert — Agent 9.8
+ * Alert — Agent 9.9
  *
  * Queries EventStore events, computes metrics against configurable
  * thresholds, and produces alerts. Read-only — no side effects.

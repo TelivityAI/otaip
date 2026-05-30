@@ -85,9 +85,9 @@ Requires domain input on disruption priority rules and carrier-specific response
 
 **ID:** `5.5`
 **Class:** `SelfServiceRebookingAgent`
-**Status:** Coming Soon (stub)
+**Status:** Implemented
 
-Requires domain input on change fee structures, fare ineligibility rules, and self-service rebooking policy.
+Orchestrates Availability Search (1.1) and Change Management (5.1) to present priced rebooking alternatives (changeFee + fareDifference + taxDifference per option). Read-only -- does NOT execute the reissue; that is Exchange/Reissue (5.2). Involuntary reasons (schedule change / missed connection / cancellation) waive the change fee; voluntary changes honor ATPCO Cat 31 via 5.1.
 
 ---
 
@@ -95,6 +95,6 @@ Requires domain input on change fee structures, fare ineligibility rules, and se
 
 **ID:** `5.6`
 **Class:** `WaitlistManagementAgent`
-**Status:** Coming Soon (stub)
+**Status:** Implemented
 
-Requires domain input on waitlist priority scoring and clearance procedures.
+Stateful in-memory passenger waitlist queue with four operations: addEntry (priority computed at add time), clear (given N seats opened, remove top-N by priority), queryStatus (1-based position + estimated clearance probability), and expire (prune entries past their cutoff). State is in-memory only -- production deployments should pair it with a durable persistence layer.

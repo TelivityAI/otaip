@@ -61,8 +61,8 @@ All agents in the Open Travel AI Platform, organized by stage.
 | 5.2 | Exchange/Reissue | 5 -- Exchange & Change | Implemented |
 | 5.3 | Involuntary Rebook | 5 -- Exchange & Change | Implemented |
 | 5.4 | Disruption Response | 5 -- Exchange & Change | Coming Soon |
-| 5.5 | Self-Service Rebooking | 5 -- Exchange & Change | Coming Soon |
-| 5.6 | Waitlist Management | 5 -- Exchange & Change | Coming Soon |
+| 5.5 | Self-Service Rebooking | 5 -- Exchange & Change | Implemented |
+| 5.6 | Waitlist Management | 5 -- Exchange & Change | Implemented |
 | 6.1 | Refund Processing | 6 -- Settlement | Implemented |
 | 6.2 | ADM Prevention | 6 -- Settlement | Implemented |
 | 6.3 | ADM/ACM Processing | 6 -- Settlement | Implemented |
@@ -85,6 +85,10 @@ All agents in the Open Travel AI Platform, organized by stage.
 | 9.3 | Monitoring & Alerting | 9 -- Platform | Implemented |
 | 9.4 | Audit & Compliance | 9 -- Platform | Implemented |
 | 9.5 | Plugin Manager | 9 -- Platform | Implemented |
+| 9.6 | Performance Audit | 9 -- Platform | Implemented |
+| 9.7 | Routing Audit | 9 -- Platform | Implemented |
+| 9.8 | Recommendation | 9 -- Platform | Implemented |
+| 9.9 | Alert | 9 -- Platform | Implemented |
 | 20.1 | Hotel Search Aggregator | 20 -- Lodging | Implemented |
 | 20.2 | Property Deduplication | 20 -- Lodging | Implemented |
 | 20.3 | Hotel Content Normalization | 20 -- Lodging | Implemented |
