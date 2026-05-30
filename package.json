@@ -24,6 +24,7 @@
     "typecheck": "pnpm -r run typecheck",
     "data:download": "tsx scripts/download-airport-data.ts",
     "count:agents": "tsx scripts/count-agents.ts",
+    "check:no-internal-refs": "bash scripts/check-no-internal-refs.sh",
     "clean": "pnpm -r run clean && rm -rf node_modules"
   },
   "pnpm": {

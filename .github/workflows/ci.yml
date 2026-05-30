@@ -12,6 +12,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Fail fast (before install/build) if internal/pre-release references
+      # leak into the public repo. Recurrence guard for the 018 incident.
+      - name: Guard against internal references
+        run: bash scripts/check-no-internal-refs.sh
+
       - uses: pnpm/action-setup@v4
 
       - uses: actions/setup-node@v4
