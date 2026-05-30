@@ -2,8 +2,8 @@
 
 All agents in the Open Travel AI Platform, organized by stage.
 
-See [agent-boundaries.md](agent-boundaries.md) for how to tell commonly-confused
-sibling agents apart (the distinguishing signal for each pair).
+See [agent-boundaries.md](agent-boundaries.md) for which agent owns which
+responsibility when a stage has adjacent siblings (the distinguishing signal for each).
 
 ## Stage Files
 
