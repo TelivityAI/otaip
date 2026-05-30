@@ -6,7 +6,6 @@
  */
 
 import { Decimal } from 'decimal.js';
-import { createRequire } from 'node:module';
 import type {
   TaxCalculationInput,
   TaxCalculationOutput,
@@ -16,6 +15,10 @@ import type {
   CabinClass,
   ExemptionType,
 } from './types.js';
+// JSON imported directly so esbuild inlines it into dist/index.js — using
+// createRequire on the bundled output would fail with MODULE_NOT_FOUND when
+// this package is consumed as a built dep.
+import taxRatesJson from './data/tax-rates.json';
 
 // ---------------------------------------------------------------------------
 // Data loading
@@ -57,8 +60,7 @@ interface TaxData {
   currency_conversions: Record<string, string>;
 }
 
-const require = createRequire(import.meta.url);
-const taxData = require('./data/tax-rates.json') as TaxData;
+const taxData = taxRatesJson as unknown as TaxData;
 
 // ---------------------------------------------------------------------------
 // Country-to-airport mapping (simplified)

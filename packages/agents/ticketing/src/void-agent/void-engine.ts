@@ -2,13 +2,13 @@
  * Void Engine — coupon status check, void window, BSP/ARC cut-off.
  */
 
-import { createRequire } from 'node:module';
 import type { VoidAgentInput, VoidAgentOutput, CarrierVoidWindow, CouponStatus } from './types.js';
+// JSON imported directly so esbuild inlines it into dist/index.js — using
+// createRequire on the bundled output would fail with MODULE_NOT_FOUND when
+// this package is consumed as a built dep.
+import voidWindowsJson from './data/carrier-void-windows.json';
 
-const require = createRequire(import.meta.url);
-const windowData = require('./data/carrier-void-windows.json') as {
-  carriers: CarrierVoidWindow[];
-};
+const windowData = voidWindowsJson as unknown as { carriers: CarrierVoidWindow[] };
 
 const carrierWindows = new Map<string, CarrierVoidWindow>();
 for (const c of windowData.carriers) {

@@ -14,8 +14,11 @@
  *   - DIRECT-only carriers → channelType 'lcc' with supportedCarriers for that carrier
  */
 
-import { createRequire } from 'node:module';
 import type { ChannelCapability } from '@otaip/core';
+// JSON imported directly so esbuild inlines it into dist/index.js — using
+// createRequire on the bundled output would fail with MODULE_NOT_FOUND when
+// this package is consumed as a built dep.
+import carrierChannelsJson from './data/carrier-channels.json';
 
 interface CarrierChannelConfig {
   name: string;
@@ -32,8 +35,7 @@ interface CarrierData {
   codeshare_rules: { default_strategy: string; fallback_strategy: string };
 }
 
-const require = createRequire(import.meta.url);
-const carrierData = require('./data/carrier-channels.json') as CarrierData;
+const carrierData = carrierChannelsJson as unknown as CarrierData;
 
 function ndcVersionToLevel(version: string | null): 1 | 2 | 3 | 4 | undefined {
   if (!version) return undefined;
