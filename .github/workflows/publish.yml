@@ -27,6 +27,12 @@ jobs:
       - name: Build all packages
         run: pnpm -r run build
 
+      # Pre-publish gate: every built bundle must import cleanly. A package
+      # whose dist throws MODULE_NOT_FOUND (e.g. an un-inlined data file) must
+      # never reach npm — `pnpm publish` would otherwise print success anyway.
+      - name: Verify built bundles load
+        run: pnpm verify:dist
+
       - name: Dry-run publish
         run: pnpm -r publish --access public --no-git-checks --dry-run
         env:

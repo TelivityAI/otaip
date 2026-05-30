@@ -19,7 +19,6 @@
  * // non-involuntary and emit a warning.
  */
 
-import { createRequire } from 'node:module';
 import { applyEU261 } from '@otaip/core';
 import type {
   InvoluntaryRebookInput,
@@ -31,9 +30,12 @@ import type {
   RegulatoryFlag,
 } from './types.js';
 
-const require = createRequire(import.meta.url);
-const euData = require('./data/eu-countries.json') as { countries: string[] };
-const EU_COUNTRIES = new Set(euData.countries);
+// Plain ESM JSON import — esbuild/tsup inlines this into dist/index.js. Do NOT
+// switch to `createRequire('./data/...json')`: tsup does not copy data files to
+// dist, so a runtime require resolves nothing → MODULE_NOT_FOUND on import.
+// (Guarded repo-wide by `pnpm verify:dist`.)
+import euCountriesJson from './data/eu-countries.json';
+const EU_COUNTRIES = new Set((euCountriesJson as { countries: string[] }).countries);
 
 // ---------------------------------------------------------------------------
 // Trigger assessment
