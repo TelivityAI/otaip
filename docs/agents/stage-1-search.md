@@ -159,7 +159,9 @@ Aggregates search results from multiple adapters with deduplication, price compa
 **Class:** `HotelCarSearchAgent`
 **Status:** Implemented (adapter-dependent)
 
-Hotel and car rental search via pluggable adapters. Returns empty results when no adapters configured.
+Car rental search (and, pending a deferred car-only migration, hotel) via pluggable adapters. Returns empty results when no adapters configured.
+
+**Routing ownership:** hotel search intent is owned by Hotel Search Aggregator (20.1) for all hotel queries -- standalone or within a trip. 1.7 owns car rental; it may compose with 20.1 for a combined hotel+car trip but does not own hotel intent. Route hotel queries to 20.1.
 
 **Input (`HotelCarSearchInput`):**
 - `operation` -- `'searchHotels' | 'searchCars'`
