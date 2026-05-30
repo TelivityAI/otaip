@@ -24,6 +24,7 @@
     "typecheck": "pnpm -r run typecheck",
     "data:download": "tsx scripts/download-airport-data.ts",
     "count:agents": "tsx scripts/count-agents.ts",
+    "gen:manifest": "tsx scripts/generate-manifest.ts",
     "verify:dist": "tsx scripts/verify-dist.ts",
     "verify": "pnpm -r run build && pnpm verify:dist",
     "check:no-internal-refs": "bash scripts/check-no-internal-refs.sh",

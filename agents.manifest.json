@@ -1,0 +1,6136 @@
+{
+  "generated_by": "scripts/generate-manifest.ts",
+  "total": 75,
+  "with_contract": 18,
+  "agents": [
+    {
+      "id": "0.1",
+      "name": "Airport/City Code Resolver",
+      "stage": "reference",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": true,
+      "source_path": "packages/agents/reference/src/airport-code-resolver/index.ts",
+      "action_type": "query",
+      "input_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50
+          },
+          "code_type": {
+            "type": "string",
+            "enum": [
+              "iata",
+              "icao",
+              "city",
+              "name",
+              "auto"
+            ]
+          },
+          "include_metro": {
+            "type": "boolean"
+          },
+          "include_decommissioned": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "resolved_airport": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "iata_code": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "icao_code": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "city_code": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "city_name": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "country_code": {
+                    "type": "string"
+                  },
+                  "country_name": {
+                    "type": "string"
+                  },
+                  "timezone": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "utc_offset": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "latitude": {
+                    "type": "number"
+                  },
+                  "longitude": {
+                    "type": "number"
+                  },
+                  "elevation_ft": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "large_airport",
+                      "medium_airport",
+                      "small_airport",
+                      "closed",
+                      "heliport",
+                      "seaplane_base"
+                    ]
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "active",
+                      "decommissioned"
+                    ]
+                  },
+                  "terminals": {
+                    "anyOf": [
+                      {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "decommission_date": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "primary": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "iata_code",
+                  "icao_code",
+                  "name",
+                  "city_code",
+                  "city_name",
+                  "country_code",
+                  "country_name",
+                  "timezone",
+                  "utc_offset",
+                  "latitude",
+                  "longitude",
+                  "elevation_ft",
+                  "type",
+                  "status"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "metro_airports": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "iata_code": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "large_airport",
+                        "medium_airport",
+                        "small_airport",
+                        "closed",
+                        "heliport",
+                        "seaplane_base"
+                      ]
+                    },
+                    "primary": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "iata_code",
+                    "name",
+                    "type"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "match_confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "stale_data": {
+            "type": "boolean"
+          },
+          "suggestion": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resolved_airport",
+          "metro_airports",
+          "match_confidence"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "0.2",
+      "name": "Airline Code & Alliance Mapper",
+      "stage": "reference",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": true,
+      "source_path": "packages/agents/reference/src/airline-code-mapper/index.ts",
+      "action_type": "query",
+      "input_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50
+          },
+          "code_type": {
+            "type": "string",
+            "enum": [
+              "iata",
+              "icao",
+              "name",
+              "auto"
+            ]
+          },
+          "include_codeshares": {
+            "type": "boolean"
+          },
+          "include_defunct": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "airline": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "iata_code": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "icao_code": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "callsign": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "country_code": {
+                    "type": "string"
+                  },
+                  "country_name": {
+                    "type": "string"
+                  },
+                  "alliance": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "star_alliance",
+                          "oneworld",
+                          "skyteam"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "alliance_status": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "full_member",
+                          "affiliate",
+                          "connect_partner"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "is_operating": {
+                    "type": "boolean"
+                  },
+                  "hub_airports": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "website": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "founded_year": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "active",
+                      "defunct",
+                      "suspended",
+                      "merged"
+                    ]
+                  },
+                  "merged_into": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "defunct_date": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "iata_code",
+                  "icao_code",
+                  "name",
+                  "callsign",
+                  "country_code",
+                  "country_name",
+                  "alliance",
+                  "alliance_status",
+                  "is_operating",
+                  "hub_airports",
+                  "website",
+                  "founded_year",
+                  "status",
+                  "merged_into",
+                  "defunct_date"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "codeshare_partners": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "iata_code": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "alliance": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "star_alliance",
+                            "oneworld",
+                            "skyteam"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "relationship": {
+                      "type": "string",
+                      "enum": [
+                        "codeshare",
+                        "joint_venture",
+                        "franchise",
+                        "wet_lease"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "iata_code",
+                    "name",
+                    "alliance",
+                    "relationship"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "match_confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "required": [
+          "airline",
+          "codeshare_partners",
+          "match_confidence"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "0.3",
+      "name": "Fare Basis Code Decoder",
+      "stage": "reference",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": true,
+      "source_path": "packages/agents/reference/src/fare-basis-decoder/index.ts",
+      "action_type": "query",
+      "input_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "fare_basis": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 15
+          },
+          "carrier": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 3
+          }
+        },
+        "required": [
+          "fare_basis"
+        ],
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "decoded": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "fare_basis": {
+                    "type": "string"
+                  },
+                  "primary_code": {
+                    "type": "string"
+                  },
+                  "cabin_class": {
+                    "type": "string",
+                    "enum": [
+                      "first",
+                      "business",
+                      "premium_economy",
+                      "economy",
+                      "unknown"
+                    ]
+                  },
+                  "fare_type": {
+                    "type": "string",
+                    "enum": [
+                      "normal",
+                      "special",
+                      "excursion",
+                      "promotional",
+                      "corporate",
+                      "unknown"
+                    ]
+                  },
+                  "season": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "high",
+                          "low",
+                          "shoulder"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "day_of_week": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "weekday",
+                          "weekend"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "advance_purchase": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "days": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "description": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "days",
+                          "description"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "min_stay": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "value": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "unit": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "days",
+                                  "months"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "description": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "value",
+                          "unit",
+                          "description"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "max_stay": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "value": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "unit": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "days",
+                                  "months"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "description": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "value",
+                          "unit",
+                          "description"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "penalties": {
+                    "type": "object",
+                    "properties": {
+                      "refundable": {
+                        "type": "boolean"
+                      },
+                      "changeable": {
+                        "type": "boolean"
+                      },
+                      "change_fee_applies": {
+                        "type": "boolean"
+                      },
+                      "description": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "refundable",
+                      "changeable",
+                      "change_fee_applies",
+                      "description"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "ticket_designator": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "fare_basis",
+                  "primary_code",
+                  "cabin_class",
+                  "fare_type",
+                  "season",
+                  "day_of_week",
+                  "advance_purchase",
+                  "min_stay",
+                  "max_stay",
+                  "penalties",
+                  "ticket_designator"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "match_confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "unparsed_segments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "decoded",
+          "match_confidence",
+          "unparsed_segments"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "0.4",
+      "name": "Class of Service Mapper",
+      "stage": "reference",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/reference/src/class-of-service-mapper/index.ts"
+    },
+    {
+      "id": "0.5",
+      "name": "Equipment Type Resolver",
+      "stage": "reference",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/reference/src/equipment-type-resolver/index.ts"
+    },
+    {
+      "id": "0.6",
+      "name": "Currency & Tax Code Resolver",
+      "stage": "reference",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/reference/src/currency-tax-resolver/index.ts"
+    },
+    {
+      "id": "0.7",
+      "name": "Country Regulatory Resolver",
+      "stage": "reference",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/reference/src/country-regulatory-resolver/index.ts"
+    },
+    {
+      "id": "1.1",
+      "name": "Availability Search",
+      "stage": "search",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": true,
+      "source_path": "packages/agents/search/src/availability-search/index.ts",
+      "action_type": "query",
+      "input_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "origin": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 3
+          },
+          "destination": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 3
+          },
+          "departure_date": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "return_date": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "passengers": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "ADT",
+                    "CHD",
+                    "INF",
+                    "UNN",
+                    "STU",
+                    "YTH"
+                  ]
+                },
+                "count": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "type",
+                "count"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "cabin_class": {
+            "type": "string",
+            "enum": [
+              "economy",
+              "premium_economy",
+              "business",
+              "first"
+            ]
+          },
+          "direct_only": {
+            "type": "boolean"
+          },
+          "max_connections": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "currency": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 3
+          },
+          "max_results": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "sort_by": {
+            "type": "string",
+            "enum": [
+              "price",
+              "duration",
+              "departure",
+              "arrival",
+              "connections"
+            ]
+          },
+          "sort_order": {
+            "type": "string",
+            "enum": [
+              "asc",
+              "desc"
+            ]
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "origin",
+          "destination",
+          "departure_date",
+          "passengers"
+        ],
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "offers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "offer_id": {
+                  "type": "string"
+                },
+                "source": {
+                  "type": "string"
+                },
+                "itinerary": {
+                  "type": "object",
+                  "properties": {
+                    "source_id": {
+                      "type": "string"
+                    },
+                    "source": {
+                      "type": "string"
+                    },
+                    "segments": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "carrier": {
+                            "type": "string"
+                          },
+                          "flight_number": {
+                            "type": "string"
+                          },
+                          "operating_carrier": {
+                            "type": "string"
+                          },
+                          "origin": {
+                            "type": "string"
+                          },
+                          "destination": {
+                            "type": "string"
+                          },
+                          "departure_time": {
+                            "type": "string"
+                          },
+                          "arrival_time": {
+                            "type": "string"
+                          },
+                          "duration_minutes": {
+                            "type": "number"
+                          },
+                          "aircraft": {
+                            "type": "string"
+                          },
+                          "booking_class": {
+                            "type": "string"
+                          },
+                          "cabin_class": {
+                            "type": "string",
+                            "enum": [
+                              "economy",
+                              "premium_economy",
+                              "business",
+                              "first"
+                            ]
+                          },
+                          "stops": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "carrier",
+                          "flight_number",
+                          "origin",
+                          "destination",
+                          "departure_time",
+                          "arrival_time",
+                          "duration_minutes"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "total_duration_minutes": {
+                      "type": "number"
+                    },
+                    "connection_count": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "source_id",
+                    "source",
+                    "segments",
+                    "total_duration_minutes",
+                    "connection_count"
+                  ],
+                  "additionalProperties": false
+                },
+                "price": {
+                  "type": "object",
+                  "properties": {
+                    "base_fare": {
+                      "type": "number"
+                    },
+                    "taxes": {
+                      "type": "number"
+                    },
+                    "total": {
+                      "type": "number"
+                    },
+                    "currency": {
+                      "type": "string"
+                    },
+                    "per_passenger": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "ADT",
+                              "CHD",
+                              "INF",
+                              "UNN",
+                              "STU",
+                              "YTH"
+                            ]
+                          },
+                          "base_fare": {
+                            "type": "number"
+                          },
+                          "taxes": {
+                            "type": "number"
+                          },
+                          "total": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "base_fare",
+                          "taxes",
+                          "total"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "base_fare",
+                    "taxes",
+                    "total",
+                    "currency"
+                  ],
+                  "additionalProperties": false
+                },
+                "fare_basis": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "booking_classes": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "instant_ticketing": {
+                  "type": "boolean"
+                },
+                "expires_at": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "offer_id",
+                "source",
+                "itinerary",
+                "price"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "total_raw_offers": {
+            "type": "number"
+          },
+          "source_status": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "source": {
+                  "type": "string"
+                },
+                "success": {
+                  "type": "boolean"
+                },
+                "offer_count": {
+                  "type": "number"
+                },
+                "error": {
+                  "type": "string"
+                },
+                "response_time_ms": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "source",
+                "success",
+                "offer_count",
+                "response_time_ms"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "offers",
+          "total_raw_offers",
+          "source_status",
+          "truncated"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "1.2",
+      "name": "Schedule Lookup",
+      "stage": "search",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/search/src/schedule-lookup/index.ts"
+    },
+    {
+      "id": "1.3",
+      "name": "Connection Builder",
+      "stage": "search",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/search/src/connection-builder/index.ts"
+    },
+    {
+      "id": "1.4",
+      "name": "Fare Shopping",
+      "stage": "search",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/search/src/fare-shopping/index.ts"
+    },
+    {
+      "id": "1.5",
+      "name": "Ancillary Shopping",
+      "stage": "search",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/search/src/ancillary-shopping/index.ts"
+    },
+    {
+      "id": "1.6",
+      "name": "Multi-Source Aggregator",
+      "stage": "search",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/search/src/multi-source-aggregator/index.ts"
+    },
+    {
+      "id": "1.7",
+      "name": "Hotel & Car Search",
+      "stage": "search",
+      "version": "0.2.0",
+      "contract_status": "active",
+      "has_contract": true,
+      "source_path": "packages/agents/search/src/hotel-car-search/index.ts",
+      "action_type": "query",
+      "input_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "operation": {
+            "type": "string",
+            "enum": [
+              "searchHotels",
+              "searchCars"
+            ]
+          },
+          "hotel": {
+            "type": "object",
+            "properties": {
+              "destination": {
+                "type": "string",
+                "minLength": 1
+              },
+              "checkIn": {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+              },
+              "checkOut": {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+              },
+              "rooms": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "adults": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "children": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "starRating": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              },
+              "maxRatePerNight": {
+                "type": "string"
+              },
+              "currency": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 3
+              },
+              "sortBy": {
+                "type": "string",
+                "enum": [
+                  "price",
+                  "rating",
+                  "name"
+                ]
+              },
+              "maxResults": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "destination",
+              "checkIn",
+              "checkOut",
+              "rooms",
+              "adults"
+            ],
+            "additionalProperties": false
+          },
+          "car": {
+            "type": "object",
+            "properties": {
+              "pickupLocation": {
+                "type": "string",
+                "minLength": 1
+              },
+              "dropoffLocation": {
+                "type": "string"
+              },
+              "pickupDateTime": {
+                "type": "string"
+              },
+              "dropoffDateTime": {
+                "type": "string"
+              },
+              "driverAge": {
+                "type": "integer",
+                "minimum": 16,
+                "maximum": 9007199254740991
+              },
+              "carCategory": {
+                "type": "string",
+                "enum": [
+                  "ECONOMY",
+                  "COMPACT",
+                  "MIDSIZE",
+                  "FULLSIZE",
+                  "SUV",
+                  "LUXURY",
+                  "VAN"
+                ]
+              },
+              "sortBy": {
+                "type": "string",
+                "enum": [
+                  "price",
+                  "category"
+                ]
+              },
+              "maxResults": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "pickupLocation",
+              "pickupDateTime",
+              "dropoffDateTime"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "operation"
+        ],
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "hotelResults": {
+            "type": "object",
+            "properties": {
+              "hotels": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "hotelId": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "starRating": {
+                      "type": "number"
+                    },
+                    "ratePerNight": {
+                      "type": "string"
+                    },
+                    "currency": {
+                      "type": "string"
+                    },
+                    "roomType": {
+                      "type": "string"
+                    },
+                    "cancellationPolicy": {
+                      "type": "string"
+                    },
+                    "source": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "hotelId",
+                    "name",
+                    "starRating",
+                    "ratePerNight",
+                    "currency",
+                    "roomType",
+                    "cancellationPolicy",
+                    "source"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "currency": {
+                "type": "string"
+              },
+              "noAdaptersConfigured": {
+                "type": "boolean"
+              },
+              "adapterSummary": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "adapter": {
+                      "type": "string"
+                    },
+                    "offerCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "durationMs": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "adapter",
+                    "offerCount",
+                    "durationMs"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "hotels",
+              "currency",
+              "noAdaptersConfigured"
+            ],
+            "additionalProperties": false
+          },
+          "carResults": {
+            "type": "object",
+            "properties": {
+              "cars": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "carId": {
+                      "type": "string"
+                    },
+                    "category": {
+                      "type": "string",
+                      "enum": [
+                        "ECONOMY",
+                        "COMPACT",
+                        "MIDSIZE",
+                        "FULLSIZE",
+                        "SUV",
+                        "LUXURY",
+                        "VAN"
+                      ]
+                    },
+                    "supplier": {
+                      "type": "string"
+                    },
+                    "dailyRate": {
+                      "type": "string"
+                    },
+                    "totalRate": {
+                      "type": "string"
+                    },
+                    "currency": {
+                      "type": "string"
+                    },
+                    "features": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "source": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "carId",
+                    "category",
+                    "supplier",
+                    "dailyRate",
+                    "totalRate",
+                    "currency",
+                    "features",
+                    "source"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "currency": {
+                "type": "string"
+              },
+              "noAdaptersConfigured": {
+                "type": "boolean"
+              },
+              "adapterSummary": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "adapter": {
+                      "type": "string"
+                    },
+                    "offerCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "durationMs": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "adapter",
+                    "offerCount",
+                    "durationMs"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "cars",
+              "currency",
+              "noAdaptersConfigured"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "1.8",
+      "name": "AI Travel Advisor",
+      "stage": "search",
+      "version": "0.2.0",
+      "contract_status": "active",
+      "has_contract": true,
+      "source_path": "packages/agents/search/src/ai-travel-advisor/index.ts",
+      "action_type": "query",
+      "input_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "origin": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$"
+          },
+          "destination": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$"
+          },
+          "departureDate": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "returnDate": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "flexibleDates": {
+            "type": "boolean"
+          },
+          "preferences": {
+            "type": "object",
+            "properties": {
+              "budgetMin": {
+                "type": "number",
+                "minimum": 0
+              },
+              "budgetMax": {
+                "type": "number",
+                "minimum": 0
+              },
+              "currency": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 3
+              },
+              "cabinClass": {
+                "type": "string",
+                "enum": [
+                  "economy",
+                  "premium_economy",
+                  "business",
+                  "first"
+                ]
+              },
+              "preferredAirlines": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 2,
+                  "maxLength": 3
+                }
+              },
+              "tripPurpose": {
+                "type": "string",
+                "enum": [
+                  "business",
+                  "leisure"
+                ]
+              },
+              "passengers": {
+                "type": "object",
+                "properties": {
+                  "adults": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "children": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "infants": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "adults"
+                ],
+                "additionalProperties": false
+              },
+              "maxConnections": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "scoringWeights": {
+                "type": "object",
+                "properties": {
+                  "price": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "schedule": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "airline": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "connections": {
+                    "type": "number",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "price",
+                  "schedule",
+                  "airline",
+                  "connections"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          "maxRecommendations": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "origin",
+          "destination",
+          "departureDate"
+        ],
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "recommendations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "rank": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "offer": {},
+                "score": {
+                  "type": "number"
+                },
+                "scoreBreakdown": {
+                  "type": "object",
+                  "properties": {
+                    "price": {
+                      "type": "number"
+                    },
+                    "schedule": {
+                      "type": "number"
+                    },
+                    "airline": {
+                      "type": "number"
+                    },
+                    "connections": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "price",
+                    "schedule",
+                    "airline",
+                    "connections"
+                  ],
+                  "additionalProperties": false
+                },
+                "explanation": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "rank",
+                "offer",
+                "score",
+                "scoreBreakdown",
+                "explanation"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "searchSummary": {
+            "type": "object",
+            "properties": {
+              "totalOffersFound": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "totalOffersEligible": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "dateRangeSearched": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "adaptersUsed": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "totalOffersFound",
+              "totalOffersEligible",
+              "dateRangeSearched",
+              "adaptersUsed"
+            ],
+            "additionalProperties": false
+          },
+          "appliedPreferences": {
+            "type": "object",
+            "properties": {
+              "currency": {
+                "type": "string"
+              },
+              "passengers": {
+                "type": "object",
+                "properties": {
+                  "adults": {
+                    "type": "number"
+                  },
+                  "children": {
+                    "type": "number"
+                  },
+                  "infants": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "adults",
+                  "children",
+                  "infants"
+                ],
+                "additionalProperties": false
+              },
+              "maxConnections": {
+                "type": "number"
+              },
+              "weights": {
+                "type": "object",
+                "properties": {
+                  "price": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "schedule": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "airline": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "connections": {
+                    "type": "number",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "price",
+                  "schedule",
+                  "airline",
+                  "connections"
+                ],
+                "additionalProperties": false
+              },
+              "tripPurpose": {
+                "type": "string",
+                "enum": [
+                  "business",
+                  "leisure"
+                ]
+              },
+              "cabinClass": {
+                "type": "string",
+                "enum": [
+                  "economy",
+                  "premium_economy",
+                  "business",
+                  "first"
+                ]
+              },
+              "preferredAirlines": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "budgetMin": {
+                "type": "number"
+              },
+              "budgetMax": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "currency",
+              "passengers",
+              "maxConnections",
+              "weights",
+              "preferredAirlines"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "recommendations",
+          "searchSummary",
+          "appliedPreferences"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "1.9",
+      "name": "Offer Evaluator",
+      "stage": "core",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/core/src/agents/shopping/offer-evaluator/index.ts"
+    },
+    {
+      "id": "2.1",
+      "name": "Fare Rule Agent",
+      "stage": "pricing",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": true,
+      "source_path": "packages/agents/pricing/src/fare-rule-agent/index.ts",
+      "action_type": "query",
+      "input_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "fare_basis": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 15
+          },
+          "carrier": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 3
+          },
+          "origin": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 3
+          },
+          "destination": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 3
+          },
+          "travel_date": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20
+            }
+          }
+        },
+        "required": [
+          "fare_basis",
+          "carrier",
+          "origin",
+          "destination"
+        ],
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "rules": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "rule_id": {
+                  "type": "string"
+                },
+                "carrier": {
+                  "type": "string"
+                },
+                "fare_basis": {
+                  "type": "string"
+                },
+                "market": {
+                  "type": "object",
+                  "properties": {
+                    "origin": {
+                      "type": "string"
+                    },
+                    "destination": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "origin",
+                    "destination"
+                  ],
+                  "additionalProperties": false
+                },
+                "tariff": {
+                  "type": "string"
+                },
+                "rule_number": {
+                  "type": "string"
+                },
+                "effective_date": {
+                  "type": "string"
+                },
+                "discontinue_date": {
+                  "type": "string"
+                },
+                "categories": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "category_number": {
+                        "type": "number"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "text": {
+                        "type": "string"
+                      },
+                      "structured": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "propertyNames": {
+                              "type": "string"
+                            },
+                            "additionalProperties": {}
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "category_number",
+                      "name",
+                      "text",
+                      "structured"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "penalty_summary": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "refundable": {
+                          "type": "boolean"
+                        },
+                        "changeable": {
+                          "type": "boolean"
+                        },
+                        "change_fee": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "amount": {
+                                  "type": "string"
+                                },
+                                "currency": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "amount",
+                                "currency"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "no_show_fee": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "amount": {
+                                  "type": "string"
+                                },
+                                "currency": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "amount",
+                                "currency"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "refundable",
+                        "changeable",
+                        "change_fee",
+                        "no_show_fee"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "advance_purchase": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "min_days": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "min_days"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "minimum_stay": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "min_days": {
+                          "type": "number"
+                        },
+                        "saturday_night_required": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "min_days",
+                        "saturday_night_required"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "maximum_stay": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "max_months": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "max_months"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "seasonality": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "season": {
+                          "type": "string"
+                        },
+                        "valid_from": {
+                          "type": "string"
+                        },
+                        "valid_to": {
+                          "type": "string"
+                        },
+                        "blackout_dates": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "string"
+                              },
+                              "to": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "season",
+                        "valid_from",
+                        "valid_to",
+                        "blackout_dates"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "rule_id",
+                "carrier",
+                "fare_basis",
+                "market",
+                "tariff",
+                "rule_number",
+                "effective_date",
+                "discontinue_date",
+                "categories",
+                "penalty_summary",
+                "advance_purchase",
+                "minimum_stay",
+                "maximum_stay",
+                "seasonality"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "total_rules": {
+            "type": "number"
+          },
+          "valid_for_date": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "in_blackout": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "rules",
+          "total_rules",
+          "valid_for_date",
+          "in_blackout"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "2.2",
+      "name": "Fare Construction",
+      "stage": "pricing",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/pricing/src/fare-construction/index.ts"
+    },
+    {
+      "id": "2.3",
+      "name": "Tax Calculation",
+      "stage": "pricing",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/pricing/src/tax-calculation/index.ts"
+    },
+    {
+      "id": "2.4",
+      "name": "Offer Builder",
+      "stage": "pricing",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": true,
+      "source_path": "packages/agents/pricing/src/offer-builder/index.ts",
+      "action_type": "query",
+      "input_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "operation": {
+            "type": "string",
+            "enum": [
+              "buildOffer",
+              "getOffer",
+              "validateOffer",
+              "markUsed",
+              "expireOffer",
+              "cleanExpired"
+            ]
+          },
+          "buildInput": {
+            "type": "object",
+            "properties": {
+              "segments": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "carrier": {
+                      "type": "string"
+                    },
+                    "flightNumber": {
+                      "type": "string"
+                    },
+                    "origin": {
+                      "type": "string"
+                    },
+                    "destination": {
+                      "type": "string"
+                    },
+                    "departureDate": {
+                      "type": "string"
+                    },
+                    "cabin": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "carrier",
+                    "flightNumber",
+                    "origin",
+                    "destination",
+                    "departureDate",
+                    "cabin"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "fare": {
+                "type": "object",
+                "properties": {
+                  "basis": {
+                    "type": "string"
+                  },
+                  "cabin": {
+                    "type": "string"
+                  },
+                  "nuc": {
+                    "type": "string"
+                  },
+                  "roe": {
+                    "type": "string"
+                  },
+                  "baseAmount": {
+                    "type": "string"
+                  },
+                  "currency": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "basis",
+                  "cabin",
+                  "nuc",
+                  "roe",
+                  "baseAmount",
+                  "currency"
+                ],
+                "additionalProperties": false
+              },
+              "taxes": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "amount": {
+                      "type": "string"
+                    },
+                    "currency": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "amount",
+                    "currency"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "ancillaries": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "ancillaryId": {
+                      "type": "string"
+                    },
+                    "amount": {
+                      "type": "string"
+                    },
+                    "currency": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "ancillaryId",
+                    "amount",
+                    "currency",
+                    "description"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "passengerCount": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "pricingSource": {
+                "type": "string",
+                "enum": [
+                  "GDS",
+                  "NDC",
+                  "DIRECT"
+                ]
+              },
+              "ttlMinutes": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "segments",
+              "fare",
+              "taxes",
+              "passengerCount",
+              "pricingSource"
+            ],
+            "additionalProperties": false
+          },
+          "offerId": {
+            "type": "string"
+          },
+          "currentTime": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "operation"
+        ],
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "offer": {
+            "type": "object",
+            "properties": {
+              "offerId": {
+                "type": "string"
+              },
+              "segments": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "carrier": {
+                      "type": "string"
+                    },
+                    "flightNumber": {
+                      "type": "string"
+                    },
+                    "origin": {
+                      "type": "string"
+                    },
+                    "destination": {
+                      "type": "string"
+                    },
+                    "departureDate": {
+                      "type": "string"
+                    },
+                    "cabin": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "carrier",
+                    "flightNumber",
+                    "origin",
+                    "destination",
+                    "departureDate",
+                    "cabin"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "fare": {
+                "type": "object",
+                "properties": {
+                  "basis": {
+                    "type": "string"
+                  },
+                  "cabin": {
+                    "type": "string"
+                  },
+                  "baseAmount": {
+                    "type": "string"
+                  },
+                  "currency": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "basis",
+                  "cabin",
+                  "baseAmount",
+                  "currency"
+                ],
+                "additionalProperties": false
+              },
+              "taxes": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "amount": {
+                      "type": "string"
+                    },
+                    "currency": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "amount",
+                    "currency"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "ancillaries": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "ancillaryId": {
+                      "type": "string"
+                    },
+                    "amount": {
+                      "type": "string"
+                    },
+                    "currency": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "ancillaryId",
+                    "amount",
+                    "currency",
+                    "description"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "subtotal": {
+                "type": "string"
+              },
+              "ancillaryTotal": {
+                "type": "string"
+              },
+              "totalAmount": {
+                "type": "string"
+              },
+              "currency": {
+                "type": "string"
+              },
+              "passengerCount": {
+                "type": "number"
+              },
+              "perPassengerTotal": {
+                "type": "string"
+              },
+              "pricingSource": {
+                "type": "string",
+                "enum": [
+                  "GDS",
+                  "NDC",
+                  "DIRECT"
+                ]
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "expiresAt": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "ACTIVE",
+                  "EXPIRED",
+                  "USED"
+                ]
+              }
+            },
+            "required": [
+              "offerId",
+              "segments",
+              "fare",
+              "taxes",
+              "ancillaries",
+              "subtotal",
+              "ancillaryTotal",
+              "totalAmount",
+              "currency",
+              "passengerCount",
+              "perPassengerTotal",
+              "pricingSource",
+              "createdAt",
+              "expiresAt",
+              "status"
+            ],
+            "additionalProperties": false
+          },
+          "valid": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "cleanedCount": {
+            "type": "number"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "2.5",
+      "name": "Corporate Policy Validation",
+      "stage": "pricing",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/pricing/src/corporate-policy-validation/index.ts"
+    },
+    {
+      "id": "2.6",
+      "name": "Dynamic Pricing",
+      "stage": "pricing",
+      "version": "0.0.0",
+      "contract_status": "stub",
+      "has_contract": false,
+      "source_path": "packages/agents/pricing/src/dynamic-pricing/index.ts"
+    },
+    {
+      "id": "2.7",
+      "name": "Revenue Management",
+      "stage": "pricing",
+      "version": "0.0.0",
+      "contract_status": "stub",
+      "has_contract": false,
+      "source_path": "packages/agents/pricing/src/revenue-management/index.ts"
+    },
+    {
+      "id": "3.1",
+      "name": "GDS/NDC Router",
+      "stage": "booking",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": true,
+      "source_path": "packages/agents/booking/src/gds-ndc-router/index.ts",
+      "action_type": "query",
+      "input_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "segments": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "marketing_carrier": {
+                  "type": "string",
+                  "minLength": 2,
+                  "maxLength": 3
+                },
+                "operating_carrier": {
+                  "type": "string",
+                  "minLength": 2,
+                  "maxLength": 3
+                },
+                "origin": {
+                  "type": "string",
+                  "minLength": 3,
+                  "maxLength": 3
+                },
+                "destination": {
+                  "type": "string",
+                  "minLength": 3,
+                  "maxLength": 3
+                },
+                "flight_number": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "marketing_carrier",
+                "origin",
+                "destination"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "preferred_channel": {
+            "type": "string",
+            "enum": [
+              "GDS",
+              "NDC",
+              "DIRECT"
+            ]
+          },
+          "preferred_gds": {
+            "type": "string",
+            "enum": [
+              "AMADEUS",
+              "SABRE",
+              "TRAVELPORT"
+            ]
+          },
+          "include_fallbacks": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "segments",
+          "include_fallbacks"
+        ],
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "routings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "primary_channel": {
+                  "type": "string",
+                  "enum": [
+                    "GDS",
+                    "NDC",
+                    "DIRECT"
+                  ]
+                },
+                "gds_system": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "AMADEUS",
+                        "SABRE",
+                        "TRAVELPORT"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "ndc_version": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "17.2",
+                        "18.1",
+                        "21.3"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "ndc_provider_id": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "fallbacks": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "GDS",
+                      "NDC",
+                      "DIRECT"
+                    ]
+                  }
+                },
+                "routed_carrier": {
+                  "type": "string"
+                },
+                "codeshare_applied": {
+                  "type": "boolean"
+                },
+                "booking_format": {
+                  "type": "string",
+                  "enum": [
+                    "GDS_PNR",
+                    "NDC_ORDER",
+                    "DIRECT_API"
+                  ]
+                }
+              },
+              "required": [
+                "primary_channel",
+                "gds_system",
+                "ndc_version",
+                "ndc_provider_id",
+                "fallbacks",
+                "routed_carrier",
+                "codeshare_applied",
+                "booking_format"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "unified_channel": {
+            "type": "boolean"
+          },
+          "recommended_channel": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "GDS",
+                  "NDC",
+                  "DIRECT"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "gds_format": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "format": {
+                    "type": "string",
+                    "const": "GDS_PNR"
+                  },
+                  "gds": {
+                    "type": "string",
+                    "enum": [
+                      "AMADEUS",
+                      "SABRE",
+                      "TRAVELPORT"
+                    ]
+                  },
+                  "record_locator": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "segments": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "carrier": {
+                          "type": "string"
+                        },
+                        "flight_number": {
+                          "type": "string"
+                        },
+                        "origin": {
+                          "type": "string"
+                        },
+                        "destination": {
+                          "type": "string"
+                        },
+                        "booking_class": {
+                          "type": "string"
+                        },
+                        "date": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "carrier",
+                        "flight_number",
+                        "origin",
+                        "destination",
+                        "booking_class",
+                        "date",
+                        "status"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "format",
+                  "gds",
+                  "record_locator",
+                  "segments"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ndc_format": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "format": {
+                    "type": "string",
+                    "const": "NDC_ORDER"
+                  },
+                  "ndc_version": {
+                    "type": "string",
+                    "enum": [
+                      "17.2",
+                      "18.1",
+                      "21.3"
+                    ]
+                  },
+                  "order_id": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "offer_items": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "carrier": {
+                          "type": "string"
+                        },
+                        "origin": {
+                          "type": "string"
+                        },
+                        "destination": {
+                          "type": "string"
+                        },
+                        "service_id": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "carrier",
+                        "origin",
+                        "destination",
+                        "service_id"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "format",
+                  "ndc_version",
+                  "order_id",
+                  "offer_items"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "routings",
+          "unified_channel",
+          "recommended_channel",
+          "gds_format",
+          "ndc_format"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "3.2",
+      "name": "PNR Builder",
+      "stage": "booking",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": true,
+      "source_path": "packages/agents/booking/src/pnr-builder/index.ts",
+      "action_type": "mutation_reversible",
+      "input_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "gds": {
+            "type": "string",
+            "enum": [
+              "AMADEUS",
+              "SABRE",
+              "TRAVELPORT"
+            ]
+          },
+          "passengers": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "last_name": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "first_name": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "title": {
+                  "type": "string"
+                },
+                "passenger_type": {
+                  "type": "string",
+                  "enum": [
+                    "ADT",
+                    "CHD",
+                    "INF"
+                  ]
+                },
+                "date_of_birth": {
+                  "type": "string"
+                },
+                "gender": {
+                  "type": "string",
+                  "enum": [
+                    "M",
+                    "F"
+                  ]
+                },
+                "nationality": {
+                  "type": "string"
+                },
+                "passport_number": {
+                  "type": "string"
+                },
+                "passport_expiry": {
+                  "type": "string"
+                },
+                "passport_country": {
+                  "type": "string"
+                },
+                "infant_accompanying_adult": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "foid": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "last_name",
+                "first_name",
+                "passenger_type"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "segments": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "carrier": {
+                  "type": "string",
+                  "minLength": 2,
+                  "maxLength": 3
+                },
+                "flight_number": {
+                  "type": "string"
+                },
+                "booking_class": {
+                  "type": "string"
+                },
+                "departure_date": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                "origin": {
+                  "type": "string",
+                  "minLength": 3,
+                  "maxLength": 3
+                },
+                "destination": {
+                  "type": "string",
+                  "minLength": 3,
+                  "maxLength": 3
+                },
+                "quantity": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "SS",
+                    "NN",
+                    "GK"
+                  ]
+                }
+              },
+              "required": [
+                "carrier",
+                "flight_number",
+                "booking_class",
+                "departure_date",
+                "origin",
+                "destination",
+                "quantity",
+                "status"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "contacts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "phone": {
+                  "type": "string"
+                },
+                "email": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "AGENCY",
+                    "PASSENGER",
+                    "EMERGENCY"
+                  ]
+                }
+              },
+              "required": [
+                "phone",
+                "type"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "ticketing": {
+            "type": "object",
+            "properties": {
+              "time_limit": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "TL",
+                  "OK",
+                  "XL"
+                ]
+              }
+            },
+            "required": [
+              "time_limit",
+              "type"
+            ],
+            "additionalProperties": false
+          },
+          "received_from": {
+            "type": "string",
+            "minLength": 1
+          },
+          "ssrs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "enum": [
+                    "WCHR",
+                    "VGML",
+                    "DOCS",
+                    "FOID",
+                    "CTCE",
+                    "CTCM",
+                    "INFT"
+                  ]
+                },
+                "carrier": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                },
+                "passenger_index": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991
+                },
+                "segment_index": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "code",
+                "carrier",
+                "text",
+                "passenger_index"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "osis": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "carrier": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "carrier",
+                "text"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "is_group": {
+            "type": "boolean"
+          },
+          "group_name": {
+            "type": "string"
+          },
+          "approvalToken": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "gds",
+          "passengers",
+          "segments",
+          "contacts",
+          "ticketing",
+          "received_from"
+        ],
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "gds": {
+            "type": "string",
+            "enum": [
+              "AMADEUS",
+              "SABRE",
+              "TRAVELPORT"
+            ]
+          },
+          "commands": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "command": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "element_type": {
+                  "type": "string",
+                  "enum": [
+                    "NAME",
+                    "SEGMENT",
+                    "CONTACT",
+                    "TICKETING",
+                    "RECEIVED_FROM",
+                    "SSR",
+                    "OSI",
+                    "GROUP",
+                    "END_TRANSACT"
+                  ]
+                }
+              },
+              "required": [
+                "command",
+                "description",
+                "element_type"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "passenger_count": {
+            "type": "number"
+          },
+          "segment_count": {
+            "type": "number"
+          },
+          "is_group": {
+            "type": "boolean"
+          },
+          "infant_count": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "gds",
+          "commands",
+          "passenger_count",
+          "segment_count",
+          "is_group",
+          "infant_count"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "3.3",
+      "name": "PNR Validation",
+      "stage": "booking",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/booking/src/pnr-validation/index.ts"
+    },
+    {
+      "id": "3.4",
+      "name": "Queue Management",
+      "stage": "booking",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/booking/src/queue-management/index.ts"
+    },
+    {
+      "id": "3.5",
+      "name": "API Abstraction",
+      "stage": "booking",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/booking/src/api-abstraction/index.ts"
+    },
+    {
+      "id": "3.6",
+      "name": "Order Management",
+      "stage": "booking",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/booking/src/order-management/index.ts"
+    },
+    {
+      "id": "3.7",
+      "name": "Payment Processing",
+      "stage": "booking",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/booking/src/payment-processing/index.ts"
+    },
+    {
+      "id": "3.8",
+      "name": "PNR Retrieval",
+      "stage": "booking",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": true,
+      "source_path": "packages/agents/booking/src/pnr-retrieval/index.ts",
+      "action_type": "query",
+      "input_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "record_locator": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 8,
+            "pattern": "^[A-Z0-9]+$"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "AMADEUS",
+              "SABRE",
+              "TRAVELPORT",
+              "NDC",
+              "DIRECT"
+            ]
+          },
+          "include_pricing": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "record_locator"
+        ],
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "record_locator": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "AMADEUS",
+              "SABRE",
+              "TRAVELPORT",
+              "NDC",
+              "DIRECT"
+            ]
+          },
+          "booking_status": {
+            "type": "string",
+            "enum": [
+              "CONFIRMED",
+              "CANCELLED",
+              "WAITLISTED",
+              "TICKETED",
+              "PENDING",
+              "UNKNOWN"
+            ]
+          },
+          "passengers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "pax_number": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "last_name": {
+                  "type": "string"
+                },
+                "first_name": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "passenger_type": {
+                  "type": "string",
+                  "enum": [
+                    "ADT",
+                    "CHD",
+                    "INF"
+                  ]
+                },
+                "date_of_birth": {
+                  "type": "string"
+                },
+                "gender": {
+                  "type": "string",
+                  "enum": [
+                    "M",
+                    "F"
+                  ]
+                },
+                "frequent_flyer": {
+                  "type": "string"
+                },
+                "ticket_numbers": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "pax_number",
+                "last_name",
+                "first_name",
+                "passenger_type"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "segments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "segment_number": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "carrier": {
+                  "type": "string",
+                  "minLength": 2,
+                  "maxLength": 3
+                },
+                "flight_number": {
+                  "type": "string"
+                },
+                "origin": {
+                  "type": "string",
+                  "minLength": 3,
+                  "maxLength": 3
+                },
+                "destination": {
+                  "type": "string",
+                  "minLength": 3,
+                  "maxLength": 3
+                },
+                "departure_date": {
+                  "type": "string"
+                },
+                "departure_time": {
+                  "type": "string"
+                },
+                "arrival_date": {
+                  "type": "string"
+                },
+                "arrival_time": {
+                  "type": "string"
+                },
+                "booking_class": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "HK",
+                    "UN",
+                    "HL",
+                    "TK",
+                    "UC",
+                    "NO",
+                    "SS",
+                    "GK",
+                    "KK"
+                  ]
+                },
+                "fare_basis": {
+                  "type": "string"
+                },
+                "operating_carrier": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "segment_number",
+                "carrier",
+                "flight_number",
+                "origin",
+                "destination",
+                "departure_date",
+                "booking_class",
+                "status"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "contacts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "phone": {
+                  "type": "string"
+                },
+                "email": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "AGENCY",
+                    "PASSENGER",
+                    "EMERGENCY"
+                  ]
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "ticketing": {
+            "type": "object",
+            "properties": {
+              "time_limit": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "NOT_TICKETED",
+                  "TICKETED",
+                  "PARTIALLY_TICKETED",
+                  "VOID"
+                ]
+              }
+            },
+            "required": [
+              "status"
+            ],
+            "additionalProperties": false
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "modified_at": {
+            "type": "string"
+          },
+          "remarks": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "record_locator",
+          "source",
+          "booking_status",
+          "passengers",
+          "segments",
+          "contacts",
+          "ticketing"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "4.1",
+      "name": "Ticket Issuance",
+      "stage": "ticketing",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": true,
+      "source_path": "packages/agents/ticketing/src/ticket-issuance/index.ts",
+      "action_type": "mutation_irreversible",
+      "input_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "record_locator": {
+            "type": "string",
+            "minLength": 1
+          },
+          "issuing_carrier": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 3
+          },
+          "passenger_name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "segments": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "carrier": {
+                  "type": "string",
+                  "minLength": 2,
+                  "maxLength": 3
+                },
+                "flight_number": {
+                  "type": "string"
+                },
+                "origin": {
+                  "type": "string",
+                  "minLength": 3,
+                  "maxLength": 3
+                },
+                "destination": {
+                  "type": "string",
+                  "minLength": 3,
+                  "maxLength": 3
+                },
+                "departure_date": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                "departure_time": {
+                  "type": "string"
+                },
+                "booking_class": {
+                  "type": "string"
+                },
+                "fare_basis": {
+                  "type": "string"
+                },
+                "not_valid_before": {
+                  "type": "string"
+                },
+                "not_valid_after": {
+                  "type": "string"
+                },
+                "baggage_allowance": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "carrier",
+                "flight_number",
+                "origin",
+                "destination",
+                "departure_date",
+                "booking_class",
+                "fare_basis"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "base_fare": {
+            "type": "string"
+          },
+          "base_fare_currency": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 3
+          },
+          "equivalent_fare": {
+            "type": "string"
+          },
+          "equivalent_fare_currency": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 3
+          },
+          "taxes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "amount": {
+                  "type": "string"
+                },
+                "currency": {
+                  "type": "string",
+                  "minLength": 3,
+                  "maxLength": 3
+                }
+              },
+              "required": [
+                "code",
+                "amount",
+                "currency"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "fare_calculation": {
+            "type": "string"
+          },
+          "form_of_payment": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "CASH",
+                  "CREDIT_CARD",
+                  "INVOICE",
+                  "MISCELLANEOUS"
+                ]
+              },
+              "card_code": {
+                "type": "string"
+              },
+              "card_last_four": {
+                "type": "string"
+              },
+              "approval_code": {
+                "type": "string"
+              },
+              "amount": {
+                "type": "string"
+              },
+              "currency": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 3
+              }
+            },
+            "required": [
+              "type",
+              "amount",
+              "currency"
+            ],
+            "additionalProperties": false
+          },
+          "endorsements": {
+            "type": "string"
+          },
+          "commission": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "PERCENTAGE",
+                  "FLAT"
+                ]
+              },
+              "rate": {
+                "type": "string"
+              },
+              "amount": {
+                "type": "string"
+              },
+              "currency": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 3
+              }
+            },
+            "required": [
+              "type",
+              "rate",
+              "amount",
+              "currency"
+            ],
+            "additionalProperties": false
+          },
+          "bsp_reporting": {
+            "type": "object",
+            "properties": {
+              "settlement_code": {
+                "type": "string"
+              },
+              "remittance_currency": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 3
+              },
+              "billing_period": {
+                "type": "string"
+              },
+              "reporting_office_id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "remittance_currency"
+            ],
+            "additionalProperties": false
+          },
+          "issue_date": {
+            "type": "string"
+          },
+          "ticket_number_prefix": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 3
+          },
+          "original_issue": {
+            "type": "string"
+          },
+          "approvalToken": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "record_locator",
+          "issuing_carrier",
+          "passenger_name",
+          "segments",
+          "base_fare",
+          "base_fare_currency",
+          "taxes",
+          "fare_calculation",
+          "form_of_payment"
+        ],
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "tickets": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "ticket_number": {
+                  "type": "string"
+                },
+                "conjunction_suffix": {
+                  "type": "string"
+                },
+                "record_locator": {
+                  "type": "string"
+                },
+                "issuing_carrier": {
+                  "type": "string"
+                },
+                "issue_date": {
+                  "type": "string"
+                },
+                "passenger_name": {
+                  "type": "string"
+                },
+                "coupons": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "carrier": {
+                        "type": "string",
+                        "minLength": 2,
+                        "maxLength": 3
+                      },
+                      "flight_number": {
+                        "type": "string"
+                      },
+                      "origin": {
+                        "type": "string",
+                        "minLength": 3,
+                        "maxLength": 3
+                      },
+                      "destination": {
+                        "type": "string",
+                        "minLength": 3,
+                        "maxLength": 3
+                      },
+                      "departure_date": {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                      },
+                      "departure_time": {
+                        "type": "string"
+                      },
+                      "booking_class": {
+                        "type": "string"
+                      },
+                      "fare_basis": {
+                        "type": "string"
+                      },
+                      "not_valid_before": {
+                        "type": "string"
+                      },
+                      "not_valid_after": {
+                        "type": "string"
+                      },
+                      "baggage_allowance": {
+                        "type": "string"
+                      },
+                      "coupon_number": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "status": {
+                        "type": "string",
+                        "enum": [
+                          "O",
+                          "A",
+                          "E",
+                          "R",
+                          "V",
+                          "C",
+                          "L",
+                          "S"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "carrier",
+                      "flight_number",
+                      "origin",
+                      "destination",
+                      "departure_date",
+                      "booking_class",
+                      "fare_basis",
+                      "coupon_number",
+                      "status"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "base_fare": {
+                  "type": "string"
+                },
+                "base_fare_currency": {
+                  "type": "string"
+                },
+                "equivalent_fare": {
+                  "type": "string"
+                },
+                "equivalent_fare_currency": {
+                  "type": "string"
+                },
+                "total_tax": {
+                  "type": "string"
+                },
+                "taxes": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "code": {
+                        "type": "string"
+                      },
+                      "amount": {
+                        "type": "string"
+                      },
+                      "currency": {
+                        "type": "string",
+                        "minLength": 3,
+                        "maxLength": 3
+                      }
+                    },
+                    "required": [
+                      "code",
+                      "amount",
+                      "currency"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "total_amount": {
+                  "type": "string"
+                },
+                "fare_calculation": {
+                  "type": "string"
+                },
+                "form_of_payment": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "CASH",
+                        "CREDIT_CARD",
+                        "INVOICE",
+                        "MISCELLANEOUS"
+                      ]
+                    },
+                    "card_code": {
+                      "type": "string"
+                    },
+                    "card_last_four": {
+                      "type": "string"
+                    },
+                    "approval_code": {
+                      "type": "string"
+                    },
+                    "amount": {
+                      "type": "string"
+                    },
+                    "currency": {
+                      "type": "string",
+                      "minLength": 3,
+                      "maxLength": 3
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "amount",
+                    "currency"
+                  ],
+                  "additionalProperties": false
+                },
+                "endorsements": {
+                  "type": "string"
+                },
+                "commission": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "PERCENTAGE",
+                        "FLAT"
+                      ]
+                    },
+                    "rate": {
+                      "type": "string"
+                    },
+                    "amount": {
+                      "type": "string"
+                    },
+                    "currency": {
+                      "type": "string",
+                      "minLength": 3,
+                      "maxLength": 3
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "rate",
+                    "amount",
+                    "currency"
+                  ],
+                  "additionalProperties": false
+                },
+                "bsp_reporting": {
+                  "type": "object",
+                  "properties": {
+                    "settlement_code": {
+                      "type": "string"
+                    },
+                    "remittance_currency": {
+                      "type": "string",
+                      "minLength": 3,
+                      "maxLength": 3
+                    },
+                    "billing_period": {
+                      "type": "string"
+                    },
+                    "reporting_office_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "remittance_currency"
+                  ],
+                  "additionalProperties": false
+                },
+                "original_issue": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "ticket_number",
+                "record_locator",
+                "issuing_carrier",
+                "issue_date",
+                "passenger_name",
+                "coupons",
+                "base_fare",
+                "base_fare_currency",
+                "total_tax",
+                "taxes",
+                "total_amount",
+                "fare_calculation",
+                "form_of_payment"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "total_coupons": {
+            "type": "number"
+          },
+          "is_conjunction": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "tickets",
+          "total_coupons",
+          "is_conjunction"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "4.2",
+      "name": "EMD Management",
+      "stage": "ticketing",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/ticketing/src/emd-management/index.ts"
+    },
+    {
+      "id": "4.3",
+      "name": "Void Agent",
+      "stage": "ticketing",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/ticketing/src/void-agent/index.ts"
+    },
+    {
+      "id": "4.4",
+      "name": "Itinerary Delivery",
+      "stage": "ticketing",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/ticketing/src/itinerary-delivery/index.ts"
+    },
+    {
+      "id": "4.5",
+      "name": "Document Verification",
+      "stage": "ticketing",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/ticketing/src/document-verification/index.ts"
+    },
+    {
+      "id": "5.1",
+      "name": "Change Management",
+      "stage": "exchange",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/exchange/src/change-management/index.ts"
+    },
+    {
+      "id": "5.2",
+      "name": "Exchange/Reissue",
+      "stage": "exchange",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/exchange/src/exchange-reissue/index.ts"
+    },
+    {
+      "id": "5.3",
+      "name": "Involuntary Rebook",
+      "stage": "exchange",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/exchange/src/involuntary-rebook/index.ts"
+    },
+    {
+      "id": "5.4",
+      "name": "Disruption Response",
+      "stage": "exchange",
+      "version": "0.0.0",
+      "contract_status": "stub",
+      "has_contract": false,
+      "source_path": "packages/agents/exchange/src/disruption-response/index.ts"
+    },
+    {
+      "id": "5.5",
+      "name": "Self-Service Rebooking",
+      "stage": "exchange",
+      "version": "0.2.0",
+      "contract_status": "active",
+      "has_contract": true,
+      "source_path": "packages/agents/exchange/src/self-service-rebooking/index.ts",
+      "action_type": "query",
+      "input_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "originalTicket": {
+            "type": "object",
+            "properties": {
+              "ticket_number": {
+                "type": "string",
+                "pattern": "^\\d{13}$"
+              },
+              "conjunction_tickets": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "issuing_carrier": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 3
+              },
+              "passenger_name": {
+                "type": "string"
+              },
+              "record_locator": {
+                "type": "string",
+                "pattern": "^[A-Z0-9]{6}$"
+              },
+              "issue_date": {
+                "type": "string"
+              },
+              "base_fare": {
+                "type": "string"
+              },
+              "base_fare_currency": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 3
+              },
+              "total_tax": {
+                "type": "string"
+              },
+              "total_amount": {
+                "type": "string"
+              },
+              "fare_basis": {
+                "type": "string"
+              },
+              "is_refundable": {
+                "type": "boolean"
+              },
+              "booking_date": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "ticket_number",
+              "issuing_carrier",
+              "passenger_name",
+              "record_locator",
+              "issue_date",
+              "base_fare",
+              "base_fare_currency",
+              "total_tax",
+              "total_amount",
+              "fare_basis",
+              "is_refundable"
+            ],
+            "additionalProperties": false
+          },
+          "newOrigin": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$"
+          },
+          "newDestination": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$"
+          },
+          "newDepartureDate": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "sameDay": {
+            "type": "boolean"
+          },
+          "maxAlternatives": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "voluntary",
+              "schedule_change",
+              "missed_connection",
+              "cancellation"
+            ]
+          },
+          "requestedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "originalTicket",
+          "newOrigin",
+          "newDestination",
+          "newDepartureDate",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "alternatives": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "rank": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "newItinerary": {},
+                "changeFee": {
+                  "type": "object",
+                  "properties": {
+                    "amount": {
+                      "type": "string"
+                    },
+                    "currency": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "amount",
+                    "currency"
+                  ],
+                  "additionalProperties": false
+                },
+                "fareDifference": {
+                  "type": "object",
+                  "properties": {
+                    "amount": {
+                      "type": "string"
+                    },
+                    "currency": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "amount",
+                    "currency"
+                  ],
+                  "additionalProperties": false
+                },
+                "taxDifference": {
+                  "type": "object",
+                  "properties": {
+                    "amount": {
+                      "type": "string"
+                    },
+                    "currency": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "amount",
+                    "currency"
+                  ],
+                  "additionalProperties": false
+                },
+                "totalCost": {
+                  "type": "object",
+                  "properties": {
+                    "amount": {
+                      "type": "string"
+                    },
+                    "currency": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "amount",
+                    "currency"
+                  ],
+                  "additionalProperties": false
+                },
+                "action": {
+                  "type": "string",
+                  "enum": [
+                    "REISSUE",
+                    "REBOOK",
+                    "REJECT"
+                  ]
+                },
+                "policyRestrictions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "rank",
+                "newItinerary",
+                "changeFee",
+                "fareDifference",
+                "taxDifference",
+                "totalCost",
+                "action",
+                "policyRestrictions"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "noAlternativesFound": {
+            "type": "boolean"
+          },
+          "originalFarePolicy": {
+            "type": "object",
+            "properties": {
+              "isRefundable": {
+                "type": "boolean"
+              },
+              "changeFeeRule": {
+                "type": "object",
+                "properties": {
+                  "fare_basis_pattern": {
+                    "type": "string"
+                  },
+                  "change_fee": {
+                    "type": "string"
+                  },
+                  "currency": {
+                    "type": "string"
+                  },
+                  "free_change_hours": {
+                    "type": "number"
+                  },
+                  "forfeit_difference_on_downgrade": {
+                    "type": "boolean"
+                  },
+                  "notes": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "fare_basis_pattern",
+                  "change_fee",
+                  "currency",
+                  "free_change_hours",
+                  "forfeit_difference_on_downgrade",
+                  "notes"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "isRefundable"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "alternatives",
+          "noAlternativesFound",
+          "originalFarePolicy"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "5.6",
+      "name": "Waitlist Management",
+      "stage": "exchange",
+      "version": "0.2.0",
+      "contract_status": "active",
+      "has_contract": true,
+      "source_path": "packages/agents/exchange/src/waitlist-management/index.ts",
+      "action_type": "mutation_reversible",
+      "input_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "operation": {
+            "type": "string",
+            "enum": [
+              "addEntry",
+              "clear",
+              "queryStatus",
+              "expire"
+            ]
+          },
+          "addEntry": {
+            "type": "object",
+            "properties": {
+              "entryId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "bookingReference": {
+                "type": "string",
+                "minLength": 1
+              },
+              "segment": {
+                "type": "object",
+                "properties": {
+                  "carrier": {
+                    "type": "string",
+                    "pattern": "^[A-Z0-9]{2}$"
+                  },
+                  "flightNumber": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "departureDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "bookingClass": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "carrier",
+                  "flightNumber",
+                  "departureDate",
+                  "bookingClass"
+                ],
+                "additionalProperties": false
+              },
+              "statusTier": {
+                "type": "string",
+                "enum": [
+                  "general",
+                  "silver",
+                  "gold",
+                  "platinum"
+                ]
+              },
+              "fareClass": {
+                "type": "string",
+                "minLength": 1
+              },
+              "fareClassType": {
+                "type": "string",
+                "enum": [
+                  "full_fare",
+                  "discount"
+                ]
+              },
+              "requestedAt": {
+                "type": "string"
+              },
+              "cutoffBeforeDepartureHours": {
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "entryId",
+              "bookingReference",
+              "segment",
+              "statusTier",
+              "fareClass",
+              "fareClassType"
+            ],
+            "additionalProperties": false
+          },
+          "clear": {
+            "type": "object",
+            "properties": {
+              "segment": {
+                "type": "object",
+                "properties": {
+                  "carrier": {
+                    "type": "string",
+                    "pattern": "^[A-Z0-9]{2}$"
+                  },
+                  "flightNumber": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "departureDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "bookingClass": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "carrier",
+                  "flightNumber",
+                  "departureDate",
+                  "bookingClass"
+                ],
+                "additionalProperties": false
+              },
+              "seatsAvailable": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "clearTime": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "segment",
+              "seatsAvailable"
+            ],
+            "additionalProperties": false
+          },
+          "queryStatus": {
+            "type": "object",
+            "properties": {
+              "entryId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "historicalClearanceRates": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "required": [
+              "entryId"
+            ],
+            "additionalProperties": false
+          },
+          "expire": {
+            "type": "object",
+            "properties": {
+              "currentTime": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "operation"
+        ],
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "operation": {
+            "type": "string",
+            "enum": [
+              "addEntry",
+              "clear",
+              "queryStatus",
+              "expire"
+            ]
+          },
+          "entryId": {
+            "type": "string"
+          },
+          "entry": {
+            "type": "object",
+            "properties": {
+              "entryId": {
+                "type": "string"
+              },
+              "bookingReference": {
+                "type": "string"
+              },
+              "segment": {
+                "type": "object",
+                "properties": {
+                  "carrier": {
+                    "type": "string",
+                    "pattern": "^[A-Z0-9]{2}$"
+                  },
+                  "flightNumber": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "departureDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "bookingClass": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "carrier",
+                  "flightNumber",
+                  "departureDate",
+                  "bookingClass"
+                ],
+                "additionalProperties": false
+              },
+              "statusTier": {
+                "type": "string",
+                "enum": [
+                  "general",
+                  "silver",
+                  "gold",
+                  "platinum"
+                ]
+              },
+              "fareClass": {
+                "type": "string"
+              },
+              "fareClassType": {
+                "type": "string",
+                "enum": [
+                  "full_fare",
+                  "discount"
+                ]
+              },
+              "requestedAt": {
+                "type": "string"
+              },
+              "cutoffBeforeDepartureHours": {
+                "type": "number"
+              },
+              "priorityScore": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "entryId",
+              "bookingReference",
+              "segment",
+              "statusTier",
+              "fareClass",
+              "fareClassType",
+              "requestedAt",
+              "cutoffBeforeDepartureHours",
+              "priorityScore"
+            ],
+            "additionalProperties": false
+          },
+          "clearResult": {
+            "type": "object",
+            "properties": {
+              "cleared": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "entryId": {
+                      "type": "string"
+                    },
+                    "bookingReference": {
+                      "type": "string"
+                    },
+                    "segment": {
+                      "type": "object",
+                      "properties": {
+                        "carrier": {
+                          "type": "string",
+                          "pattern": "^[A-Z0-9]{2}$"
+                        },
+                        "flightNumber": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "departureDate": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                        },
+                        "bookingClass": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "carrier",
+                        "flightNumber",
+                        "departureDate",
+                        "bookingClass"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "statusTier": {
+                      "type": "string",
+                      "enum": [
+                        "general",
+                        "silver",
+                        "gold",
+                        "platinum"
+                      ]
+                    },
+                    "fareClass": {
+                      "type": "string"
+                    },
+                    "fareClassType": {
+                      "type": "string",
+                      "enum": [
+                        "full_fare",
+                        "discount"
+                      ]
+                    },
+                    "requestedAt": {
+                      "type": "string"
+                    },
+                    "cutoffBeforeDepartureHours": {
+                      "type": "number"
+                    },
+                    "priorityScore": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "entryId",
+                    "bookingReference",
+                    "segment",
+                    "statusTier",
+                    "fareClass",
+                    "fareClassType",
+                    "requestedAt",
+                    "cutoffBeforeDepartureHours",
+                    "priorityScore"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "remaining": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "entryId": {
+                      "type": "string"
+                    },
+                    "bookingReference": {
+                      "type": "string"
+                    },
+                    "segment": {
+                      "type": "object",
+                      "properties": {
+                        "carrier": {
+                          "type": "string",
+                          "pattern": "^[A-Z0-9]{2}$"
+                        },
+                        "flightNumber": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "departureDate": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                        },
+                        "bookingClass": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "carrier",
+                        "flightNumber",
+                        "departureDate",
+                        "bookingClass"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "statusTier": {
+                      "type": "string",
+                      "enum": [
+                        "general",
+                        "silver",
+                        "gold",
+                        "platinum"
+                      ]
+                    },
+                    "fareClass": {
+                      "type": "string"
+                    },
+                    "fareClassType": {
+                      "type": "string",
+                      "enum": [
+                        "full_fare",
+                        "discount"
+                      ]
+                    },
+                    "requestedAt": {
+                      "type": "string"
+                    },
+                    "cutoffBeforeDepartureHours": {
+                      "type": "number"
+                    },
+                    "priorityScore": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "entryId",
+                    "bookingReference",
+                    "segment",
+                    "statusTier",
+                    "fareClass",
+                    "fareClassType",
+                    "requestedAt",
+                    "cutoffBeforeDepartureHours",
+                    "priorityScore"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "cleared",
+              "remaining"
+            ],
+            "additionalProperties": false
+          },
+          "statusResult": {
+            "type": "object",
+            "properties": {
+              "entry": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "entryId": {
+                        "type": "string"
+                      },
+                      "bookingReference": {
+                        "type": "string"
+                      },
+                      "segment": {
+                        "type": "object",
+                        "properties": {
+                          "carrier": {
+                            "type": "string",
+                            "pattern": "^[A-Z0-9]{2}$"
+                          },
+                          "flightNumber": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "departureDate": {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                          },
+                          "bookingClass": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "required": [
+                          "carrier",
+                          "flightNumber",
+                          "departureDate",
+                          "bookingClass"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "statusTier": {
+                        "type": "string",
+                        "enum": [
+                          "general",
+                          "silver",
+                          "gold",
+                          "platinum"
+                        ]
+                      },
+                      "fareClass": {
+                        "type": "string"
+                      },
+                      "fareClassType": {
+                        "type": "string",
+                        "enum": [
+                          "full_fare",
+                          "discount"
+                        ]
+                      },
+                      "requestedAt": {
+                        "type": "string"
+                      },
+                      "cutoffBeforeDepartureHours": {
+                        "type": "number"
+                      },
+                      "priorityScore": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "entryId",
+                      "bookingReference",
+                      "segment",
+                      "statusTier",
+                      "fareClass",
+                      "fareClassType",
+                      "requestedAt",
+                      "cutoffBeforeDepartureHours",
+                      "priorityScore"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "position": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "estimatedClearanceProbability": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "willExpireAt": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "entry",
+              "position",
+              "estimatedClearanceProbability",
+              "willExpireAt"
+            ],
+            "additionalProperties": false
+          },
+          "expireResult": {
+            "type": "object",
+            "properties": {
+              "expired": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "entryId": {
+                      "type": "string"
+                    },
+                    "bookingReference": {
+                      "type": "string"
+                    },
+                    "segment": {
+                      "type": "object",
+                      "properties": {
+                        "carrier": {
+                          "type": "string",
+                          "pattern": "^[A-Z0-9]{2}$"
+                        },
+                        "flightNumber": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "departureDate": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                        },
+                        "bookingClass": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "carrier",
+                        "flightNumber",
+                        "departureDate",
+                        "bookingClass"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "statusTier": {
+                      "type": "string",
+                      "enum": [
+                        "general",
+                        "silver",
+                        "gold",
+                        "platinum"
+                      ]
+                    },
+                    "fareClass": {
+                      "type": "string"
+                    },
+                    "fareClassType": {
+                      "type": "string",
+                      "enum": [
+                        "full_fare",
+                        "discount"
+                      ]
+                    },
+                    "requestedAt": {
+                      "type": "string"
+                    },
+                    "cutoffBeforeDepartureHours": {
+                      "type": "number"
+                    },
+                    "priorityScore": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "entryId",
+                    "bookingReference",
+                    "segment",
+                    "statusTier",
+                    "fareClass",
+                    "fareClassType",
+                    "requestedAt",
+                    "cutoffBeforeDepartureHours",
+                    "priorityScore"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "remaining": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "expired",
+              "remaining"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "operation"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "6.1",
+      "name": "Refund Processing",
+      "stage": "settlement",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/settlement/src/refund-processing/index.ts"
+    },
+    {
+      "id": "6.2",
+      "name": "ADM Prevention",
+      "stage": "settlement",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/settlement/src/adm-prevention/index.ts"
+    },
+    {
+      "id": "6.3",
+      "name": "ADM/ACM Processing",
+      "stage": "settlement",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/settlement/src/adm-acm-processing/index.ts"
+    },
+    {
+      "id": "6.4",
+      "name": "Customer Communication",
+      "stage": "settlement",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/settlement/src/customer-communication/index.ts"
+    },
+    {
+      "id": "6.5",
+      "name": "Feedback & Complaint",
+      "stage": "settlement",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/settlement/src/feedback-complaint/index.ts"
+    },
+    {
+      "id": "6.6",
+      "name": "Loyalty Mileage",
+      "stage": "settlement",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/settlement/src/loyalty-mileage/index.ts"
+    },
+    {
+      "id": "7.1",
+      "name": "BSP Reconciliation",
+      "stage": "reconciliation",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/reconciliation/src/bsp-reconciliation/index.ts"
+    },
+    {
+      "id": "7.2",
+      "name": "ARC Reconciliation",
+      "stage": "reconciliation",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/reconciliation/src/arc-reconciliation/index.ts"
+    },
+    {
+      "id": "7.3",
+      "name": "Commission Management",
+      "stage": "reconciliation",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/reconciliation/src/commission-management/index.ts"
+    },
+    {
+      "id": "7.4",
+      "name": "Interline Settlement",
+      "stage": "reconciliation",
+      "version": "0.0.0",
+      "contract_status": "stub",
+      "has_contract": false,
+      "source_path": "packages/agents/reconciliation/src/interline-settlement/index.ts"
+    },
+    {
+      "id": "7.5",
+      "name": "Financial Reporting",
+      "stage": "reconciliation",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/reconciliation/src/financial-reporting/index.ts"
+    },
+    {
+      "id": "7.6",
+      "name": "Revenue Accounting",
+      "stage": "reconciliation",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/reconciliation/src/revenue-accounting/index.ts"
+    },
+    {
+      "id": "8.1",
+      "name": "Traveler Profile",
+      "stage": "tmc",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents-tmc/src/traveler-profile/index.ts"
+    },
+    {
+      "id": "8.2",
+      "name": "Corporate Account",
+      "stage": "tmc",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents-tmc/src/corporate-account/index.ts"
+    },
+    {
+      "id": "8.3",
+      "name": "Mid-Office Automation",
+      "stage": "tmc",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents-tmc/src/mid-office/index.ts"
+    },
+    {
+      "id": "8.4",
+      "name": "Reporting & Analytics",
+      "stage": "tmc",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents-tmc/src/reporting/index.ts"
+    },
+    {
+      "id": "8.5",
+      "name": "Duty of Care",
+      "stage": "tmc",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents-tmc/src/duty-of-care/index.ts"
+    },
+    {
+      "id": "9.1",
+      "name": "Orchestrator",
+      "stage": "platform",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents-platform/src/orchestrator/index.ts"
+    },
+    {
+      "id": "9.2",
+      "name": "Knowledge Retrieval",
+      "stage": "platform",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents-platform/src/knowledge/index.ts"
+    },
+    {
+      "id": "9.3",
+      "name": "Monitoring & Alerting",
+      "stage": "platform",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents-platform/src/monitoring/index.ts"
+    },
+    {
+      "id": "9.4",
+      "name": "Audit & Compliance",
+      "stage": "platform",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents-platform/src/audit/index.ts"
+    },
+    {
+      "id": "9.5",
+      "name": "Plugin Manager",
+      "stage": "platform",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents-platform/src/plugin-manager/index.ts"
+    },
+    {
+      "id": "9.6",
+      "name": "Performance Audit",
+      "stage": "platform",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": true,
+      "source_path": "packages/agents-platform/src/performance-audit/index.ts",
+      "action_type": "query",
+      "input_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "time_window": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "from",
+              "to"
+            ],
+            "additionalProperties": false
+          },
+          "filters": {
+            "type": "object",
+            "properties": {
+              "agent_id": {
+                "type": "string"
+              },
+              "adapter_id": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "time_window"
+        ],
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "report": {
+            "type": "object",
+            "properties": {
+              "total_executions": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "success_rate": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "avg_duration_ms": {
+                "type": "number",
+                "minimum": 0
+              },
+              "p95_duration_ms": {
+                "type": "number",
+                "minimum": 0
+              },
+              "p99_duration_ms": {
+                "type": "number",
+                "minimum": 0
+              },
+              "error_rate": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "degraded_agents": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "total_executions",
+              "success_rate",
+              "avg_duration_ms",
+              "p95_duration_ms",
+              "p99_duration_ms",
+              "error_rate",
+              "degraded_agents"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "report"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "9.7",
+      "name": "Routing Audit",
+      "stage": "platform",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": true,
+      "source_path": "packages/agents-platform/src/routing-audit/index.ts",
+      "action_type": "query",
+      "input_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "time_window": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "from",
+              "to"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "time_window"
+        ],
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "report": {
+            "type": "object",
+            "properties": {
+              "total_decisions": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "success_rate": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "fallback_rate": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "channel_breakdown": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "decisions": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "successes": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "failures": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "decisions",
+                    "successes",
+                    "failures"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "total_decisions",
+              "success_rate",
+              "fallback_rate",
+              "channel_breakdown"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "report"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "9.8",
+      "name": "Recommendation",
+      "stage": "platform",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": true,
+      "source_path": "packages/agents-platform/src/recommendation/index.ts",
+      "action_type": "query",
+      "input_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "performance_report": {
+            "type": "object",
+            "properties": {
+              "report": {
+                "type": "object",
+                "properties": {
+                  "total_executions": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "success_rate": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "avg_duration_ms": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "p95_duration_ms": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "p99_duration_ms": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "error_rate": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "degraded_agents": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "total_executions",
+                  "success_rate",
+                  "avg_duration_ms",
+                  "p95_duration_ms",
+                  "p99_duration_ms",
+                  "error_rate",
+                  "degraded_agents"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "report"
+            ],
+            "additionalProperties": false
+          },
+          "routing_report": {
+            "type": "object",
+            "properties": {
+              "report": {
+                "type": "object",
+                "properties": {
+                  "total_decisions": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "success_rate": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "fallback_rate": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "channel_breakdown": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {
+                      "type": "object",
+                      "properties": {
+                        "decisions": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "successes": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "failures": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "decisions",
+                        "successes",
+                        "failures"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "total_decisions",
+                  "success_rate",
+                  "fallback_rate",
+                  "channel_breakdown"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "report"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "performance_report",
+          "routing_report"
+        ],
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "recommendations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "route_adjustment",
+                    "adapter_health",
+                    "capacity",
+                    "config_update"
+                  ]
+                },
+                "severity": {
+                  "type": "string",
+                  "enum": [
+                    "info",
+                    "warning",
+                    "critical"
+                  ]
+                },
+                "confidence": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "action": {
+                  "type": "string"
+                },
+                "supporting_data": {
+                  "type": "string"
+                },
+                "auto_applicable": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "type",
+                "severity",
+                "confidence",
+                "action",
+                "supporting_data",
+                "auto_applicable"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "recommendations"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "9.9",
+      "name": "Alert",
+      "stage": "platform",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": true,
+      "source_path": "packages/agents-platform/src/alert/index.ts",
+      "action_type": "query",
+      "input_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "time_window": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "from",
+              "to"
+            ],
+            "additionalProperties": false
+          },
+          "thresholds": {
+            "type": "object",
+            "properties": {
+              "gds_error_rate_warning": {
+                "type": "number"
+              },
+              "gds_error_rate_critical": {
+                "type": "number"
+              },
+              "ndc_error_rate_warning": {
+                "type": "number"
+              },
+              "ndc_error_rate_critical": {
+                "type": "number"
+              },
+              "latency_p95_warning_ms": {
+                "type": "number"
+              },
+              "consecutive_failures_critical": {
+                "type": "number"
+              },
+              "pipeline_rejection_rate_warning": {
+                "type": "number"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "time_window"
+        ],
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "alerts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "severity": {
+                  "type": "string",
+                  "enum": [
+                    "info",
+                    "warning",
+                    "critical"
+                  ]
+                },
+                "type": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "threshold": {
+                  "type": "number"
+                },
+                "actual": {
+                  "type": "number"
+                },
+                "triggered_at": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "severity",
+                "type",
+                "message",
+                "threshold",
+                "actual",
+                "triggered_at"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "alerts"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "20.1",
+      "name": "Hotel Search Aggregator",
+      "stage": "lodging",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/lodging/src/hotel-search/index.ts"
+    },
+    {
+      "id": "20.2",
+      "name": "Property Deduplication",
+      "stage": "lodging",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/lodging/src/property-dedup/index.ts"
+    },
+    {
+      "id": "20.3",
+      "name": "Hotel Content Normalization",
+      "stage": "lodging",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/lodging/src/content-normalization/index.ts"
+    },
+    {
+      "id": "20.4",
+      "name": "Hotel Rate Comparison",
+      "stage": "lodging",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/lodging/src/rate-comparison/index.ts"
+    },
+    {
+      "id": "20.5",
+      "name": "Hotel Booking",
+      "stage": "lodging",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/lodging/src/hotel-booking/index.ts"
+    },
+    {
+      "id": "20.6",
+      "name": "Hotel Modification & Cancellation",
+      "stage": "lodging",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/lodging/src/hotel-modification/index.ts"
+    },
+    {
+      "id": "20.7",
+      "name": "Confirmation Verification",
+      "stage": "lodging",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/lodging/src/confirmation-verification/index.ts"
+    }
+  ]
+}

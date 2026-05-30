@@ -45,7 +45,7 @@ function resolveName(agentId: string, names?: Readonly<Record<string, string>>):
 }
 
 function resolveDescription(contract: AgentContract): string {
-  return `OTAIP agent ${contract.agentId} (${contract.actionType})`;
+  return contract.description ?? `OTAIP agent ${contract.agentId} (${contract.actionType})`;
 }
 
 /**
