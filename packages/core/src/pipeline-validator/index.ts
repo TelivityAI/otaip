@@ -59,8 +59,9 @@ export type { ReferenceStrictOptions } from './shared-validators.js';
 export { makeInvocation, runGates } from './validator.js';
 export type { GateFailureReason, GateRunResult, RunGatesConfig } from './validator.js';
 
-export { PipelineOrchestrator } from './orchestrator.js';
+export { PipelineOrchestrator, classifyFailure } from './orchestrator.js';
 export type {
+  FailureClass,
   PipelineOrchestratorConfig,
   RunAgentFailureReason,
   RunAgentResult,
