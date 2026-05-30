@@ -6,6 +6,13 @@
  * offer with its source, applies filters, sorts, and returns with
  * per-adapter status metadata.
  *
+ * Routing ownership: 1.7 owns CAR rental search. HOTEL search intent is owned
+ * by Hotel Search Aggregator (20.1) for every hotel query — standalone or
+ * within a trip. 1.7 may compose with 20.1 for a combined hotel+car trip, but
+ * it does NOT own hotel intent; route all hotel queries to 20.1. (This agent
+ * still fans out to hotel adapters for backward compatibility; the car-only
+ * schema narrowing is deferred to its own migration — see TODO below.)
+ *
  * Pattern mirrors MultiSourceAggregatorAgent (1.6) but fetches from
  * adapters directly rather than receiving already-fetched results.
  */
@@ -30,6 +37,9 @@ import type {
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 
+// TODO: Hotel intent is owned by 20.1 (Hotel Search Aggregator). The hotel
+// fan-out here is retained for backward compatibility only; narrow 1.7 to
+// car-only (schema/types/output/tests) in a separate, product-gated migration.
 export class HotelCarSearchAgent
   implements Agent<HotelCarSearchInput, HotelCarSearchOutput>
 {
