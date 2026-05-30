@@ -2,6 +2,9 @@
 
 All agents in the Open Travel AI Platform, organized by stage.
 
+See [agent-boundaries.md](agent-boundaries.md) for how to tell commonly-confused
+sibling agents apart (the distinguishing signal for each pair).
+
 ## Stage Files
 
 | Stage | Domain | File |
