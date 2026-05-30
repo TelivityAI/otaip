@@ -40,6 +40,12 @@ jobs:
       - name: Build
         run: pnpm -r run build
 
+      # Fail loud if any built bundle can't be imported (e.g. a data file that
+      # tsup didn't inline → MODULE_NOT_FOUND on import). Catches the silent
+      # footgun before it can ship to npm.
+      - name: Verify built bundles load
+        run: pnpm verify:dist
+
       - name: Type check
         run: pnpm run typecheck
 
