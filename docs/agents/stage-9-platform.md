@@ -113,6 +113,46 @@ Third-party agent extension management: register/unregister plugins, enable/disa
 
 ---
 
+### Agent 9.6 -- Performance Audit
+
+**ID:** `9.6`
+**Class:** `PerformanceAuditAgent`
+**Status:** Implemented
+
+Aggregates agent execution metrics from the EventStore within a given time window and identifies degraded agents. Read-only -- no side effects.
+
+---
+
+### Agent 9.7 -- Routing Audit
+
+**ID:** `9.7`
+**Class:** `RoutingAuditAgent`
+**Status:** Implemented
+
+Analyses routing decisions and outcomes from the EventStore within a given time window. Read-only -- no side effects.
+
+---
+
+### Agent 9.8 -- Recommendation
+
+**ID:** `9.8`
+**Class:** `RecommendationAgent`
+**Status:** Implemented
+
+Accepts performance and routing audit reports and produces deterministic recommendations. Read-only -- no side effects.
+
+---
+
+### Agent 9.9 -- Alert
+
+**ID:** `9.9`
+**Class:** `AlertAgent`
+**Status:** Implemented
+
+Queries EventStore events, computes metrics against configurable thresholds, and produces alerts. Read-only -- no side effects.
+
+---
+
 ### Platform Health Aggregator (Utility)
 
 **Class:** `PlatformHealthAggregator`

@@ -1,5 +1,5 @@
 /**
- * Routing Audit — Agent 9.6
+ * Routing Audit — Agent 9.7
  *
  * Analyses routing decisions and outcomes from the EventStore within a
  * given time window. Read-only — no side effects.

@@ -1,5 +1,5 @@
 /**
- * Performance Audit — Agent 9.5
+ * Performance Audit — Agent 9.6
  *
  * Aggregates agent execution metrics from the EventStore within a given
  * time window. Identifies degraded agents. Read-only — no side effects.
