@@ -179,6 +179,15 @@ export interface AgentContract<
   /** Must match the agent's `id`. */
   readonly agentId: string;
 
+  /**
+   * Human-readable, one-line statement of what the agent does. Surfaced in
+   * the generated tool catalog / `describe_agent` output and the agent
+   * manifest, so a caller (or an LLM router) can tell agents apart. When
+   * omitted, the catalog falls back to `OTAIP agent <id> (<actionType>)`.
+   * Keep it concrete and free of invented domain behavior.
+   */
+  readonly description?: string;
+
   /** Zod schema for the agent's input data (the `data` field of `AgentInput`). */
   readonly inputSchema: TInput;
 
