@@ -62,6 +62,45 @@ export type RunAgentFailureReason =
   | 'low_confidence'
   | 'action_class_blocked';
 
+/**
+ * The kind of thing that went wrong, so a consumer can never confuse an
+ * infrastructure problem with a genuine validation rejection.
+ *
+ *  - `infra`      — the agent or its contract isn't registered. OTAIP was not
+ *                   wired to validate this call; **nothing was actually
+ *                   validated**. An eval/oracle must treat this as a setup
+ *                   error, not as a model/data failure.
+ *  - `execution`  — the agent threw while running (after its input gates
+ *                   passed). The fault is in the agent or a downstream source.
+ *  - `validation` — a contract gate genuinely rejected the input or output.
+ *                   This is the only class that reflects on the data/model.
+ */
+export type FailureClass = 'infra' | 'execution' | 'validation';
+
+/**
+ * Map a {@link RunAgentFailureReason} to its {@link FailureClass}.
+ *
+ * Exhaustive over the union — adding a new reason without classifying it is a
+ * compile error, by design.
+ */
+export function classifyFailure(reason: RunAgentFailureReason): FailureClass {
+  switch (reason) {
+    case 'contract_missing':
+    case 'agent_missing':
+      return 'infra';
+    case 'agent_error':
+      return 'execution';
+    case 'intent_lock':
+    case 'schema_invalid':
+    case 'semantic_invalid':
+    case 'cross_agent_inconsistent':
+    case 'schema_out_invalid':
+    case 'low_confidence':
+    case 'action_class_blocked':
+      return 'validation';
+  }
+}
+
 export type RunAgentResult<TOut = unknown> =
   | {
       readonly ok: true;
@@ -71,6 +110,12 @@ export type RunAgentResult<TOut = unknown> =
   | {
       readonly ok: false;
       readonly reason: RunAgentFailureReason;
+      /**
+       * Whether this failure is an infrastructure/registration problem, an
+       * agent execution error, or a genuine contract-gate rejection. Derived
+       * from `reason` via {@link classifyFailure}.
+       */
+      readonly failureClass: FailureClass;
       readonly issues: readonly SemanticIssue[];
       readonly invocation: AgentInvocation;
     };
@@ -214,9 +259,11 @@ export class PipelineOrchestrator {
       this.now(),
     );
     session.history.push(invocation);
+    const reason = mapReason(finalResult);
     return {
       ok: false,
-      reason: mapReason(finalResult),
+      reason,
+      failureClass: classifyFailure(reason),
       issues: finalResult.ok ? [] : finalResult.issues,
       invocation,
     };
@@ -252,7 +299,7 @@ export class PipelineOrchestrator {
       status: 'blocked',
     };
     session.history.push(invocation);
-    return { ok: false, reason, issues, invocation };
+    return { ok: false, reason, failureClass: classifyFailure(reason), issues, invocation };
   }
 
   private now(): Date {
