@@ -1,12 +1,12 @@
 # Agent Boundaries
 
-Several OTAIP agents sit in the same stage and have responsibilities that are easy to
-confuse. This guide states the **distinguishing signal** for each commonly-confused
-pair — the intent, field, or operation that only one of them handles — derived from the
-agent contracts.
+Many OTAIP stages contain sibling agents with adjacent responsibilities. This guide
+states **which agent owns which responsibility** — the intent, field, or operation that
+assigns a request to exactly one agent — derived from the agent contracts.
 
-Use it when two agents seem to overlap: find the pair, and the **Boundary** line is the
-deciding signal. Each agent is identified by its `readonly id` (the binding identifier).
+Use it to assign a request to the right agent: find the relevant agents, and the
+**Boundary** line is the deciding signal. Each agent is identified by its `readonly id`
+(the binding identifier).
 
 > Scope note: every boundary here is derived from the agents' own contracts in
 > `packages/`. When a contract is genuinely ambiguous it is called out inline.
@@ -15,7 +15,7 @@ deciding signal. Each agent is identified by its `readonly id` (the binding iden
 
 ## Orchestration vs. single-purpose — Agent 9.1
 
-This one rule disambiguates the most agents. **9.1 Orchestrator** owns a request **only**
+This one ownership rule covers the most agents. **9.1 Orchestrator** owns a request **only**
 when it requires a multi-step, multi-agent workflow — its contract defines exactly these
 pipelines: `search-to-price`, `book-to-ticket`, `full booking`, `exchange flow`,
 `refund flow` (with conditional/parallel steps and error handling). **A single concrete
@@ -104,7 +104,7 @@ Examples: "Issue the e-ticket" → 4.1 · "Void this ticket before the cut-off" 
 | 5.5 ↔ 5.1 | **5.5 Self-Service Rebooking** — composes 1.1 + 5.1 to *present priced alternatives*; does NOT execute the reissue | **5.1 Change Management** — Cat 31 voluntary-change *assessment* (fee, fare difference, residual) | A is a *customer-facing list of priced options*; B is the *cost calc for one change* |
 | 5.5 ↔ 5.2 | 5.5 Self-Service Rebooking | **5.2 Exchange/Reissue** — *executes* the reissue, residual, tax carryforward, GDS exchange command | A *presents options*; B *performs the reissue* |
 | 5.5 ↔ 5.3 | 5.5 Self-Service Rebooking | **5.3 Involuntary Rebook** — carrier-initiated schedule change, protection, EU261/US-DOT | A is *passenger-initiated self-service*; B is *carrier-initiated reprotection* |
-| 5.6 ↔ 3.4 | **5.6 Waitlist Management** — passenger waitlist: add / clear / queryStatus / expire, priority scoring | 3.4 Queue Management | A is a *passenger seat waitlist*; B is a *GDS work queue of PNRs* ("queue" is the trap word) |
+| 5.6 ↔ 3.4 | **5.6 Waitlist Management** — passenger waitlist: add / clear / queryStatus / expire, priority scoring | 3.4 Queue Management | A is a *passenger seat waitlist*; B is a *GDS work queue of PNRs* — both are called a "queue" but they are different systems |
 
 Examples: "Show my rebooking options with prices" → 5.5 · "What's the change fee to move
 flights?" → 5.1 · "Reissue the ticket onto the new flight" → 5.2 · "Add me to the waitlist"
@@ -133,7 +133,7 @@ flights?" → 5.1 · "Reissue the ticket onto the new flight" → 5.2 · "Add me
 |---|---|---|---|
 | 20.1 ↔ 20.2 | **20.1 Hotel Search Aggregator** — multi-source hotel availability (GDS hotel, Amadeus Hotel, Hotelbeds, Duffel Stays, channel managers) | **20.2 Property Deduplication** — merges duplicate properties into canonical records | A *searches*; B *deduplicates results* (it never searches) |
 | 1.7 ↔ 20.1 | **1.7 Hotel & Car Search** — owns car rental search | 20.1 Hotel Search Aggregator | **Hotel search intent is owned by 20.1** for all hotel queries (standalone or in-trip); 1.7 owns cars and may compose with 20.1 for a combined hotel+car trip but does not own hotel intent |
-| 1.7 ↔ 20.2 | 1.7 Hotel & Car Search | 20.2 Property Deduplication | A *searches*; B *deduplicates* — never confuse a search request with dedup |
+| 1.7 ↔ 20.2 | 1.7 Hotel & Car Search | 20.2 Property Deduplication | A *searches*; B *deduplicates* results — a search request is always A |
 
 Rule of thumb: **any car involvement → 1.7; standalone hotel → 20.1; dedup → 20.2.**
 
