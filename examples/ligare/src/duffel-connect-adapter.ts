@@ -31,6 +31,9 @@ import type {
 type DuffelTitle = 'mr' | 'ms' | 'mrs' | 'miss' | 'dr';
 type DuffelPaxType = 'adult' | 'child' | 'infant_without_seat';
 
+/** Max offers returned to the caller (ChatGPT Action payload cap + curation). */
+const MAX_RESULTS = 10;
+
 function money(amount: number, currency: string): MoneyAmount {
   return { amount: amount.toFixed(2), currency };
 }
@@ -111,7 +114,11 @@ export class DuffelConnectAdapter implements ConnectAdapter {
     });
 
     const cabin: CabinClass = input.cabinClass ?? 'economy';
-    return result.offers.map((offer) => this.toFlightOffer(offer, cabin, input.passengers.adults));
+    // Curate to the top results: keeps the response under ChatGPT's Action
+    // payload limit and matches OTAIP's "few curated options" principle.
+    return result.offers
+      .slice(0, MAX_RESULTS)
+      .map((offer) => this.toFlightOffer(offer, cabin, input.passengers.adults));
   }
 
   private toFlightOffer(offer: SearchOffer, cabin: CabinClass, adultCount: number): FlightOffer {

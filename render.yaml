@@ -1,0 +1,17 @@
+# Render Blueprint for the Ligare demo (Fastify backend behind the
+# "Telivity OTAIP Ligare" ChatGPT GPT). Deploy: Render → New → Blueprint →
+# pick this repo. Set DUFFEL_API_KEY (test key) when prompted.
+services:
+  - type: web
+    name: ligare
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @otaip/core --filter @otaip/adapter-duffel --filter @otaip/connect --filter @otaip/example-ligare build
+    startCommand: node examples/ligare/dist/server.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "24.14.1"
+      - key: DUFFEL_API_KEY
+        sync: false

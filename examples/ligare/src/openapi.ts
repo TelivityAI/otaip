@@ -10,6 +10,11 @@ import type { ConnectAdapter } from '@otaip/connect';
 export function publicBaseUrl(): string {
   const explicit = process.env['PUBLIC_BASE_URL'];
   if (explicit && explicit.trim().length > 0) return explicit;
+  // Render and Vercel inject the deployed URL automatically.
+  const render = process.env['RENDER_EXTERNAL_URL'];
+  if (render && render.trim().length > 0) return render;
+  const vercel = process.env['VERCEL_URL'];
+  if (vercel && vercel.trim().length > 0) return `https://${vercel}`;
   const port = process.env['PORT'] ?? '3000';
   return `http://localhost:${port}`;
 }
