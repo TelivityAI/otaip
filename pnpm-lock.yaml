@@ -72,6 +72,34 @@ importers:
         specifier: ^4.21.0
         version: 4.21.0
 
+  examples/ligare:
+    dependencies:
+      '@fastify/static':
+        specifier: ^9.1.1
+        version: 9.1.1
+      '@otaip/adapter-duffel':
+        specifier: workspace:*
+        version: link:../../packages/adapters/duffel
+      '@otaip/connect':
+        specifier: workspace:*
+        version: link:../../packages/connect
+      '@otaip/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      dotenv:
+        specifier: ^17.4.0
+        version: 17.4.0
+      fastify:
+        specifier: ^5.3.3
+        version: 5.8.5
+    devDependencies:
+      tsup:
+        specifier: ^8.5.1
+        version: 8.5.1(jiti@1.21.7)(postcss@8.5.14)(tsx@4.21.0)(typescript@5.9.3)
+      tsx:
+        specifier: ^4.21.0
+        version: 4.21.0
+
   examples/ota:
     dependencies:
       '@fastify/cors':

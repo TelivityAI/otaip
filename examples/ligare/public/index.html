@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ligare — Connect Travel Inventory to ChatGPT · Telivity</title>
+    <meta
+      name="description"
+      content="Ligare by Telivity — connect your travel inventory to ChatGPT. Search and book flights inside a chat, powered by OTAIP."
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-slate-950 text-slate-100 antialiased">
+    <!-- Sandbox disclosure -->
+    <div class="bg-amber-500/10 border-b border-amber-500/30 text-amber-200 text-center text-sm py-2 px-4">
+      Sandbox demo — flights &amp; bookings are simulated (Duffel Test), not real.
+    </div>
+
+    <main class="mx-auto max-w-3xl px-6 py-20 sm:py-28">
+      <p class="text-sm font-semibold tracking-widest text-cyan-400 uppercase">Ligare · by Telivity</p>
+
+      <h1 class="mt-5 text-4xl sm:text-6xl font-bold tracking-tight">
+        Connect travel inventory to <span class="text-cyan-400">ChatGPT</span>.
+      </h1>
+
+      <p class="mt-6 text-lg text-slate-300">
+        Ligare turns your supplier API into a ChatGPT-ready booking assistant — search and book
+        flights inside a chat. This live demo runs on Duffel&nbsp;Test, powered by
+        <span class="text-slate-100 font-medium">OTAIP</span>.
+      </p>
+
+      <div class="mt-10 flex flex-wrap gap-4">
+        <a
+          href="/go"
+          class="inline-flex items-center rounded-lg bg-cyan-500 px-6 py-3 font-semibold text-slate-950 hover:bg-cyan-400 transition"
+        >
+          Try Live Demo →
+        </a>
+        <a
+          href="/openapi.json"
+          class="inline-flex items-center rounded-lg border border-slate-700 px-6 py-3 font-semibold text-slate-200 hover:border-slate-500 transition"
+        >
+          View the OpenAPI spec
+        </a>
+      </div>
+
+      <!-- Lead capture -->
+      <section class="mt-20 rounded-2xl border border-slate-800 bg-slate-900/50 p-8">
+        <h2 class="text-2xl font-semibold">Want your own inventory connected?</h2>
+        <p class="mt-2 text-slate-400">
+          Bring your Sabre, Amadeus, Navitaire, Duffel or NDC connection — we do the integration,
+          branding, and deploy. Leave your email and we’ll reach out.
+        </p>
+        <form id="lead-form" class="mt-6 flex flex-col sm:flex-row gap-3">
+          <input
+            id="lead-email"
+            type="email"
+            required
+            placeholder="you@yourcompany.com"
+            class="flex-1 rounded-lg bg-slate-950 border border-slate-700 px-4 py-3 text-slate-100 placeholder-slate-500 focus:border-cyan-500 focus:outline-none"
+          />
+          <button
+            type="submit"
+            class="rounded-lg bg-slate-100 px-6 py-3 font-semibold text-slate-950 hover:bg-white transition"
+          >
+            Connect my inventory
+          </button>
+        </form>
+        <p id="lead-status" class="mt-3 text-sm text-cyan-400 hidden">Thanks — we’ll be in touch.</p>
+      </section>
+
+      <footer class="mt-20 text-sm text-slate-500">
+        Ligare — Powered by Telivity. Built on OTAIP.
+      </footer>
+    </main>
+
+    <script>
+      const form = document.getElementById('lead-form');
+      const status = document.getElementById('lead-status');
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('lead-email').value;
+        try {
+          const res = await fetch('/leads', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ email, note: 'landing' }),
+          });
+          if (res.ok) {
+            status.classList.remove('hidden');
+            form.reset();
+          }
+        } catch (_) {
+          /* no-op for the demo */
+        }
+      });
+    </script>
+  </body>
+</html>

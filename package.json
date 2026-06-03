@@ -27,6 +27,7 @@
     "gen:manifest": "tsx scripts/generate-manifest.ts",
     "verify:dist": "tsx scripts/verify-dist.ts",
     "verify": "pnpm -r run build && pnpm verify:dist",
+    "ligare": "pnpm --filter @otaip/example-ligare demo",
     "check:no-internal-refs": "bash scripts/check-no-internal-refs.sh",
     "clean": "pnpm -r run clean && rm -rf node_modules"
   },
