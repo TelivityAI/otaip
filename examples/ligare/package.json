@@ -1,0 +1,29 @@
+{
+  "name": "@otaip/example-ligare",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Ligare — connect travel inventory to ChatGPT. OTAIP Duffel adapter exposed as ChatGPT Custom GPT Actions.",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "demo": "tsx src/demo.ts",
+    "build": "tsup src/server.ts --format esm --clean",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@otaip/core": "workspace:*",
+    "@otaip/adapter-duffel": "workspace:*",
+    "@otaip/connect": "workspace:*",
+    "fastify": "^5.3.3",
+    "@fastify/static": "^9.1.1",
+    "dotenv": "^17.4.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.21.0",
+    "tsup": "^8.5.1"
+  },
+  "engines": {
+    "node": ">=24.14.1"
+  }
+}
