@@ -90,14 +90,8 @@ export function buildServer(adapter: DuffelConnectAdapter): FastifyInstance {
         currency: body.currency,
       },
       () => adapter.searchFlights(body),
-      (offers) => ({
-        resultCount: offers.length,
-        topOffers: offers.slice(0, 3).map((o) => ({
-          offerId: o.offerId,
-          carrier: o.validatingCarrier,
-          total: o.totalPrice,
-        })),
-      }),
+      // Capture the full structured result set (no PII) for training data.
+      (offers) => ({ resultCount: offers.length, offers }),
     );
   });
 
@@ -111,11 +105,7 @@ export function buildServer(adapter: DuffelConnectAdapter): FastifyInstance {
       'priceItinerary',
       { offerId, passengers },
       () => adapter.priceItinerary(offerId, passengers),
-      (priced) => ({
-        available: priced.available,
-        total: priced.totalPrice,
-        priceChanged: priced.priceChanged,
-      }),
+      (priced) => ({ ...priced }),
     );
   });
 
@@ -141,7 +131,7 @@ export function buildServer(adapter: DuffelConnectAdapter): FastifyInstance {
       'getBookingStatus',
       { bookingId: id },
       () => adapter.getBookingStatus(id),
-      (status) => ({ status: status.status }),
+      (status) => ({ bookingId: status.bookingId, status: status.status, pnr: status.pnr }),
     );
   });
 
