@@ -36,6 +36,10 @@ ci_patterns=(
   'generate_v06'
   'v0_6_'
   '018_routing_disambiguation'
+  # Proprietary commercial-layer product names — must never appear in the
+  # public OTAIP repo.
+  'aviare'
+  'mitto'
 )
 
 # Backward-framing tell-words (case-insensitive). The grep cannot reason about
