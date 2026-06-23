@@ -4,7 +4,7 @@
   "parserOptions": {
     "ecmaVersion": 2022,
     "sourceType": "module",
-    "project": ["./packages/core/tsconfig.json", "./packages/agents/reference/tsconfig.json", "./packages/agents/search/tsconfig.json", "./packages/agents/pricing/tsconfig.json", "./packages/agents/booking/tsconfig.json", "./packages/agents/ticketing/tsconfig.json", "./packages/agents/exchange/tsconfig.json", "./packages/agents/settlement/tsconfig.json", "./packages/agents/reconciliation/tsconfig.json", "./packages/agents/lodging/tsconfig.json", "./packages/agents-tmc/tsconfig.json", "./packages/agents-platform/tsconfig.json", "./packages/adapters/duffel/tsconfig.json", "./packages/connect/tsconfig.json"]
+    "project": ["./packages/core/tsconfig.json", "./packages/agents/reference/tsconfig.json", "./packages/agents/search/tsconfig.json", "./packages/agents/pricing/tsconfig.json", "./packages/agents/booking/tsconfig.json", "./packages/agents/ticketing/tsconfig.json", "./packages/agents/exchange/tsconfig.json", "./packages/agents/settlement/tsconfig.json", "./packages/agents/reconciliation/tsconfig.json", "./packages/agents/lodging/tsconfig.json", "./packages/agents-tmc/tsconfig.json", "./packages/agents-platform/tsconfig.json", "./packages/adapters/duffel/tsconfig.json", "./packages/connect/tsconfig.json", "./packages/integration/tsconfig.json"]
   },
   "plugins": ["@typescript-eslint"],
   "extends": [
@@ -20,5 +20,5 @@
     "@typescript-eslint/require-await": "off",
     "no-console": ["warn", { "allow": ["warn", "error"] }]
   },
-  "ignorePatterns": ["dist", "node_modules", "data", "*.js", "*.mjs", "**/__tests__/**"]
+  "ignorePatterns": ["dist", "node_modules", "data", "*.js", "*.mjs", "**/__tests__/**", "**/scripts/**"]
 }

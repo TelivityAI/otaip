@@ -1,0 +1,41 @@
+{
+  "name": "@otaip/integration",
+  "version": "0.7.2",
+  "description": "OTAIP integration seam — run contracted agents through the six gates against a live distribution adapter, with a durable, readable execution trace",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --clean",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "proof:duffel-search": "tsx scripts/duffel-search.ts"
+  },
+  "dependencies": {
+    "@otaip/core": "workspace:*",
+    "@otaip/adapter-duffel": "workspace:*",
+    "@otaip/agents-search": "workspace:*",
+    "@otaip/agents-reference": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.21.0"
+  },
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=24.14.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/telivity-otaip/otaip.git",
+    "directory": "packages/integration"
+  }
+}
