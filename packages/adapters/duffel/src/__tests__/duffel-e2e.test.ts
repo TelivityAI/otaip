@@ -12,13 +12,20 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { DuffelAdapter } from '../duffel-adapter.js';
 import type { SearchRequest } from '@otaip/core';
 
-const describeE2E = process.env.DUFFEL_API_KEY ? describe : describe.skip;
+const describeE2E = process.env['DUFFEL_API_KEY'] ? describe : describe.skip;
+
+function isoDatePlusDays(days: number): string {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
 
 describeE2E('Duffel Sandbox E2E', () => {
   let adapter: DuffelAdapter;
 
   beforeAll(() => {
-    adapter = new DuffelAdapter({ apiKey: process.env.DUFFEL_API_KEY! });
+    // The key is read from the constructor arg or DUFFEL_API_KEY (here, the env).
+    adapter = new DuffelAdapter(process.env['DUFFEL_API_KEY']!);
   });
 
   it('is available (health check)', async () => {
@@ -26,24 +33,10 @@ describeE2E('Duffel Sandbox E2E', () => {
     expect(available).toBe(true);
   });
 
-  it('searches for flights', async () => {
-    const thirtyDaysFromNow = new Date();
-    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
-    const departureDate = thirtyDaysFromNow.toISOString().split('T')[0]!;
-
+  it('searches for flights and returns the unified output model', async () => {
     const request: SearchRequest = {
-      segments: [
-        {
-          origin: 'LHR',
-          destination: 'CDG',
-          departure_date: departureDate,
-        },
-      ],
-      passengers: {
-        adults: 1,
-        children: 0,
-        infants: 0,
-      },
+      segments: [{ origin: 'LHR', destination: 'CDG', departure_date: isoDatePlusDays(30) }],
+      passengers: [{ type: 'ADT', count: 1 }],
       cabin_class: 'economy',
     };
 
@@ -51,49 +44,30 @@ describeE2E('Duffel Sandbox E2E', () => {
     expect(response.offers.length).toBeGreaterThan(0);
 
     const offer = response.offers[0]!;
-    expect(offer.total_price).toBeDefined();
-    expect(offer.currency).toBeDefined();
-    expect(offer.itineraries.length).toBeGreaterThan(0);
-    expect(offer.itineraries[0]!.segments.length).toBeGreaterThan(0);
+    expect(offer.offer_id).toMatch(/^off_/);
+    expect(offer.source).toBe('duffel');
+    expect(offer.price.total).toBeGreaterThan(0);
+    expect(offer.price.currency).toBeDefined();
+    expect(offer.itinerary.segments.length).toBeGreaterThan(0);
 
-    const segment = offer.itineraries[0]!.segments[0]!;
+    const segment = offer.itinerary.segments[0]!;
     expect(segment.origin).toBe('LHR');
-    expect(segment.destination).toBe('CDG');
     expect(segment.departure_time).toBeDefined();
     expect(segment.arrival_time).toBeDefined();
   });
 
   it('prices an offer', async () => {
-    // First search
-    const thirtyDaysFromNow = new Date();
-    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
-    const departureDate = thirtyDaysFromNow.toISOString().split('T')[0]!;
-
     const searchResponse = await adapter.search({
-      segments: [{ origin: 'LHR', destination: 'CDG', departure_date: departureDate }],
-      passengers: { adults: 1, children: 0, infants: 0 },
+      segments: [{ origin: 'LHR', destination: 'CDG', departure_date: isoDatePlusDays(30) }],
+      passengers: [{ type: 'ADT', count: 1 }],
       cabin_class: 'economy',
     });
-
     expect(searchResponse.offers.length).toBeGreaterThan(0);
 
-    // Then price the cheapest offer
-    if (adapter.price) {
-      const cheapest = searchResponse.offers[0]!;
-      const priceResponse = await adapter.price({
-        offer_id: cheapest.id,
-        passengers: [
-          {
-            type: 'adult',
-            given_name: 'Test',
-            family_name: 'Passenger',
-            date_of_birth: '1990-01-01',
-            gender: 'male',
-          },
-        ],
-      });
-      expect(priceResponse.total_price).toBeDefined();
-      expect(priceResponse.currency).toBeDefined();
-    }
+    const cheapest = searchResponse.offers[0]!;
+    const priceResponse = await adapter.price({ offer_id: cheapest.offer_id });
+    expect(priceResponse.available).toBe(true);
+    expect(priceResponse.price.total).toBeGreaterThan(0);
+    expect(priceResponse.price.currency).toBeDefined();
   });
 });

@@ -408,6 +408,25 @@ importers:
         specifier: ^1.0.21
         version: 1.0.21
 
+  packages/integration:
+    dependencies:
+      '@otaip/adapter-duffel':
+        specifier: workspace:*
+        version: link:../adapters/duffel
+      '@otaip/agents-reference':
+        specifier: workspace:*
+        version: link:../agents/reference
+      '@otaip/agents-search':
+        specifier: workspace:*
+        version: link:../agents/search
+      '@otaip/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      tsx:
+        specifier: ^4.21.0
+        version: 4.21.0
+
 packages:
 
   '@alloc/quick-lru@5.2.0':

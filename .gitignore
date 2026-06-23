@@ -1,6 +1,9 @@
 # reference data
 /data/*
 
+# OTAIP run/gate traces (durable JSONL written by @otaip/integration)
+traces/
+
 # Logs
 logs
 *.log

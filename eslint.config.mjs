@@ -18,6 +18,7 @@ export default defineConfig([
     "**/*.js",
     "**/*.mjs",
     "**/__tests__/**/*",
+    "**/scripts/**",
 ]), {
 
     plugins: {
@@ -47,6 +48,7 @@ export default defineConfig([
                 "./packages/adapters/hotelbeds/tsconfig.json",
                 "./packages/connect/tsconfig.json",
                 "./packages/cli/tsconfig.json",
+                "./packages/integration/tsconfig.json",
             ],
         },
     },
