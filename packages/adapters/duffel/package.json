@@ -1,6 +1,6 @@
 {
   "name": "@otaip/adapter-duffel",
-  "version": "0.7.2",
+  "version": "0.7.3",
   "description": "OTAIP distribution adapter for Duffel NDC API — Flights and Cars (mock + live implementations)",
   "type": "module",
   "main": "./dist/index.js",
