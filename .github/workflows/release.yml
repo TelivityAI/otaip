@@ -25,6 +25,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Tests need the same provisioning as CI: built @otaip/* bundles and the
+      # downloaded reference data. Without these, runtime/playground tests (e.g.
+      # executing agent 0.1 over HTTP) fail with 500s even though `ci.yml` is
+      # green — `ci.yml` builds and downloads data before testing; this job did
+      # not, so a release could be blocked by a false-failing test.
+      - name: Build all packages
+        run: pnpm -r run build
+
+      - name: Download reference data
+        run: pnpm run data:download
+
       - name: Run tests
         run: pnpm test 2>&1 | tee /tmp/test-output.log
 
