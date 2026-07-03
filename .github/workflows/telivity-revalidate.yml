@@ -1,0 +1,22 @@
+name: Revalidate Telivity website
+
+# When the README changes on main, ping the Telivity site so /otaip
+# rebuilds from the fresh README within seconds instead of waiting for the
+# 1-hour ISR cache to expire.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'README.md'
+  workflow_dispatch:
+
+jobs:
+  revalidate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Telivity revalidate endpoint
+        run: |
+          curl -sS -X POST https://telivity.app/api/revalidate             -H "Authorization: Bearer 2TELIVITY_REVALIDATE_SECRET"             -H "Content-Type: application/json"             -d '{"paths":["/otaip"]}'             --fail-with-body
+        env:
+          TELIVITY_REVALIDATE_SECRET: 2{{ secrets.TELIVITY_REVALIDATE_SECRET }}
