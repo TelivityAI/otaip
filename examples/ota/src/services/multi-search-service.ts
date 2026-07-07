@@ -44,9 +44,13 @@ export interface AggregatedSearchResult {
   readonly sources: readonly SourceStatus[];
 }
 
-// ---------------------------------------------------------------------------
-// Timeout helper
-// ---------------------------------------------------------------------------
+/** Strip credential-like substrings from adapter errors before exposing to clients. */
+function sanitizeAdapterError(message: string): string {
+  return message
+    .replace(/(?:api[_-]?key|secret|token|Bearer)\s*[:=]?\s*\S+/gi, '[redacted]')
+    .replace(/\b(sk|pk)_(live|test)_[A-Za-z0-9]+\b/g, '[redacted]')
+    .replace(/key hint:\s*\S+/gi, 'key hint: [redacted]');
+}
 
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -116,10 +120,11 @@ export class MultiSearchService {
           durationMs,
         });
       } else {
-        const errorMessage =
+        const errorMessage = sanitizeAdapterError(
           result.reason instanceof Error
             ? result.reason.message
-            : String(result.reason);
+            : String(result.reason),
+        );
         sources.push({
           adapter: adapterName,
           success: false,
