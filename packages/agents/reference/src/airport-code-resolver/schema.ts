@@ -12,6 +12,7 @@ export const airportCodeResolverInputSchema = z.object({
   code_type: z.enum(['iata', 'icao', 'city', 'name', 'auto']).optional(),
   include_metro: z.boolean().optional(),
   include_decommissioned: z.boolean().optional(),
+  max_results: z.number().int().positive().optional(),
 });
 
 const airportTypeSchema = z.enum([

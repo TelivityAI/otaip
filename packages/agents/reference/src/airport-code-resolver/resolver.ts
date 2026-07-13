@@ -18,6 +18,7 @@ import type {
 } from './types.js';
 import type { AirportDataset } from './data-loader.js';
 import { fuzzySearch } from './fuzzy-match.js';
+import { deriveUtcOffset } from './tz-offset.js';
 
 /** Indexes built from the loaded dataset for O(1) lookups */
 interface AirportIndexes {
@@ -118,7 +119,7 @@ function toResolvedAirport(airport: ProcessedAirport): ResolvedAirport {
     country_code: airport.country_code,
     country_name: airport.country_name,
     timezone: airport.timezone,
-    utc_offset: null, // UTC offset derived at runtime or from timezone data
+    utc_offset: deriveUtcOffset(airport.timezone), // DST-correct offset from IANA tz
     latitude: airport.latitude,
     longitude: airport.longitude,
     elevation_ft: airport.elevation_ft,
@@ -250,7 +251,7 @@ export function resolve(
 
   // Step 5: Fuzzy name search
   if (detectedType === 'name' || (detectedType === 'iata' && !indexes.byIata.has(upper))) {
-    const fuzzyResults = fuzzySearch(code, 1);
+    const fuzzyResults = fuzzySearch(code, input.max_results ?? 1);
     if (fuzzyResults.length > 0) {
       const best = fuzzyResults[0]!;
       if (best.confidence >= 0.5) {
