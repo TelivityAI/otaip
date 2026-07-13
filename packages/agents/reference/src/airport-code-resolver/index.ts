@@ -92,6 +92,18 @@ export class AirportCodeResolver implements Agent<
       return { status: 'degraded', details: 'Airport data is stale (>30 days old).' };
     }
 
+    // Optional datasets missing → degraded (core airports.json is present, so
+    // resolution still works, but metro/decommissioned lookups are unavailable).
+    const missing: string[] = [];
+    if (!this.dataset.optionalDatasets.metroAreas) missing.push('metro-areas.json');
+    if (!this.dataset.optionalDatasets.decommissioned) missing.push('decommissioned.json');
+    if (missing.length > 0) {
+      return {
+        status: 'degraded',
+        details: `Optional dataset(s) missing: ${missing.join(', ')}.`,
+      };
+    }
+
     return { status: 'healthy' };
   }
 

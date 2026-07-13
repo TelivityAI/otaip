@@ -15,6 +15,15 @@ export interface AirportDataset {
   metroAreas: MetroArea[];
   decommissioned: DecommissionedAirport[];
   loadedAt: Date;
+  /**
+   * Which optional datasets were present on disk at load time. `airports.json`
+   * is required (load throws if missing); these two are optional and drive a
+   * `degraded` health status when absent.
+   */
+  optionalDatasets: {
+    metroAreas: boolean;
+    decommissioned: boolean;
+  };
 }
 
 const DATA_DIR = join(process.cwd(), 'data', 'reference');
@@ -43,9 +52,12 @@ export async function loadAirportData(dataDir?: string): Promise<AirportDataset>
 
   const airports = await loadJsonFile<ProcessedAirport[]>(airportsPath);
 
-  const metroAreas = existsSync(metroPath) ? await loadJsonFile<MetroArea[]>(metroPath) : [];
+  const hasMetro = existsSync(metroPath);
+  const hasDecommissioned = existsSync(decommissionedPath);
 
-  const decommissioned = existsSync(decommissionedPath)
+  const metroAreas = hasMetro ? await loadJsonFile<MetroArea[]>(metroPath) : [];
+
+  const decommissioned = hasDecommissioned
     ? await loadJsonFile<DecommissionedAirport[]>(decommissionedPath)
     : [];
 
@@ -54,5 +66,9 @@ export async function loadAirportData(dataDir?: string): Promise<AirportDataset>
     metroAreas,
     decommissioned,
     loadedAt: new Date(),
+    optionalDatasets: {
+      metroAreas: hasMetro,
+      decommissioned: hasDecommissioned,
+    },
   };
 }

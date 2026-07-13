@@ -26,6 +26,8 @@ export interface AirportCodeResolverInput {
   include_metro?: boolean;
   /** If true, resolve codes that have been retired/reassigned. Default: false */
   include_decommissioned?: boolean;
+  /** Cap on fuzzy-name matches considered during resolution. Omit for the default. */
+  max_results?: number;
 }
 
 export interface ResolvedAirport {
