@@ -2,7 +2,7 @@
 
 The full airline and hotel booking lifecycle — search, pricing, booking, ticketing, exchange, refund, and BSP/ARC settlement — modeled as typed, testable agents with a pipeline contract system that prevents LLM hallucinations at every step.
 
-**75 agents. 6 distribution adapters. 14 pipeline-contracted agents. 3,092 tests. TypeScript strict.**
+**75 agents. 6 distribution adapters. 14 pipeline-contracted agents. 3,342 tests. TypeScript strict.**
 
 ```bash
 pnpm add @otaip/core @otaip/agents-booking @otaip/connect
@@ -10,7 +10,7 @@ pnpm add @otaip/core @otaip/agents-booking @otaip/connect
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![CI](https://github.com/telivity-otaip/otaip/actions/workflows/ci.yml/badge.svg)](https://github.com/telivity-otaip/otaip/actions)
-[![Tests](https://img.shields.io/badge/tests-3092%20passing-brightgreen)](https://github.com/telivity-otaip/otaip/actions)
+[![Tests](https://img.shields.io/badge/tests-3342%20passing-brightgreen)](https://github.com/telivity-otaip/otaip/actions)
 
 ---
 
@@ -34,7 +34,7 @@ git clone https://github.com/telivity-otaip/otaip.git
 cd otaip
 pnpm install --frozen-lockfile
 pnpm run data:download       # one-time: airport reference data
-pnpm test                    # 3,092 tests
+pnpm test                    # 3,342 tests
 pnpm lint                    # 0 errors
 pnpm -r run typecheck        # 16 packages, all green
 ```
@@ -191,7 +191,7 @@ docs/                       Architecture, agents, adapters, getting started
 - **TypeScript** (`strict: true`, plus `noUncheckedIndexedAccess`, `noImplicitOverride`, `noPropertyAccessFromIndexSignature`; `exactOptionalPropertyTypes` is off — enabling it would require call-site changes across dozens of files, tracked as a separate cleanup)
 - **Node.js** >=24
 - **pnpm** 10+ (workspace monorepo, 16 packages)
-- **Vitest** for testing (3,092 tests)
+- **Vitest** for testing (3,342 tests)
 - **tsup** for building (ESM + DTS)
 - **ESLint** + **Prettier** for linting/formatting
 - **Zod** 4 for schema validation + JSON Schema generation
