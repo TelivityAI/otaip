@@ -1,6 +1,6 @@
 {
   "name": "@otaip/core",
-  "version": "0.7.3",
+  "version": "0.7.4",
   "description": "OTAIP core runtime — base agent interfaces and shared types",
   "type": "module",
   "main": "./dist/index.js",

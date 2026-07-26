@@ -1,6 +1,6 @@
 {
   "name": "@otaip/agents-ticketing",
-  "version": "0.7.3",
+  "version": "0.7.4",
   "description": "OTAIP Stage 4 agents — ticket issuance, EMD, void, itinerary delivery, document verification",
   "type": "module",
   "main": "./dist/index.js",

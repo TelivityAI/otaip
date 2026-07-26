@@ -2,6 +2,27 @@
 
 > **Versioning policy:** Pre-v1.0, every release is a patch bump (`0.6.0 → 0.6.1 → 0.6.2 → …`). See [VERSIONING.md](VERSIONING.md) for the full policy and an explanation of the early-history version jumps (0.3.4 → 0.5.0 → 0.5.1 → 0.6.0) that predate this rule. v0.6.4 → v0.7.0 is the one post-policy exception — see VERSIONING.md.
 
+## 0.7.4 — Duffel order enrichment + activity/transfer agents
+
+Workspace-wide patch bump `0.7.3 → 0.7.4` so npm picks up [#123](https://github.com/TelivityAI/otaip/pull/123).
+
+### `@otaip/adapter-duffel`
+
+- Enrich `BookResponse` from the live Duffel order already returned by `book()`: optional `ticketNumbers`, `segments` (fare basis), `baseAmount` / `taxAmount`, `recordLocator`, `passengerNames`, `refundable` / `changeable`, timestamps.
+- Add `getOrder(orderId)` → `GET /air/orders/{id}` mapped through the same helper.
+- Existing five fields unchanged; new fields optional. Unit tests cover the order mapper.
+
+### `@otaip/agents-lodging`
+
+- Agent **20.8** `ActivitySearchAgent` — typed Hotelbeds Activities search wrapper.
+- Agent **20.9** `TransferSearchAgent` — typed Hotelbeds Transfers search wrapper.
+- `agents.manifest.json` regenerated (77 agents).
+
+### CI / hygiene
+
+- `pnpm` overrides for high `pnpm audit` findings (`postcss`, `brace-expansion`, `fast-uri`, `find-my-way`, `@fastify/static`).
+- Public-repo comment guard: no internal product-name refs in lodging agent docs.
+
 ## 0.7.2 — Duffel Cars + auto-publish workflow + post-#93 release fix
 
 Patch bump. Three pieces of substantive work in this window:
