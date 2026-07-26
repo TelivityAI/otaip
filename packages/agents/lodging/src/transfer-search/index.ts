@@ -1,7 +1,8 @@
 /**
  * Agent 20.9 — Transfer Search
  *
- * Thin typed wrapper around Hotelbeds Transfers search for Tarmac route→fill.
+ * Thin typed wrapper around Hotelbeds Transfers search for route→fill
+ * orchestration.
  */
 import type { Agent, AgentInput, AgentOutput } from '@otaip/core';
 import { AgentNotInitializedError, AgentInputValidationError } from '@otaip/core';

@@ -1,8 +1,8 @@
 /**
  * Agent 20.8 — Activity Search
  *
- * Thin typed wrapper around Hotelbeds Activities search so Tarmac can
- * route→fill and Aviare can map to activity_search.
+ * Thin typed wrapper around Hotelbeds Activities search for route→fill
+ * orchestration and product-layer activity_search mapping.
  */
 import type { Agent, AgentInput, AgentOutput } from '@otaip/core';
 import { AgentNotInitializedError, AgentInputValidationError } from '@otaip/core';
