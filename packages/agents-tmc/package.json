@@ -1,6 +1,6 @@
 {
   "name": "@otaip/agents-tmc",
-  "version": "0.7.3",
+  "version": "0.7.4",
   "description": "OTAIP Stage 8 agents — TMC & agency operations",
   "type": "module",
   "main": "./dist/index.js",
