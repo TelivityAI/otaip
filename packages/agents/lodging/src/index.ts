@@ -24,6 +24,8 @@ export { RateComparisonAgent } from './rate-comparison/index.js';
 export { HotelBookingAgent } from './hotel-booking/index.js';
 export { HotelModificationAgent } from './hotel-modification/index.js';
 export { ConfirmationVerificationAgent } from './confirmation-verification/index.js';
+export { ActivitySearchAgent } from './activity-search/index.js';
+export { TransferSearchAgent } from './transfer-search/index.js';
 
 // ---------------------------------------------------------------------------
 // Shared types

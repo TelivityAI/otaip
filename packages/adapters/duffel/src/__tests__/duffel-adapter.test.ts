@@ -5,7 +5,12 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { DuffelAdapter, parseDurationToMinutes } from '../duffel-adapter.js';
+import {
+  DuffelAdapter,
+  mapOrderToBookResponse,
+  parseDurationToMinutes,
+  type DuffelOrder,
+} from '../duffel-adapter.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -339,5 +344,245 @@ describe('DuffelAdapter error handling', () => {
   it('throws on 500 server error', async () => {
     mockFetchResponse(500, {});
     await expect(adapter.search(SEARCH_REQUEST)).rejects.toThrow('Duffel API error 500');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// mapOrderToBookResponse()
+// ---------------------------------------------------------------------------
+
+const SAMPLE_ORDER: DuffelOrder = {
+  id: 'ord_00009hthhsUZ8W4LxQgkjo',
+  booking_reference: 'RZPNX8',
+  total_amount: '90.80',
+  total_currency: 'GBP',
+  base_amount: '60.60',
+  tax_amount: '30.20',
+  created_at: '2020-04-11T15:48:11.642Z',
+  owner: { iata_code: 'BA', name: 'British Airways' },
+  passengers: [
+    {
+      id: 'pas_00009hj8USM7Ncg31cBCLL',
+      given_name: 'Amelia',
+      family_name: 'Earhart',
+      born_on: '1987-07-24',
+      type: 'adult',
+      title: 'mrs',
+      gender: 'f',
+      email: 'amelia@duffel.com',
+      phone_number: '+442080160509',
+    },
+  ],
+  documents: [
+    {
+      type: 'electronic_ticket',
+      unique_identifier: '1252106312810',
+      passenger_ids: ['pas_00009hj8USM7Ncg31cBCLL'],
+    },
+  ],
+  slices: [
+    {
+      segments: [
+        {
+          marketing_carrier: { iata_code: 'BA' },
+          marketing_carrier_flight_number: '1234',
+          origin: { iata_code: 'LHR' },
+          destination: { iata_code: 'JFK' },
+          departing_at: '2020-06-13T16:38:02',
+          passengers: [
+            {
+              cabin_class: 'economy',
+              fare_basis_code: 'Y26NR',
+            },
+          ],
+        },
+      ],
+    },
+  ],
+  conditions: {
+    refund_before_departure: {
+      allowed: false,
+      penalty_amount: null,
+      penalty_currency: null,
+    },
+    change_before_departure: {
+      allowed: true,
+      penalty_amount: '100.00',
+      penalty_currency: 'GBP',
+    },
+  },
+};
+
+describe('mapOrderToBookResponse', () => {
+  it('maps existing BookResponse fields and enriched ticket/fare data', () => {
+    const result = mapOrderToBookResponse(SAMPLE_ORDER);
+
+    expect(result.booking_reference).toBe('RZPNX8');
+    expect(result.order_id).toBe('ord_00009hthhsUZ8W4LxQgkjo');
+    expect(result.total_amount).toBe('90.80');
+    expect(result.total_currency).toBe('GBP');
+    expect(result.passengers).toHaveLength(1);
+    expect(result.passengers[0]!.given_name).toBe('Amelia');
+    expect(result.passengers[0]!.family_name).toBe('Earhart');
+
+    expect(result.ticketNumbers).toEqual([
+      { number: '1252106312810', issuingCarrier: 'BA' },
+    ]);
+    expect(result.segments).toEqual([
+      {
+        carrier: 'BA',
+        flightNumber: '1234',
+        origin: 'LHR',
+        destination: 'JFK',
+        departureDate: '2020-06-13',
+        bookingClass: '',
+        fareBasis: 'Y26NR',
+      },
+    ]);
+    expect(result.baseAmount).toBe('60.60');
+    expect(result.taxAmount).toBe('30.20');
+    expect(result.recordLocator).toBe('RZPNX8');
+    expect(result.passengerNames).toEqual(['Amelia Earhart']);
+    expect(result.issuedAt).toBe('2020-04-11T15:48:11.642Z');
+    expect(result.bookingDate).toBe('2020-04-11T15:48:11.642Z');
+    expect(result.refundable).toBe(false);
+    expect(result.changeable).toBe(true);
+  });
+
+  it('omits optional fields when Duffel does not return them', () => {
+    const result = mapOrderToBookResponse({
+      id: 'ord_minimal',
+      booking_reference: 'ABC123',
+      total_amount: '10.00',
+      total_currency: 'USD',
+    });
+
+    expect(result.order_id).toBe('ord_minimal');
+    expect(result.ticketNumbers).toBeUndefined();
+    expect(result.segments).toBeUndefined();
+    expect(result.baseAmount).toBeUndefined();
+    expect(result.taxAmount).toBeUndefined();
+    expect(result.passengerNames).toBeUndefined();
+    expect(result.issuedAt).toBeUndefined();
+    expect(result.refundable).toBeUndefined();
+    expect(result.changeable).toBeUndefined();
+    expect(result.recordLocator).toBe('ABC123');
+  });
+
+  it('ignores non-ticket documents', () => {
+    const result = mapOrderToBookResponse({
+      ...SAMPLE_ORDER,
+      documents: [
+        {
+          type: 'electronic_miscellaneous_document_associated',
+          unique_identifier: 'EMD123',
+        },
+      ],
+    });
+    expect(result.ticketNumbers).toBeUndefined();
+  });
+
+  it('leaves fareBasis empty when order segment has no fare_basis_code', () => {
+    const result = mapOrderToBookResponse({
+      ...SAMPLE_ORDER,
+      slices: [
+        {
+          segments: [
+            {
+              marketing_carrier: { iata_code: 'BA' },
+              marketing_carrier_flight_number: '1',
+              origin: { iata_code: 'LHR' },
+              destination: { iata_code: 'JFK' },
+              departing_at: '2020-06-13T16:38:02',
+              passengers: [{ cabin_class: 'economy' }],
+            },
+          ],
+        },
+      ],
+    });
+    expect(result.segments?.[0]?.fareBasis).toBe('');
+    expect(result.segments?.[0]?.bookingClass).toBe('');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getOrder()
+// ---------------------------------------------------------------------------
+
+describe('DuffelAdapter getOrder', () => {
+  it('GETs /air/orders/{id} and returns enriched BookResponse', async () => {
+    mockFetchResponse(200, { data: SAMPLE_ORDER });
+    const adapter = new DuffelAdapter('duffel_test_key');
+
+    const result = await adapter.getOrder('ord_00009hthhsUZ8W4LxQgkjo');
+
+    expect(result.ticketNumbers?.[0]?.number).toBe('1252106312810');
+    expect(result.baseAmount).toBe('60.60');
+    expect(result.recordLocator).toBe('RZPNX8');
+
+    const fetchCall = vi.mocked(fetch).mock.calls[0]!;
+    expect(fetchCall[0]).toBe(
+      'https://api.duffel.com/air/orders/ord_00009hthhsUZ8W4LxQgkjo',
+    );
+    expect((fetchCall[1] as RequestInit).method).toBe('GET');
+  });
+
+  it('throws when order payload is missing', async () => {
+    mockFetchResponse(200, { data: null });
+    const adapter = new DuffelAdapter('duffel_test_key');
+    await expect(adapter.getOrder('ord_missing')).rejects.toThrow('not found');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// book() enriched mapping
+// ---------------------------------------------------------------------------
+
+describe('DuffelAdapter book', () => {
+  it('returns enriched fields from the created order', async () => {
+    const offerWithPax = {
+      ...DUFFEL_OFFER,
+      passengers: [{ id: 'pas_offer_1', type: 'adult' }],
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          statusText: 'OK',
+          json: () => Promise.resolve({ data: offerWithPax }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          statusText: 'OK',
+          json: () => Promise.resolve({ data: SAMPLE_ORDER }),
+        }),
+    );
+
+    const adapter = new DuffelAdapter('duffel_test_key');
+    const result = await adapter.book({
+      offer_id: 'off_test_123',
+      passengers: [
+        {
+          title: 'mrs',
+          given_name: 'Amelia',
+          family_name: 'Earhart',
+          born_on: '1987-07-24',
+          email: 'amelia@duffel.com',
+          phone_number: '+442080160509',
+          gender: 'f',
+          type: 'adult',
+        },
+      ],
+    });
+
+    expect(result.order_id).toBe('ord_00009hthhsUZ8W4LxQgkjo');
+    expect(result.ticketNumbers?.[0]?.number).toBe('1252106312810');
+    expect(result.segments?.[0]?.fareBasis).toBe('Y26NR');
+    expect(result.baseAmount).toBe('60.60');
+    expect(result.taxAmount).toBe('30.20');
   });
 });

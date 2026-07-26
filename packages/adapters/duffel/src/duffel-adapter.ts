@@ -93,7 +93,10 @@ interface DuffelSegment {
   passengers?: Array<{
     cabin_class?: string;
     cabin_class_marketing_name?: string;
+    /** Present on offers; may be absent on some order responses. */
     fare_basis_code?: string;
+    // TODO: DOMAIN_QUESTION: Does Duffel expose RBD / booking class (single letter) on order segments?
+    // Official OrderSegmentPassenger schema lists cabin_class only — not booking_class.
   }>;
 }
 
@@ -133,14 +136,58 @@ interface DuffelOfferResponse {
   data: DuffelOffer;
 }
 
-interface DuffelOrderResponse {
-  data: {
-    id?: string;
-    booking_reference?: string;
-    total_amount?: string;
-    total_currency?: string;
-    passengers?: Array<Record<string, unknown>>;
+/** Ticket / EMD document on a Duffel order (`documents[]`). */
+interface DuffelOrderDocument {
+  /**
+   * Duffel returns `electronic_ticket` (and EMD types). The handoff shorthand
+   * `type === "ticket"` is treated as an alias for electronic tickets.
+   */
+  type?: string;
+  unique_identifier?: string;
+  passenger_ids?: string[];
+}
+
+interface DuffelOrderCondition {
+  allowed?: boolean | null;
+  penalty_amount?: string | null;
+  penalty_currency?: string | null;
+}
+
+interface DuffelOrderPassenger {
+  id?: string;
+  given_name?: string;
+  family_name?: string;
+  born_on?: string;
+  type?: string;
+  title?: string;
+  gender?: string;
+  email?: string;
+  phone_number?: string;
+}
+
+/** Raw Duffel order payload from POST/GET /air/orders. */
+export interface DuffelOrder {
+  id?: string;
+  booking_reference?: string;
+  total_amount?: string;
+  total_currency?: string;
+  base_amount?: string;
+  base_currency?: string;
+  tax_amount?: string;
+  tax_currency?: string;
+  created_at?: string;
+  passengers?: DuffelOrderPassenger[];
+  slices?: DuffelSlice[];
+  documents?: DuffelOrderDocument[];
+  owner?: { iata_code?: string; name?: string; id?: string };
+  conditions?: {
+    refund_before_departure?: DuffelOrderCondition | null;
+    change_before_departure?: DuffelOrderCondition | null;
   };
+}
+
+interface DuffelOrderResponse {
+  data: DuffelOrder;
 }
 
 interface DuffelOfferWithPassengers {
@@ -228,12 +275,164 @@ export interface BookRequest {
   }>;
 }
 
+export interface BookTicketNumber {
+  number: string;
+  issuingCarrier: string;
+}
+
+export interface BookSegment {
+  carrier: string;
+  flightNumber: string;
+  origin: string;
+  destination: string;
+  departureDate: string;
+  bookingClass: string;
+  fareBasis: string;
+}
+
+export interface BookPassenger {
+  id?: string;
+  given_name?: string;
+  family_name?: string;
+  born_on?: string;
+  type?: string;
+  title?: string;
+  gender?: string;
+  email?: string;
+  phone_number?: string;
+}
+
+/**
+ * Enriched booking / order retrieve response.
+ *
+ * Mapping to agent inputs (distribution → product):
+ *   OriginalTicketSummary (5.1/5.5):
+ *     ticket_number       ← ticketNumbers[0].number
+ *     issuing_carrier     ← ticketNumbers[0].issuingCarrier (= order.owner.iata_code)
+ *     passenger_name      ← passengerNames[0] (given + family; agent may reformat LAST/FIRST)
+ *     record_locator      ← recordLocator (= booking_reference)
+ *     issue_date          ← issuedAt (= created_at)
+ *     booking_date        ← bookingDate (= created_at)
+ *     base_fare           ← baseAmount
+ *     total_tax           ← taxAmount
+ *     total_amount        ← total_amount
+ *     base_fare_currency  ← total_currency (Duffel base_currency when present matches)
+ *     fare_basis          ← segments[0].fareBasis when present
+ *     is_refundable       ← refundable
+ *   RefundProcessingInput (6.1):
+ *     same ticket / fare / refundable fields as above
+ *   // TODO: DOMAIN_QUESTION: ATPCO Cat31/Cat33 filed penalty rules are NOT on a Duffel
+ *   // order — leave absent; agents default to ATPCO behavior when rules are omitted.
+ *   // TODO: DOMAIN_QUESTION: Single-letter RBD booking class is not on Duffel order
+ *   // segments (cabin_class is economy|business|… only) — bookingClass left empty when absent.
+ */
 export interface BookResponse {
   booking_reference: string;
   order_id: string;
   total_amount: string;
   total_currency: string;
-  passengers: unknown[];
+  passengers: BookPassenger[];
+  ticketNumbers?: BookTicketNumber[];
+  segments?: BookSegment[];
+  baseAmount?: string;
+  taxAmount?: string;
+  recordLocator?: string;
+  passengerNames?: string[];
+  issuedAt?: string;
+  bookingDate?: string;
+  refundable?: boolean;
+  changeable?: boolean;
+}
+
+function isTicketDocument(type: string | undefined): boolean {
+  if (!type) return false;
+  // Duffel schema: electronic_ticket. Handoff shorthand: "ticket".
+  return type === 'electronic_ticket' || type === 'ticket';
+}
+
+/**
+ * Map a Duffel order payload to the enriched BookResponse shape.
+ * Pure — no network. Surfaces only fields Duffel actually returns.
+ */
+export function mapOrderToBookResponse(order: DuffelOrder): BookResponse {
+  const bookingReference = order.booking_reference ?? '';
+  const issuingCarrier = order.owner?.iata_code ?? '';
+
+  const ticketNumbers: BookTicketNumber[] = [];
+  for (const doc of order.documents ?? []) {
+    if (!isTicketDocument(doc.type)) continue;
+    if (!doc.unique_identifier) continue;
+    ticketNumbers.push({
+      number: doc.unique_identifier,
+      issuingCarrier,
+    });
+  }
+
+  const segments: BookSegment[] = [];
+  for (const slice of order.slices ?? []) {
+    for (const seg of slice.segments ?? []) {
+      const pax0 = seg.passengers?.[0];
+      const departingAt = seg.departing_at ?? '';
+      segments.push({
+        carrier: seg.marketing_carrier?.iata_code ?? '',
+        flightNumber: seg.marketing_carrier_flight_number ?? '',
+        origin: seg.origin?.iata_code ?? '',
+        destination: seg.destination?.iata_code ?? '',
+        // Date portion of departing_at when present; empty if Duffel omitted the field.
+        departureDate: departingAt.length >= 10 ? departingAt.slice(0, 10) : departingAt,
+        // Not inventing RBD from cabin_class — see DOMAIN_QUESTION on BookResponse.
+        bookingClass: '',
+        // fare_basis_code is documented on offer segment passengers; include when order has it.
+        fareBasis: pax0?.fare_basis_code ?? '',
+      });
+    }
+  }
+
+  const passengers: BookPassenger[] = (order.passengers ?? []).map((p) => ({
+    id: p.id,
+    given_name: p.given_name,
+    family_name: p.family_name,
+    born_on: p.born_on,
+    type: p.type,
+    title: p.title,
+    gender: p.gender,
+    email: p.email,
+    phone_number: p.phone_number,
+  }));
+
+  const passengerNames = passengers
+    .map((p) => [p.given_name, p.family_name].filter(Boolean).join(' ').trim())
+    .filter((name) => name.length > 0);
+
+  const refundAllowed = order.conditions?.refund_before_departure?.allowed;
+  const changeAllowed = order.conditions?.change_before_departure?.allowed;
+
+  const response: BookResponse = {
+    booking_reference: bookingReference,
+    order_id: order.id ?? '',
+    total_amount: order.total_amount ?? '0',
+    total_currency: order.total_currency ?? 'GBP',
+    passengers,
+  };
+
+  if (ticketNumbers.length > 0) response.ticketNumbers = ticketNumbers;
+  if (segments.length > 0) response.segments = segments;
+  if (order.base_amount !== undefined && order.base_amount !== null) {
+    response.baseAmount = order.base_amount;
+  }
+  if (order.tax_amount !== undefined && order.tax_amount !== null) {
+    response.taxAmount = order.tax_amount;
+  }
+  if (bookingReference) response.recordLocator = bookingReference;
+  if (passengerNames.length > 0) response.passengerNames = passengerNames;
+  if (order.created_at) {
+    response.issuedAt = order.created_at;
+    response.bookingDate = order.created_at;
+  }
+  if (typeof refundAllowed === 'boolean') response.refundable = refundAllowed;
+  if (typeof changeAllowed === 'boolean') response.changeable = changeAllowed;
+
+  return response;
 }
 
 export class DuffelAdapter implements DistributionAdapter {
@@ -364,13 +563,24 @@ export class DuffelAdapter implements DistributionAdapter {
       throw new Error('Duffel order creation returned no data');
     }
 
-    return {
-      booking_reference: order.booking_reference ?? '',
-      order_id: order.id ?? '',
-      total_amount: order.total_amount ?? '0',
-      total_currency: order.total_currency ?? 'GBP',
-      passengers: order.passengers ?? [],
-    };
+    return mapOrderToBookResponse(order);
+  }
+
+  /**
+   * Re-fetch an order by id (GET /air/orders/{id}) and return the same enriched
+   * BookResponse shape as book(). Useful when documents (ticket numbers) populate
+   * shortly after instant issue.
+   */
+  async getOrder(orderId: string): Promise<BookResponse> {
+    const response = (await this.request(
+      'GET',
+      `/air/orders/${encodeURIComponent(orderId)}`,
+    )) as DuffelOrderResponse;
+    const order = response.data;
+    if (!order) {
+      throw new Error(`Duffel order not found: ${orderId}`);
+    }
+    return mapOrderToBookResponse(order);
   }
 
   // -------------------------------------------------------------------------

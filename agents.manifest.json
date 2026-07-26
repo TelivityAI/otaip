@@ -1,6 +1,6 @@
 {
   "generated_by": "scripts/generate-manifest.ts",
-  "total": 75,
+  "total": 77,
   "with_contract": 18,
   "agents": [
     {
@@ -6136,6 +6136,24 @@
       "contract_status": "active",
       "has_contract": false,
       "source_path": "packages/agents/lodging/src/confirmation-verification/index.ts"
+    },
+    {
+      "id": "20.8",
+      "name": "Activity Search",
+      "stage": "lodging",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/lodging/src/activity-search/index.ts"
+    },
+    {
+      "id": "20.9",
+      "name": "Transfer Search",
+      "stage": "lodging",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/lodging/src/transfer-search/index.ts"
     }
   ]
 }
