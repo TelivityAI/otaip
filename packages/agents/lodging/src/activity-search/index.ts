@@ -4,7 +4,7 @@
  * Thin typed wrapper around Hotelbeds Activities search for route→fill
  * orchestration and product-layer activity_search mapping.
  */
-import type { Agent, AgentInput, AgentOutput } from '@otaip/core';
+import type { Agent, AgentHealthStatus, AgentInput, AgentOutput } from '@otaip/core';
 import { AgentNotInitializedError, AgentInputValidationError } from '@otaip/core';
 import type { ActivitySearchAgentInput, ActivitySearchAgentOutput } from './types.js';
 
@@ -75,7 +75,17 @@ export class ActivitySearchAgent
     return { data: { offers } };
   }
 
-  async healthCheck() {
-    return { status: 'healthy' as const, agentId: this.id };
+  async health(): Promise<AgentHealthStatus> {
+    if (!this.initialized) {
+      return { status: 'unhealthy', details: 'Not initialized. Call initialize() first.' };
+    }
+    if (!this.adapter) {
+      return { status: 'degraded', details: 'No adapter injected.' };
+    }
+    return { status: 'healthy' };
+  }
+
+  destroy(): void {
+    this.initialized = false;
   }
 }

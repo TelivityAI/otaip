@@ -4,7 +4,7 @@
  * Thin typed wrapper around Hotelbeds Transfers search for route→fill
  * orchestration.
  */
-import type { Agent, AgentInput, AgentOutput } from '@otaip/core';
+import type { Agent, AgentHealthStatus, AgentInput, AgentOutput } from '@otaip/core';
 import { AgentNotInitializedError, AgentInputValidationError } from '@otaip/core';
 import type { TransferSearchAgentInput, TransferSearchAgentOutput } from './types.js';
 
@@ -77,7 +77,17 @@ export class TransferSearchAgent
     return { data: { offers } };
   }
 
-  async healthCheck() {
-    return { status: 'healthy' as const, agentId: this.id };
+  async health(): Promise<AgentHealthStatus> {
+    if (!this.initialized) {
+      return { status: 'unhealthy', details: 'Not initialized. Call initialize() first.' };
+    }
+    if (!this.adapter) {
+      return { status: 'degraded', details: 'No adapter injected.' };
+    }
+    return { status: 'healthy' };
+  }
+
+  destroy(): void {
+    this.initialized = false;
   }
 }
