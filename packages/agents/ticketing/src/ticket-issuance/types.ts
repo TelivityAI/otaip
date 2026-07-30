@@ -182,6 +182,11 @@ export interface TicketIssuanceInput {
   ticket_number_prefix?: string;
   /** Original issue for reissue */
   original_issue?: string;
+  /**
+   * Supplier-allocated ticket numbers (from adapter documents / ticketing response).
+   * Required in live mode — synthetic hash serials are refused.
+   */
+  supplier_ticket_numbers?: string[];
 }
 
 export interface TicketIssuanceOutput {

@@ -2,7 +2,7 @@
 
 The full airline and hotel booking lifecycle — search, pricing, booking, ticketing, exchange, refund, and BSP/ARC settlement — modeled as typed, testable agents with a pipeline contract system that prevents LLM hallucinations at every step.
 
-**75 agents. 6 distribution adapters. 14 pipeline-contracted agents. 3,342 tests. TypeScript strict.**
+**77 agents. 6 distribution adapters. 18 pipeline-contracted agents. TypeScript strict.** See [PRODUCTION_DOD.md](docs/engineering/PRODUCTION_DOD.md) for money-path readiness criteria.
 
 ```bash
 pnpm add @otaip/core @otaip/agents-booking @otaip/connect
@@ -65,15 +65,15 @@ npx @otaip/cli search --from JFK --to LHR --date 2026-05-01
 
 ## Distribution Adapters
 
-Six production adapters spanning GDS, NDC, LCC, aggregator, and hospitality channels. Real supplier API integrations with auth, rate limiting, and error normalization — not toy wrappers.
+Six distribution adapters spanning GDS, NDC, LCC, aggregator, and hospitality channels. Real supplier HTTP integrations with auth, shared `BaseAdapter` resilience (optional rate limiting, circuit breaker, safe-vs-unsafe retry), and error normalization.
 
 | Adapter | Type | Channel | Auth | Capabilities | Tests |
 |---------|------|---------|------|-------------|-------|
-| **Amadeus** | GDS | EDIFACT/REST | OAuth2 | Search, Price, Book, Status | 83 |
-| **Sabre** | GDS | REST (BFM v5) | OAuth2 ATK | Search, Price, Book, Cancel, Status | 101 |
+| **Amadeus** | GDS | EDIFACT/REST | OAuth2 | Search, Price, Book, Cancel, Status | 83 |
+| **Sabre** | GDS | REST (BFM v5) | OAuth2 ATK | Search, Price, Book, Cancel, Status, Ticket | 101 |
 | **Navitaire** | LCC | REST (dotREZ) | JWT | Search, Price, Book, Ticket, Cancel | 109 |
 | **TripPro/Mondee** | Aggregator | REST+SOAP | Dual token | Search, Price, Book, Cancel, Status | 73 |
-| **Duffel** | NDC | REST | API token | Search, Price, Book, Cancel, Ticket | 32 |
+| **Duffel** | NDC | REST | API token | Search, Price, Book, getOrder (tickets via documents) | 32 |
 | **HAIP** | Hospitality | REST | Bearer | Search, Book, Cancel | 58 |
 
 **456 adapter tests total.** Each adapter implements the `ConnectAdapter` interface and declares a static `ChannelCapability` manifest for the capability registry.
@@ -126,7 +126,7 @@ LLM tool call
 [6. Action classification]  Irreversible actions require approval token
 ```
 
-14 agents are currently contracted (reference, search, pricing, booking, ticketing, governance). The remaining 61 work as standalone agents called directly — no breaking changes.
+18 agents are currently contracted (see `agents.manifest.json` `with_contract`). Remaining agents work as standalone agents called directly. Money-path readiness is tracked in [docs/engineering/PRODUCTION_DOD.md](docs/engineering/PRODUCTION_DOD.md).
 
 ```typescript
 import { PipelineOrchestrator, agentToTool } from '@otaip/core';

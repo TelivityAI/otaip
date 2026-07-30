@@ -1,8 +1,13 @@
 /**
  * Ticket Issuance Engine — ETR generation and conjunction ticketing.
+ *
+ * Live mode (OTAIP_MODE=live / NODE_ENV=production) refuses synthetic
+ * hash-derived serials. Callers must supply supplier ticket numbers via
+ * `supplier_ticket_numbers` (from adapter documents / ticketing response).
  */
 
 import Decimal from 'decimal.js';
+import { isLiveModeFromEnv, LiveSafetyError } from '@otaip/core';
 import type {
   TicketIssuanceInput,
   TicketIssuanceOutput,
@@ -19,10 +24,14 @@ const prefixData = prefixJson as unknown as { prefixes: Record<string, string> }
 
 const MAX_COUPONS_PER_TICKET = 4;
 
+export interface IssueTicketsOptions {
+  /** Force live-mode guard (defaults to env). */
+  readonly liveMode?: boolean;
+}
+
 /** Generate a deterministic 10-digit ticket serial from record locator + index */
 function generateTicketSerial(recordLocator: string, index: number): string {
-  // In production this would come from a GDS ticket stock allocation.
-  // For deterministic testing, derive from inputs.
+  // Demo/test only. Live mode must use supplier-allocated numbers.
   let hash = 0;
   const seed = `${recordLocator}-${index}`;
   for (let i = 0; i < seed.length; i++) {
@@ -79,7 +88,19 @@ function computeTotal(baseFare: string, totalTax: string): string {
   return new Decimal(baseFare).plus(new Decimal(totalTax)).toFixed(2);
 }
 
-export function issueTickets(input: TicketIssuanceInput): TicketIssuanceOutput {
+export function issueTickets(
+  input: TicketIssuanceInput,
+  options?: IssueTicketsOptions,
+): TicketIssuanceOutput {
+  const liveMode = options?.liveMode ?? isLiveModeFromEnv();
+  const supplierNumbers = input.supplier_ticket_numbers ?? [];
+
+  if (liveMode && supplierNumbers.length === 0) {
+    throw new LiveSafetyError(
+      'Live mode refuses synthetic ticket serials. Provide supplier_ticket_numbers from the adapter ticketing/documents response.',
+    );
+  }
+
   const prefix = resolvePrefix(input);
   const issueDate = input.issue_date ?? new Date().toISOString().slice(0, 10);
   const totalTax = computeTotalTax(input);
@@ -88,6 +109,11 @@ export function issueTickets(input: TicketIssuanceInput): TicketIssuanceOutput {
 
   const segmentCount = input.segments.length;
   const ticketCount = Math.ceil(segmentCount / MAX_COUPONS_PER_TICKET);
+  if (liveMode && supplierNumbers.length < ticketCount) {
+    throw new LiveSafetyError(
+      `Live mode requires ${ticketCount} supplier_ticket_numbers; received ${supplierNumbers.length}.`,
+    );
+  }
   const isConjunction = ticketCount > 1;
 
   const tickets: TicketRecord[] = [];
@@ -95,8 +121,9 @@ export function issueTickets(input: TicketIssuanceInput): TicketIssuanceOutput {
   for (let t = 0; t < ticketCount; t++) {
     const startIdx = t * MAX_COUPONS_PER_TICKET;
     const count = Math.min(MAX_COUPONS_PER_TICKET, segmentCount - startIdx);
-    const serial = generateTicketSerial(input.record_locator, t);
-    const ticketNumber = `${prefix}${serial}`;
+    const supplierNumber = supplierNumbers[t];
+    const ticketNumber =
+      supplierNumber ?? `${prefix}${generateTicketSerial(input.record_locator, t)}`;
     const conjunctionSuffix = isConjunction ? `/${t + 1}` : undefined;
 
     const coupons = buildCoupons(input, startIdx, count);

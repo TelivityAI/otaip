@@ -10,25 +10,29 @@ The primary bottleneck is **external API rate limits**, not OTAIP computation:
 
 | Supplier | Typical rate limit | OTAIP mitigation |
 |----------|-------------------|------------------|
-| Duffel | ~100 req/s | `RateLimiter` from `@otaip/core` |
-| Sabre | Varies by contract | Circuit breaker in Agent 3.5 |
-| Amadeus | ~10 TPS (self-service) | Adapter-level rate limiting |
-| Navitaire | Session-based | Session manager in adapter |
+| Duffel | ~100 req/s | `BaseAdapter` optional `RateLimiter` + circuit breaker |
+| Sabre | Varies by contract | `BaseAdapter` circuit breaker + unsafe-op no auto-retry |
+| Amadeus | ~10 TPS (self-service) | `BaseAdapter` rate limiter (configure per adapter instance) |
+| Navitaire | Session-based | Session manager in adapter + shared resilience path |
+
+Agent 3.5 (`ApiAbstraction`) also has an in-process circuit breaker for mock/handler injection — it is **not** the live Connect HTTP path.
 
 ## Horizontal scaling
 
-Since agents are stateless:
+Most agents are stateless:
 1. Run multiple instances behind a load balancer
 2. Each instance gets its own adapter connections
-3. No shared state between instances (by default)
+3. Money-path state requires a shared CAS-capable store (see below)
 
 ## Stateful agents
 
-Two agents hold state across calls:
+Agents / components that hold state across calls:
 - **Agent 2.4 (Offer Builder)**: TTL-managed offer store
 - **Agent 3.6 (Order Management)**: Order lifecycle state
+- **PaymentConfirmationStateMachine** / durable wrapper: pay→confirm aggregate
+- **Effect ledger / command store**: mutation idempotency
 
-For multi-instance deployments, inject a shared `PersistenceAdapter` (Redis, PostgreSQL) instead of the default `InMemoryPersistenceAdapter`.
+For multi-instance deployments, inject a shared `CompareAndSwapPersistenceAdapter` (and command/effect ledger backends). Plain get/set KV without CAS is insufficient for idempotency. Live mode refuses irreversible ops on ephemeral stores — see `LiveSafetyMode` and [PRODUCTION_DOD.md](../engineering/PRODUCTION_DOD.md).
 
 ## Memory profile
 

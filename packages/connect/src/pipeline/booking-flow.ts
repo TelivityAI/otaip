@@ -1,6 +1,9 @@
 /**
  * STUB — Booking pipeline: search → evaluate → price → book → confirm.
- * Full implementation wired with Agent 1.9 in a separate build.
+ *
+ * Maturity: stub. Not a production money path.
+ * Use MutationExecutor + ConnectAdapter methods (or the example OTA app)
+ * for end-to-end booking. Full pipeline wiring is tracked separately.
  */
 
 import type {
@@ -25,6 +28,9 @@ export class BookingPipeline {
     _searchInput: SearchFlightsInput,
     _bookingInput: Omit<CreateBookingInput, 'offerId'>,
   ): Promise<BookingResult> {
-    throw new Error('Not implemented — booking pipeline is a stub');
+    throw new Error(
+      'Not implemented — BookingPipeline is a stub (maturity: stub). ' +
+        'Use MutationExecutor with ConnectAdapter.createBooking for production-shaped flows.',
+    );
   }
 }

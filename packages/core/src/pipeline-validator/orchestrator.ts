@@ -21,6 +21,7 @@ import {
   runGates,
 } from './validator.js';
 import type { ApprovalPolicy } from './action-classifier.js';
+import type { MutationKillSwitch } from '../safety/mutation-kill-switch.js';
 import type {
   AgentContract,
   AgentInvocation,
@@ -44,6 +45,14 @@ export interface PipelineOrchestratorConfig {
   /** Set of agent ids that should be treated as reference-data agents. */
   readonly referenceAgentIds?: ReadonlySet<string>;
   readonly approvalPolicy?: ApprovalPolicy;
+  /**
+   * When an agent id is known to be a mutation but has no contract, fail with
+   * `uncontracted_mutation` (DoD 6). Defaults to treating any missing contract
+   * for ids in this set as uncontracted mutations.
+   */
+  readonly mutationAgentIds?: ReadonlySet<string>;
+  /** Optional kill switch — blocks irreversible/mutation runs when engaged. */
+  readonly killSwitch?: MutationKillSwitch;
   /** Clock injection for tests. */
   readonly now?: () => Date;
   /** Deterministic id source for sessions/invocations (tests). */
@@ -52,6 +61,7 @@ export interface PipelineOrchestratorConfig {
 
 export type RunAgentFailureReason =
   | 'contract_missing'
+  | 'uncontracted_mutation'
   | 'agent_missing'
   | 'intent_lock'
   | 'schema_invalid'
@@ -60,7 +70,8 @@ export type RunAgentFailureReason =
   | 'agent_error'
   | 'schema_out_invalid'
   | 'low_confidence'
-  | 'action_class_blocked';
+  | 'action_class_blocked'
+  | 'kill_switch';
 
 /**
  * The kind of thing that went wrong, so a consumer can never confuse an
@@ -97,6 +108,8 @@ export function classifyFailure(reason: RunAgentFailureReason): FailureClass {
     case 'schema_out_invalid':
     case 'low_confidence':
     case 'action_class_blocked':
+    case 'uncontracted_mutation':
+    case 'kill_switch':
       return 'validation';
   }
 }
@@ -192,12 +205,29 @@ export class PipelineOrchestrator {
     const agent = this.config.agents.get(agentId);
     const startedAt = this.now();
 
-    if (contract === undefined) {
-      return this.recordFailure(session, agentId, startedAt, input, 'contract_missing', [
+    if (this.config.killSwitch?.isEngaged) {
+      return this.recordFailure(session, agentId, startedAt, input, 'kill_switch', [
         {
-          code: 'CONTRACT_MISSING',
+          code: 'MUTATION_KILL_SWITCH',
           path: [],
-          message: `No AgentContract registered for agentId '${agentId}'`,
+          message: `Mutation kill switch engaged: ${this.config.killSwitch.engagedReason ?? 'unspecified'}`,
+          severity: 'error',
+        },
+      ]);
+    }
+
+    if (contract === undefined) {
+      const isMutation = this.config.mutationAgentIds?.has(agentId) ?? false;
+      const reason: RunAgentFailureReason = isMutation
+        ? 'uncontracted_mutation'
+        : 'contract_missing';
+      return this.recordFailure(session, agentId, startedAt, input, reason, [
+        {
+          code: isMutation ? 'UNCONTRACTED_MUTATION' : 'CONTRACT_MISSING',
+          path: [],
+          message: isMutation
+            ? `Refusing uncontracted mutation agent '${agentId}'. Register an AgentContract before invoking.`
+            : `No AgentContract registered for agentId '${agentId}'`,
           severity: 'error',
         },
       ]);

@@ -27,7 +27,18 @@ export type {
 
 // Base adapter utilities
 export { BaseAdapter, ConnectError } from './base-adapter.js';
-export type { RetryConfig } from './base-adapter.js';
+export type { RetryConfig, BaseAdapterResilienceConfig } from './base-adapter.js';
+
+// Operation classification + ledger-backed mutations (DoD 1/2)
+export {
+  classifyAdapterOperation,
+  isUnsafeAdapterOperation,
+} from './operation-class.js';
+export type { AdapterOperationClass, AdapterOperationName } from './operation-class.js';
+export { MutationExecutor } from './mutation-executor.js';
+export type { MutationExecutorConfig, MutationOutcome } from './mutation-executor.js';
+export { executeReversal } from './reversal-saga.js';
+export type { ReversalKind, ReversalRequest, ReversalResult } from './reversal-saga.js';
 
 // Config utilities
 export { validateConfig, baseAdapterConfigSchema } from './config.js';

@@ -114,8 +114,80 @@ export { TruncateOldestStrategy, DropLargeToolOutputsStrategy } from './context/
 export type { TelemetryProvider, TelemetrySpan } from './telemetry/index.js';
 export { NoopTelemetryProvider, traceAgentExecution, OTelTelemetryProvider } from './telemetry/index.js';
 
-export type { PersistenceAdapter } from './persistence/index.js';
-export { InMemoryPersistenceAdapter } from './persistence/index.js';
+export type {
+  CompareAndSwapPersistenceAdapter,
+  PersistenceAdapter,
+  VersionedAggregate,
+  VersionedAggregateStore,
+} from './persistence/index.js';
+export {
+  FileCompareAndSwapPersistenceAdapter,
+  InMemoryPersistenceAdapter,
+  InMemoryVersionedAggregateStore,
+} from './persistence/index.js';
+
+export type {
+  CommandRecord,
+  CommandStatus,
+  CommandStore,
+  MutationEffectType,
+  ReserveCommandInput,
+  ReserveCommandResult,
+} from './command-store/index.js';
+export { InMemoryCommandStore } from './command-store/index.js';
+
+export type {
+  BeginEffectInput,
+  BeginEffectResult,
+  EffectLedger,
+  EffectOutcome,
+  EffectRecord,
+} from './effect-ledger/index.js';
+export { InMemoryEffectLedger } from './effect-ledger/index.js';
+
+export type { LiveSafetyModeConfig, StoreDurability } from './safety/index.js';
+export {
+  LiveSafetyError,
+  LiveSafetyMode,
+  MutationKillSwitch,
+  MutationKillSwitchError,
+  assertIrreversibleAllowed,
+  isLiveModeFromEnv,
+} from './safety/index.js';
+
+export type { CircuitBreakerConfig, CircuitBreakerStatus, CircuitState } from './circuit-breaker/index.js';
+export { CircuitBreaker, CircuitOpenError } from './circuit-breaker/index.js';
+
+export type {
+  DurableTimer,
+  DurableTimerStore,
+  OutboxMessage,
+  OutboxStatus,
+  OutboxStore,
+} from './outbox/index.js';
+export { InMemoryDurableTimerStore, InMemoryOutboxStore } from './outbox/index.js';
+
+export type {
+  BoundApprovalClaims,
+  BoundApprovalPolicyOptions,
+  BoundApprovalTokenStore,
+  IssueBoundApprovalInput,
+} from './approval/index.js';
+export {
+  InMemoryBoundApprovalTokenStore,
+  consumeBoundApprovalToken,
+  createBoundApprovalPolicy,
+  hashApprovalInput,
+  issueBoundApprovalToken,
+  peekBoundApprovalClaims,
+} from './approval/index.js';
+
+export type {
+  BookingFailureSignal,
+  BookingFailureStage,
+  IrreversibleAuditEntry,
+} from './ops/index.js';
+export { MutationOpsCollector } from './ops/index.js';
 
 export type { RateLimiterConfig } from './rate-limiter/index.js';
 export { RateLimiter } from './rate-limiter/index.js';
@@ -187,6 +259,7 @@ export type {
 export {
   CONFIDENCE_FLOORS,
   DEFAULT_APPROVAL_POLICY,
+  LEGACY_ANY_NONEMPTY_APPROVAL_POLICY,
   PipelineOrchestrator,
   REFERENCE_CONFIDENCE_FLOOR,
   captureOutputContract,
@@ -217,6 +290,8 @@ export type {
   BookingFailedEvent,
   EventFilter,
   EventStore,
+  MutationIrreversibleEvent,
+  MutationUnknownEvent,
   OtaipEvent,
   OtaipEventType,
   RoutingDecidedEvent,

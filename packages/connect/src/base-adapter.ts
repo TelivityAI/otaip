@@ -1,10 +1,18 @@
 /**
- * Base adapter utilities — retry logic, error wrapping, and shared helpers
- * for all ConnectAdapter implementations.
+ * Base adapter utilities — retry logic, error wrapping, rate limiting,
+ * circuit breaking, and shared helpers for all ConnectAdapter implementations.
  */
 
-import { withRetry as coreRetry } from '@otaip/core';
-import type { RetryConfig as CoreRetryConfig } from '@otaip/core';
+import {
+  withRetry as coreRetry,
+  RateLimiter,
+  CircuitBreaker,
+  CircuitOpenError,
+  type RetryConfig as CoreRetryConfig,
+  type RateLimiterConfig,
+  type CircuitBreakerConfig,
+} from '@otaip/core';
+import { isUnsafeAdapterOperation } from './operation-class.js';
 
 export class ConnectError extends Error {
   constructor(
@@ -31,30 +39,98 @@ const DEFAULT_RETRY_CONFIG: RetryConfig = {
   maxDelayMs: 10_000,
 };
 
+export interface BaseAdapterResilienceConfig {
+  readonly rateLimiter?: RateLimiterConfig;
+  readonly circuitBreaker?: Partial<CircuitBreakerConfig>;
+  /**
+   * When true (default), unsafe ops (book/ticket/cancel) are never
+   * auto-retried by withRetry after failure — callers must use
+   * MutationExecutor + reconcile.
+   */
+  readonly disableUnsafeAutoRetry?: boolean;
+}
+
 export abstract class BaseAdapter {
   protected readonly retryConfig: RetryConfig;
   protected abstract readonly supplierId: string;
+  private readonly rateLimiter: RateLimiter | null;
+  private readonly circuitBreaker: CircuitBreaker;
+  private readonly disableUnsafeAutoRetry: boolean;
 
-  constructor(retryConfig?: Partial<RetryConfig>) {
+  constructor(
+    retryConfig?: Partial<RetryConfig>,
+    resilience?: BaseAdapterResilienceConfig,
+  ) {
     this.retryConfig = { ...DEFAULT_RETRY_CONFIG, ...retryConfig };
+    this.rateLimiter = resilience?.rateLimiter
+      ? new RateLimiter(resilience.rateLimiter)
+      : null;
+    this.circuitBreaker = new CircuitBreaker({
+      name: undefined,
+      failureThreshold: 5,
+      resetMs: 30_000,
+      ...resilience?.circuitBreaker,
+    });
+    this.disableUnsafeAutoRetry = resilience?.disableUnsafeAutoRetry ?? true;
+  }
+
+  /** Expose breaker status for health / tests. */
+  getCircuitBreakerStatus() {
+    return this.circuitBreaker.getStatus();
+  }
+
+  /** Test helper — reset breaker state. */
+  resetCircuitBreaker(): void {
+    this.circuitBreaker.reset();
   }
 
   protected async withRetry<T>(operation: string, fn: () => Promise<T>): Promise<T> {
+    const unsafe = isUnsafeAdapterOperation(operation);
+    const maxRetries =
+      unsafe && this.disableUnsafeAutoRetry ? 0 : this.retryConfig.maxRetries;
+
     const coreConfig: Partial<CoreRetryConfig> = {
-      maxRetries: this.retryConfig.maxRetries,
+      maxRetries,
       baseDelayMs: this.retryConfig.baseDelayMs,
       maxDelayMs: this.retryConfig.maxDelayMs,
     };
 
     try {
-      return await coreRetry(fn, coreConfig, (error) => this.isRetryable(error));
+      this.circuitBreaker.assertClosed();
+      if (this.rateLimiter) {
+        await this.rateLimiter.acquire();
+      }
+
+      const result = await coreRetry(fn, coreConfig, (error) => {
+        if (unsafe && this.disableUnsafeAutoRetry) return false;
+        return this.isRetryable(error);
+      });
+      this.circuitBreaker.recordSuccess();
+      return result;
     } catch (lastError) {
+      if (!(lastError instanceof CircuitOpenError)) {
+        // Business/validation errors should not trip the breaker.
+        if (this.isTransportFailure(lastError)) {
+          this.circuitBreaker.recordFailure();
+        }
+      }
+
+      if (lastError instanceof CircuitOpenError) {
+        throw new ConnectError(
+          lastError.message,
+          this.supplierId,
+          operation,
+          true,
+          lastError,
+        );
+      }
+
       if (lastError instanceof ConnectError) {
         throw lastError;
       }
 
       throw new ConnectError(
-        `${operation} failed after ${this.retryConfig.maxRetries + 1} attempts`,
+        `${operation} failed after ${maxRetries + 1} attempts`,
         this.supplierId,
         operation,
         false,
@@ -89,10 +165,41 @@ export abstract class BaseAdapter {
         ...init,
         signal: controller.signal,
       });
+
+      if (response.status === 429) {
+        const retryAfter = response.headers.get('retry-after');
+        const err = new ConnectError(
+          `Rate limited (429)${retryAfter ? ` retry-after=${retryAfter}` : ''}`,
+          this.supplierId,
+          'http',
+          true,
+        );
+        this.circuitBreaker.recordFailure();
+        throw err;
+      }
+
       return response;
     } finally {
       clearTimeout(timeout);
     }
+  }
+
+  private isTransportFailure(error: unknown): boolean {
+    if (error instanceof ConnectError) return error.retryable;
+    if (error instanceof Error) {
+      const msg = error.message.toLowerCase();
+      return (
+        msg.includes('timeout') ||
+        msg.includes('aborted') ||
+        msg.includes('econnreset') ||
+        msg.includes('econnrefused') ||
+        msg.includes('network') ||
+        msg.includes('fetch failed') ||
+        msg.includes('429') ||
+        /\b5\d\d\b/.test(msg)
+      );
+    }
+    return false;
   }
 
   private isRetryable(error: unknown): boolean {

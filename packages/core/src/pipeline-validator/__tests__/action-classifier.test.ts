@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_APPROVAL_POLICY,
+  LEGACY_ANY_NONEMPTY_APPROVAL_POLICY,
   checkActionClassification,
 } from '../action-classifier.js';
+import { issueBoundApprovalToken } from '../../approval/bound-approval.js';
 import type { GateResult } from '../types.js';
 
 const okGate: GateResult = { gate: 'schema_in', passed: true };
@@ -31,11 +33,37 @@ describe('checkActionClassification (default policy)', () => {
     if (!r.ok) expect(r.issues[0]?.code).toBe('APPROVAL_TOKEN_INVALID');
   });
 
-  it('accepts mutation_irreversible with a valid approval token', () => {
+  it('rejects arbitrary non-empty approval strings', () => {
     const r = checkActionClassification(
       'mutation_irreversible',
       { approvalToken: 't-123' },
       [okGate],
+    );
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.issues[0]?.code).toBe('APPROVAL_TOKEN_FORGED');
+  });
+
+  it('accepts mutation_irreversible with a bound approval token format', () => {
+    const token = issueBoundApprovalToken({
+      sessionId: 's1',
+      agentId: 'a1',
+      input: { x: 1 },
+      secret: 'test-secret',
+    });
+    const r = checkActionClassification(
+      'mutation_irreversible',
+      { approvalToken: token },
+      [okGate],
+    );
+    expect(r.ok).toBe(true);
+  });
+
+  it('legacy policy still accepts any non-empty string', () => {
+    const r = checkActionClassification(
+      'mutation_irreversible',
+      { approvalToken: 't-123' },
+      [okGate],
+      LEGACY_ANY_NONEMPTY_APPROVAL_POLICY,
     );
     expect(r.ok).toBe(true);
   });

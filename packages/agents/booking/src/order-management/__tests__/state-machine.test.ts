@@ -204,10 +204,10 @@ describe('Test 3: Failed confirmation — all retries exhausted, clean refund', 
 // ---------------------------------------------------------------------------
 
 describe('Test 5: Duplicate retry prevention', () => {
-  it('rejects retry with duplicate idempotency key', () => {
+  it('replays prior result for duplicate idempotency key', () => {
     sm.initializeOrder('ORD-005', 'PAX-005');
     sm.capturePayment('ORD-005', 'CAP-005');
-    sm.initiateConfirmation(
+    const first = sm.initiateConfirmation(
       'ORD-005',
       makeConfirmationRequest({
         idempotency_key: 'same-key',
@@ -217,17 +217,16 @@ describe('Test 5: Duplicate retry prevention', () => {
     );
     sm.handleConfirmationTimeout('ORD-005');
 
-    // Retry with SAME key should throw
-    expect(() =>
-      sm.retryConfirmation(
-        'ORD-005',
-        makeConfirmationRequest({
-          idempotency_key: 'same-key',
-          attempt_number: 2,
-          max_attempts: 3,
-        }),
-      ),
-    ).toThrow(InvalidStateTransitionError);
+    // Same key replays the prior initiate result (does not re-issue).
+    const replayed = sm.retryConfirmation(
+      'ORD-005',
+      makeConfirmationRequest({
+        idempotency_key: 'same-key',
+        attempt_number: 2,
+        max_attempts: 3,
+      }),
+    );
+    expect(replayed.confirmation_status).toBe(first.confirmation_status);
   });
 
   it('allows retry with different idempotency key', () => {

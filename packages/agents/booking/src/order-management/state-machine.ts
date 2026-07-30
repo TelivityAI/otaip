@@ -40,7 +40,7 @@ export interface MonitoringPort {
 // Internal managed order structure
 // ---------------------------------------------------------------------------
 
-interface ManagedOrder {
+export interface ManagedOrder {
   order_id: string;
   passenger_ref: string;
   state: OrderState;
@@ -77,10 +77,41 @@ export class PaymentConfirmationStateMachine {
   private orders: Map<string, ManagedOrder> = new Map();
   private auditPort: AuditPort | null;
   private monitoringPort: MonitoringPort | null;
+  /** Last successful response per idempotency key for replay semantics. */
+  private idempotencyReplays: Map<string, OrderState> = new Map();
 
   constructor(options?: { audit?: AuditPort; monitoring?: MonitoringPort }) {
     this.auditPort = options?.audit ?? null;
     this.monitoringPort = options?.monitoring ?? null;
+  }
+
+  /** Persistable snapshot for durable wrappers / crash recovery. */
+  exportSnapshot(orderId: string): ManagedOrder | null {
+    const order = this.orders.get(orderId);
+    if (!order) return null;
+    return {
+      ...order,
+      state: { ...order.state },
+      audit_trail: [...order.audit_trail],
+      idempotency_keys: new Set(order.idempotency_keys),
+      confirmation_request: order.confirmation_request
+        ? { ...order.confirmation_request }
+        : null,
+    };
+  }
+
+  /** Restore a previously exported snapshot (idempotent if already loaded). */
+  restoreFromSnapshot(snapshot: ManagedOrder): void {
+    if (this.orders.has(snapshot.order_id)) return;
+    this.orders.set(snapshot.order_id, {
+      ...snapshot,
+      state: { ...snapshot.state },
+      audit_trail: [...snapshot.audit_trail],
+      idempotency_keys: new Set(snapshot.idempotency_keys),
+      confirmation_request: snapshot.confirmation_request
+        ? { ...snapshot.confirmation_request }
+        : null,
+    });
   }
 
   // -------------------------------------------------------------------------
@@ -171,6 +202,13 @@ export class PaymentConfirmationStateMachine {
   initiateConfirmation(orderId: string, request: ConfirmationRequest): OrderState {
     const order = this.getOrder(orderId);
 
+    // Replay prior result for the same idempotency key (DoD 2).
+    if (order.idempotency_keys.has(request.idempotency_key)) {
+      const replay = this.idempotencyReplays.get(`${orderId}:${request.idempotency_key}`);
+      if (replay) return this.cloneState(replay);
+      return this.cloneState(order.state);
+    }
+
     // Guard: payment must be captured before requesting confirmation
     if (order.state.payment_status !== 'CAPTURED') {
       throw new InvalidStateTransitionError(
@@ -186,7 +224,9 @@ export class PaymentConfirmationStateMachine {
     order.confirmation_request = { ...request };
 
     this.transitionConfirmation(order, 'AWAITING', 'initiateConfirmation', request.idempotency_key);
-    return this.cloneState(order.state);
+    const state = this.cloneState(order.state);
+    this.idempotencyReplays.set(`${orderId}:${request.idempotency_key}`, state);
+    return state;
   }
 
   handleConfirmationSuccess(orderId: string, _ticketRef: string): OrderState {
@@ -248,14 +288,11 @@ export class PaymentConfirmationStateMachine {
       );
     }
 
-    // Guard: idempotency — reject duplicate keys
+    // Guard: idempotency — replay prior result for duplicate keys (DoD 2)
     if (order.idempotency_keys.has(request.idempotency_key)) {
-      throw new InvalidStateTransitionError(
-        AGENT_ID,
-        'idempotency_key',
-        request.idempotency_key,
-        'DUPLICATE',
-      );
+      const replay = this.idempotencyReplays.get(`${orderId}:${request.idempotency_key}`);
+      if (replay) return this.cloneState(replay);
+      return this.cloneState(order.state);
     }
 
     // Guard: max retries not exceeded
@@ -272,7 +309,9 @@ export class PaymentConfirmationStateMachine {
     order.confirmation_request = { ...request };
 
     this.transitionConfirmation(order, 'RETRY', 'retryConfirmation', request.idempotency_key);
-    return this.cloneState(order.state);
+    const state = this.cloneState(order.state);
+    this.idempotencyReplays.set(`${orderId}:${request.idempotency_key}`, state);
+    return state;
   }
 
   failConfirmation(orderId: string): OrderState {

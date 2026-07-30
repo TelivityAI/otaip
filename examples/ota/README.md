@@ -1,8 +1,8 @@
 # OTAIP Reference OTA
 
-A reference flight search application built on the Open Travel AI Platform. Proves OTAIP works end to end with real adapter integration, agent pipelines, and a deployable web UI.
+A reference flight search application built on the Open Travel AI Platform. Demonstrates adapter integration, agent usage, and a deployable web UI.
 
-Sprint E covers **search only**. Booking is Sprint F.
+**Maturity: library / demo.** Not a production money path by itself. Ticketing and cancellation may remain mock/local even when search/book use live sandbox credentials. See [PRODUCTION_DOD.md](../../docs/engineering/PRODUCTION_DOD.md).
 
 ## Quick Start
 

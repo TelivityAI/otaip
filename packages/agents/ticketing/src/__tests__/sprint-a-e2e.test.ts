@@ -486,10 +486,17 @@ describe('Sprint A end-to-end pipeline', () => {
     expect(r6a.ok).toBe(false);
     if (!r6a.ok) expect(r6a.reason).toBe('action_class_blocked');
 
-    // 7) Ticket issuance WITH approval token → commits.
+    // 7) Ticket issuance WITH bound approval token → commits.
+    const { issueBoundApprovalToken } = await import('@otaip/core');
+    const approvalToken = issueBoundApprovalToken({
+      sessionId: session.sessionId,
+      agentId: '4.1',
+      input: ticketInput,
+      secret: 'test-secret',
+    });
     const r6b = await orch.runAgent(session, '4.1', {
       ...ticketInput,
-      approvalToken: 'dev-approved-001',
+      approvalToken,
     });
     expect(r6b.ok).toBe(true);
 
