@@ -1,7 +1,7 @@
 /**
- * ConnectAdapter bridge for HAIP lodging — enables createAdapter('haip')
- * to return GuardedConnectAdapter. Flight search/price/book are unsupported;
- * cancel/status/health delegate to HaipAdapter once-methods (Guarded owns ledger).
+ * ConnectAdapter bridge for HAIP lodging — createAdapter('haip') returns this
+ * without GuardedConnectAdapter (HaipAdapter already owns MoneyPathExecutor).
+ * Flight search/price/book are unsupported; cancel/status/health delegate to HaipAdapter.
  */
 
 import { MoneyPathError } from '@otaip/core';
@@ -16,20 +16,31 @@ import type {
   PricedItinerary,
   SearchFlightsInput,
 } from '../../types.js';
-import { HaipAdapter } from './index.js';
+import { HaipAdapter, type HaipAdapterOptions } from './index.js';
+
+export interface HaipConnectBridgeOptions {
+  readonly liveMode?: boolean;
+  readonly moneyPath?: HaipAdapterOptions['moneyPath'];
+  readonly storeDurability?: HaipAdapterOptions['storeDurability'];
+}
 
 export class HaipConnectBridge implements ConnectAdapter {
   readonly supplierId = 'haip';
   readonly supplierName = 'HAIP PMS';
   private readonly haip: HaipAdapter;
 
-  constructor(config: unknown) {
-    this.haip = new HaipAdapter(config, { liveMode: false });
+  constructor(config: unknown, options?: HaipConnectBridgeOptions) {
+    this.haip = new HaipAdapter(config, {
+      ...(options?.liveMode !== undefined ? { liveMode: options.liveMode } : {}),
+      ...(options?.moneyPath !== undefined ? { moneyPath: options.moneyPath } : {}),
+      ...(options?.storeDurability !== undefined
+        ? { storeDurability: options.storeDurability }
+        : {}),
+    });
   }
 
-  /** Underlying lodging adapter (money-path enforced on direct use). */
-  get lodgingAdapter(): HaipAdapter {
-    return this.haip;
+  get moneyPathExecutor() {
+    return this.haip.moneyPathExecutor;
   }
 
   async searchFlights(_input: SearchFlightsInput): Promise<FlightOffer[]> {
@@ -84,8 +95,10 @@ export class HaipConnectBridge implements ConnectAdapter {
   async cancelBooking(
     bookingId: string,
   ): Promise<{ success: boolean; message: string }> {
-    // Once-method: GuardedConnectAdapter / MutationExecutor owns the ledger.
-    const result = await this.haip.cancelBookingOnce(bookingId);
+    // Ledger + RL+CB owned by HaipAdapter (no GuardedConnectAdapter double-wrap).
+    const result = await this.haip.cancelBooking(bookingId, {
+      idempotencyKey: `cancel:${bookingId}`,
+    });
     return {
       success: result.status === 'cancelled',
       message: result.message ?? 'cancelled',

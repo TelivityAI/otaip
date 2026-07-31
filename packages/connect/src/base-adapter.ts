@@ -200,7 +200,7 @@ export abstract class BaseAdapter {
     }
   }
 
-  private isTransportFailure(error: unknown): boolean {
+  protected isTransportFailure(error: unknown): boolean {
     if (error instanceof ConnectError) return error.retryable;
     if (error instanceof Error) {
       const msg = error.message.toLowerCase();

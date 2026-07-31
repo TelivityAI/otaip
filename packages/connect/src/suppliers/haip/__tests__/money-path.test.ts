@@ -1,10 +1,11 @@
 /**
- * HAIP money-path: create/cancel once-only on ambiguous failure.
+ * HAIP money-path: create/cancel once-only on ambiguous failure + RL/CB.
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { OutcomeUnknownError } from '@otaip/core';
-import { createAdapter, GuardedConnectAdapter } from '../../../index.js';
+import { createAdapter } from '../../../index.js';
+import { HaipConnectBridge } from '../connect-bridge.js';
 import { HaipAdapter } from '../index.js';
 
 afterEach(() => {
@@ -74,13 +75,54 @@ describe('HAIP money-path', () => {
     expect(deletes).toBe(1);
   });
 
-  it('createAdapter registers haip as GuardedConnectAdapter', () => {
+  it('createAdapter registers haip as self-guarded HaipConnectBridge (no double Guarded)', () => {
     const adapter = createAdapter(
       'haip',
       { baseUrl: 'http://haip.test.local', apiKey: '' },
       { liveMode: false },
     );
-    expect(adapter).toBeInstanceOf(GuardedConnectAdapter);
+    expect(adapter).toBeInstanceOf(HaipConnectBridge);
+  });
+
+  it('createAdapter cancel is once-only on 503', async () => {
+    let deletes = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        if (String(input).includes('/bookings/')) {
+          deletes += 1;
+          return new Response('timeout', { status: 503 });
+        }
+        return new Response('{}', { status: 404 });
+      }),
+    );
+    const adapter = createAdapter(
+      'haip',
+      { baseUrl: 'http://haip.test.local', apiKey: '' },
+      { liveMode: false },
+    );
+    await expect(adapter.cancelBooking!('CONF-2')).rejects.toBeInstanceOf(OutcomeUnknownError);
+    await expect(adapter.cancelBooking!('CONF-2')).rejects.toBeInstanceOf(OutcomeUnknownError);
+    expect(deletes).toBe(1);
+  });
+
+  it('mutations engage circuit breaker (open after failures)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('down', { status: 503 })),
+    );
+    const adapter = new HaipAdapter(
+      { baseUrl: 'http://haip.test.local', apiKey: '', maxRetries: 0 },
+      { liveMode: false },
+    );
+    // Trip the breaker (failureThreshold default 5)
+    for (let i = 0; i < 5; i++) {
+      await expect(
+        adapter.createBooking({ ...BOOK_PARAMS, idempotencyKey: `trip-${i}` }),
+      ).rejects.toBeTruthy();
+    }
+    const status = adapter.getCircuitBreakerStatus();
+    expect(status.state).toBe('open');
   });
 
   it('requires idempotencyKey in live mode', async () => {
@@ -94,5 +136,15 @@ describe('HAIP money-path', () => {
         idempotencyKey: undefined,
       }),
     ).rejects.toThrow(/idempotencyKey/);
+  });
+
+  it('createBookingOnce is not publicly callable', () => {
+    const adapter = new HaipAdapter(
+      { baseUrl: 'http://haip.test.local', apiKey: '' },
+      { liveMode: false },
+    );
+    expect(
+      (adapter as unknown as { createBookingOnce?: unknown }).createBookingOnce,
+    ).toBeUndefined();
   });
 });

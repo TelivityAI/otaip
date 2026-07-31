@@ -46,6 +46,22 @@ interface CacheEntry<T> {
 
 const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
 
+/** 5xx / network / timeout shaped errors — cancel outcome unknown. */
+function isAmbiguousCancelError(error: unknown): boolean {
+  const msg = error instanceof Error ? error.message : String(error);
+  const lower = msg.toLowerCase();
+  return (
+    lower.includes('timeout') ||
+    lower.includes('network') ||
+    lower.includes('econnreset') ||
+    lower.includes('econnrefused') ||
+    lower.includes('fetch failed') ||
+    lower.includes('aborted') ||
+    /\b5\d\d\b/.test(lower) ||
+    lower.includes('429')
+  );
+}
+
 export class AmadeusAdapter extends BaseAdapter implements ConnectAdapter {
   readonly supplierId = 'amadeus';
   readonly supplierName = 'Amadeus Self-Service';
@@ -186,6 +202,11 @@ export class AmadeusAdapter extends BaseAdapter implements ConnectAdapter {
         await this.client.booking.flightOrders(bookingId).delete();
         return { success: true, message: `Booking ${bookingId} cancelled` };
       } catch (error: unknown) {
+        // Ambiguous / transport failures must propagate so MoneyPathExecutor
+        // records OUTCOME_UNKNOWN — never swallow into { success: false }.
+        if (isAmbiguousCancelError(error)) {
+          throw error instanceof Error ? error : new Error(String(error));
+        }
         const message = error instanceof Error ? error.message : String(error);
         return { success: false, message };
       }
