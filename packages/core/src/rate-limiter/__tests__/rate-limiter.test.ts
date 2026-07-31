@@ -81,4 +81,20 @@ describe('RateLimiter', () => {
     vi.advanceTimersByTime(1001);
     expect(limiter.available).toBe(10);
   });
+
+  it('10 concurrent acquires with maxRequests:1 never exceed 1 dispatch per window', async () => {
+    vi.useRealTimers();
+    const limiter = new RateLimiter({ maxRequests: 1, windowMs: 50 });
+    let inFlight = 0;
+    let maxInFlight = 0;
+    const dispatch = async (): Promise<void> => {
+      await limiter.acquire();
+      inFlight += 1;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      await new Promise((r) => setTimeout(r, 5));
+      inFlight -= 1;
+    };
+    await Promise.all(Array.from({ length: 10 }, () => dispatch()));
+    expect(maxInFlight).toBe(1);
+  });
 });

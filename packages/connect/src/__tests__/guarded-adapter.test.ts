@@ -99,12 +99,19 @@ describe('GuardedConnectAdapter', () => {
 });
 
 describe('createAdapter default guard', () => {
-  it('wraps with GuardedConnectAdapter by default; unguarded opt-out', () => {
+  it('wraps with GuardedConnectAdapter by default; unguarded opt-out in non-live', () => {
     registerSupplier('guard-test-supplier', () => mkAdapter(async () => bookingResult));
-    const raw = createAdapter('guard-test-supplier', {}, { unguarded: true });
+    const raw = createAdapter('guard-test-supplier', {}, { unguarded: true, liveMode: false });
     expect(raw).not.toBeInstanceOf(GuardedConnectAdapter);
     const guarded = createAdapter('guard-test-supplier', {}, { liveMode: false });
     expect(guarded).toBeInstanceOf(GuardedConnectAdapter);
     expect(guardAdapter(raw, { liveMode: false })).toBeInstanceOf(GuardedConnectAdapter);
+  });
+
+  it('refuses unguarded opt-out in live mode', () => {
+    registerSupplier('guard-test-live', () => mkAdapter(async () => bookingResult));
+    expect(() =>
+      createAdapter('guard-test-live', {}, { unguarded: true, liveMode: true }),
+    ).toThrow(/unguarded|live mode/i);
   });
 });

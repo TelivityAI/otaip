@@ -3,6 +3,9 @@
  *
  * void/refund fail closed unless the adapter declares the capability.
  * They must NOT silently alias to cancelBooking.
+ *
+ * Callers must pass a shared MutationExecutor (typically from GuardedConnectAdapter).
+ * There is no silent liveMode:false + fresh-ledger default.
  */
 
 import type { ConnectAdapter } from './types.js';
@@ -43,18 +46,30 @@ export class UnsupportedReversalError extends MoneyPathError {
 }
 
 /**
- * Execute a reversal using ledger-backed MutationExecutor.
+ * Execute a reversal using a caller-supplied ledger-backed MutationExecutor.
  * Does not auto-retry after ambiguous failure.
  *
  * - cancel: requires adapter.cancelBooking
  * - void / refund: require explicit capability flag — otherwise fail closed
+ * - executor: required — omit refuses (no weak liveMode:false fresh-ledger default)
  */
 export async function executeReversal(
   adapter: ConnectAdapter,
   request: ReversalRequest,
-  executor: MutationExecutor = new MutationExecutor({ liveMode: false }),
+  executor?: MutationExecutor,
   capabilities: ReversalCapabilities = { cancel: true },
 ): Promise<MutationOutcome<ReversalResult>> {
+  if (!executor) {
+    return {
+      kind: 'failed',
+      error: new MoneyPathError(
+        'executeReversal requires a shared MutationExecutor (e.g. from GuardedConnectAdapter). ' +
+          'Refusing silent liveMode:false + fresh-ledger default.',
+      ),
+      replayed: false,
+    };
+  }
+
   if (request.kind === 'void' && !capabilities.void) {
     return {
       kind: 'failed',

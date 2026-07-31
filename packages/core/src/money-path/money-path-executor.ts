@@ -3,14 +3,19 @@
  * for irreversible supplier mutations (DoD 1/2/3/8).
  */
 
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { InMemoryEffectLedger } from '../effect-ledger/in-memory-effect-ledger.js';
 import type { EffectLedger } from '../effect-ledger/types.js';
 import type { MutationEffectType } from '../command-store/types.js';
-import { MutationOpsCollector } from '../ops/mutation-ops.js';
+import {
+  getProcessMutationOpsCollector,
+  MutationOpsCollector,
+  type BookingFailureStage,
+} from '../ops/mutation-ops.js';
 import {
   assertIrreversibleAllowed,
   isLiveModeFromEnv,
+  LiveSafetyError,
   type LiveSafetyModeConfig,
   type StoreDurability,
 } from '../safety/live-safety-mode.js';
@@ -18,6 +23,8 @@ import {
   MutationKillSwitch,
   MutationKillSwitchError,
 } from '../safety/mutation-kill-switch.js';
+import { canonicalJson } from '../util/canonical-json.js';
+import { createHash } from 'node:crypto';
 import { isAmbiguousMutationError } from './ambiguity.js';
 import {
   MoneyPathError,
@@ -30,8 +37,9 @@ export interface MoneyPathExecutorConfig {
   readonly killSwitch?: MutationKillSwitch;
   readonly ops?: MutationOpsCollector;
   /**
-   * Store durability of the injected ledger/persistence.
-   * Defaults to `ephemeral` when ledger is the default in-memory impl.
+   * Optional durability override. May only equal or be stricter-as-ephemeral
+   * relative to the ledger — never upgrade ephemeral → durable.
+   * Default: ledger.durability.
    */
   readonly storeDurability?: StoreDurability;
   /** When true, mock adapters / synthetic ticketing are in use. */
@@ -47,19 +55,43 @@ export interface MoneyPathExecutorConfig {
 }
 
 function requestHash(input: unknown): string {
-  return createHash('sha256').update(JSON.stringify(input)).digest('hex');
+  return createHash('sha256').update(canonicalJson(input)).digest('hex');
 }
 
 function mapEffectType(operation: string): MutationEffectType {
-  if (operation.includes('ticket')) return 'ticket';
-  if (operation.includes('void')) return 'void';
-  if (operation.includes('refund')) return 'refund';
-  if (operation.includes('cancel')) return 'cancel';
-  if (operation.includes('pay')) return 'pay';
-  if (operation.includes('book') || operation.includes('Booking') || operation.includes('order')) {
+  const op = operation.toLowerCase();
+  if (op.includes('ticket')) return 'ticket';
+  if (op.includes('void')) return 'void';
+  if (op.includes('refund')) return 'refund';
+  if (op.includes('cancel')) return 'cancel';
+  if (op.includes('pay')) return 'pay';
+  if (op.includes('book') || op.includes('order') || op.includes('modify')) {
     return 'book';
   }
   return 'book';
+}
+
+function effectTypeToStage(effectType: MutationEffectType): BookingFailureStage {
+  switch (effectType) {
+    case 'book':
+      return 'book';
+    case 'pay':
+      return 'pay';
+    case 'ticket':
+      return 'ticket';
+    case 'void':
+      return 'void';
+    case 'refund':
+      return 'refund';
+    case 'cancel':
+      return 'cancel';
+    case 'exchange':
+      return 'unknown';
+    default: {
+      const _exhaustive: never = effectType;
+      return _exhaustive;
+    }
+  }
 }
 
 /** Shared process kill switch — env engage at import time. */
@@ -84,12 +116,19 @@ export class MoneyPathExecutor {
   private readonly inFlight = new Map<string, Promise<MoneyPathOutcome<unknown>>>();
 
   constructor(config?: MoneyPathExecutorConfig) {
-    const usingDefaultLedger = config?.ledger === undefined;
     this.ledger = config?.ledger ?? new InMemoryEffectLedger();
     this.killSwitch = config?.killSwitch ?? processKillSwitch;
-    this.ops = config?.ops ?? new MutationOpsCollector();
-    this.storeDurability =
-      config?.storeDurability ?? (usingDefaultLedger ? 'ephemeral' : 'durable');
+    this.ops = config?.ops ?? getProcessMutationOpsCollector();
+
+    const ledgerDurability = this.ledger.durability;
+    if (config?.storeDurability === 'durable' && ledgerDurability === 'ephemeral') {
+      throw new LiveSafetyError(
+        'Cannot upgrade ephemeral EffectLedger to durable via storeDurability. ' +
+          'Use FileEffectLedger (or another store-declared durable ledger).',
+      );
+    }
+    this.storeDurability = config?.storeDurability ?? ledgerDurability;
+
     this.mockAdapters = config?.mockAdapters ?? false;
     this.liveMode = config?.liveMode ?? isLiveModeFromEnv();
     this.idFactory = config?.idFactory ?? ((): string => randomUUID());
@@ -191,6 +230,7 @@ export class MoneyPathExecutor {
 
     const hash = requestHash(params.request);
     const effectType = mapEffectType(params.operation);
+    const stage = effectTypeToStage(effectType);
 
     this.ops.recordIrreversible({
       actionId: this.idFactory(),
@@ -210,7 +250,7 @@ export class MoneyPathExecutor {
 
     if (begun.kind === 'conflict') {
       this.ops.recordFailure({
-        stage: effectType === 'cancel' ? 'cancel' : effectType === 'ticket' ? 'ticket' : 'book',
+        stage,
         code: 'IDEMPOTENCY_CONFLICT',
         supplierId: params.supplierId,
       });
@@ -255,7 +295,7 @@ export class MoneyPathExecutor {
       if (isAmbiguousMutationError(error)) {
         await this.ledger.resolve(params.idempotencyKey, 'unknown');
         this.ops.recordFailure({
-          stage: effectType === 'cancel' ? 'cancel' : effectType === 'ticket' ? 'ticket' : 'book',
+          stage,
           code: 'OUTCOME_UNKNOWN',
           supplierId: params.supplierId,
         });
@@ -268,7 +308,7 @@ export class MoneyPathExecutor {
       }
       await this.ledger.resolve(params.idempotencyKey, 'failed');
       this.ops.recordFailure({
-        stage: effectType === 'cancel' ? 'cancel' : effectType === 'ticket' ? 'ticket' : 'book',
+        stage,
         code: 'MUTATION_FAILED',
         supplierId: params.supplierId,
       });

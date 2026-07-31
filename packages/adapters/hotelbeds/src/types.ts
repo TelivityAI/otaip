@@ -13,6 +13,8 @@
  * inventing behavior.
  */
 
+import type { MoneyPathExecutorConfig, StoreDurability } from '@otaip/core';
+
 // ---------------------------------------------------------------------------
 // Adapter configuration
 // ---------------------------------------------------------------------------
@@ -25,8 +27,16 @@ export interface HotelbedsAdapterConfig {
   environment?: HotelbedsEnvironment;
   /** Override the resolved base URL (useful for local mocks). */
   baseUrl?: string;
-  /** Per-request timeout in ms (passed to fetchWithRetry). */
+  /** Per-request timeout in ms (passed to fetchWithRetry / fetchOnce). */
   timeoutMs?: number;
+  /** Money-path executor options (ledger, kill switch, ops). */
+  moneyPath?: MoneyPathExecutorConfig;
+  storeDurability?: StoreDurability;
+  /**
+   * Override live detection. Production environment / production base URL
+   * always forces live — cannot be overridden off.
+   */
+  liveMode?: boolean;
 }
 
 export const HOTELBEDS_BASE_URLS: Record<HotelbedsEnvironment, string> = {

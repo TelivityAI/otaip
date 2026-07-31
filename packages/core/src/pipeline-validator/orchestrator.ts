@@ -26,7 +26,7 @@ import {
 } from './action-classifier.js';
 import type { MutationKillSwitch } from '../safety/mutation-kill-switch.js';
 import { getProcessMutationKillSwitch } from '../money-path/money-path-executor.js';
-import { isLiveModeFromEnv } from '../safety/live-safety-mode.js';
+import { isLiveModeFromEnv, LiveSafetyError } from '../safety/live-safety-mode.js';
 import {
   InMemoryBoundApprovalTokenStore,
   consumeBoundApprovalToken,
@@ -185,15 +185,23 @@ export class PipelineOrchestrator {
         );
       }
     }
+    const liveMode = config.liveMode ?? isLiveModeFromEnv();
+    const approvalTokenStore =
+      config.approvalTokenStore ?? new InMemoryBoundApprovalTokenStore();
+    if (liveMode && approvalTokenStore.durability === 'ephemeral') {
+      throw new LiveSafetyError(
+        'Live mode refuses ephemeral BoundApprovalTokenStore. ' +
+          'Inject CasBoundApprovalTokenStore backed by a durable CompareAndSwapPersistenceAdapter.',
+      );
+    }
     this.config = {
       ...config,
       reference: config.reference,
       contracts: config.contracts,
       agents: config.agents,
       killSwitch: config.killSwitch ?? getProcessMutationKillSwitch(),
-      approvalTokenStore:
-        config.approvalTokenStore ?? new InMemoryBoundApprovalTokenStore(),
-      liveMode: config.liveMode ?? isLiveModeFromEnv(),
+      approvalTokenStore,
+      liveMode,
       approvalSecret:
         config.approvalSecret ?? process.env['OTAIP_APPROVAL_SECRET'],
     };

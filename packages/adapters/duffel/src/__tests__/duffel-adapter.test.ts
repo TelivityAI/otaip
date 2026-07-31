@@ -122,7 +122,7 @@ describe('DuffelAdapter constructor', () => {
   });
 
   it('creates adapter with valid key', () => {
-    const adapter = new DuffelAdapter('duffel_test_abc123');
+    const adapter = new DuffelAdapter({ apiKey: 'duffel_test_abc123', baseUrl: 'https://api.test.duffel.local', liveMode: false });
     expect(adapter.name).toBe('duffel');
   });
 });
@@ -134,7 +134,7 @@ describe('DuffelAdapter constructor', () => {
 describe('DuffelAdapter search', () => {
   let adapter: DuffelAdapter;
   beforeEach(() => {
-    adapter = new DuffelAdapter('duffel_test_key');
+    adapter = new DuffelAdapter({ apiKey: 'duffel_test_key', baseUrl: 'https://api.test.duffel.local', liveMode: false });
   });
 
   it('returns mapped offers from API response', async () => {
@@ -259,7 +259,7 @@ describe('DuffelAdapter search', () => {
 describe('DuffelAdapter price', () => {
   let adapter: DuffelAdapter;
   beforeEach(() => {
-    adapter = new DuffelAdapter('duffel_test_key');
+    adapter = new DuffelAdapter({ apiKey: 'duffel_test_key', baseUrl: 'https://api.test.duffel.local', liveMode: false });
   });
 
   it('returns priced offer', async () => {
@@ -295,19 +295,19 @@ describe('DuffelAdapter price', () => {
 describe('DuffelAdapter isAvailable', () => {
   it('returns true when API responds 200', async () => {
     mockFetchResponse(200, { data: [] });
-    const adapter = new DuffelAdapter('duffel_test_key');
+    const adapter = new DuffelAdapter({ apiKey: 'duffel_test_key', baseUrl: 'https://api.test.duffel.local', liveMode: false });
     expect(await adapter.isAvailable()).toBe(true);
   });
 
   it('returns false on network failure', async () => {
     mockFetchNetworkError('ECONNREFUSED');
-    const adapter = new DuffelAdapter('duffel_test_key');
+    const adapter = new DuffelAdapter({ apiKey: 'duffel_test_key', baseUrl: 'https://api.test.duffel.local', liveMode: false });
     expect(await adapter.isAvailable()).toBe(false);
   });
 
   it('returns false on 401', async () => {
     mockFetchResponse(401, { errors: [{ message: 'Invalid token' }] });
-    const adapter = new DuffelAdapter('duffel_test_key');
+    const adapter = new DuffelAdapter({ apiKey: 'duffel_test_key', baseUrl: 'https://api.test.duffel.local', liveMode: false });
     expect(await adapter.isAvailable()).toBe(false);
   });
 });
@@ -319,7 +319,7 @@ describe('DuffelAdapter isAvailable', () => {
 describe('DuffelAdapter error handling', () => {
   let adapter: DuffelAdapter;
   beforeEach(() => {
-    adapter = new DuffelAdapter('duffel_test_key');
+    adapter = new DuffelAdapter({ apiKey: 'duffel_test_key', baseUrl: 'https://api.test.duffel.local', liveMode: false });
   });
 
   it('throws on network failure with clear message', async () => {
@@ -512,7 +512,7 @@ describe('mapOrderToBookResponse', () => {
 describe('DuffelAdapter getOrder', () => {
   it('GETs /air/orders/{id} and returns enriched BookResponse', async () => {
     mockFetchResponse(200, { data: SAMPLE_ORDER });
-    const adapter = new DuffelAdapter('duffel_test_key');
+    const adapter = new DuffelAdapter({ apiKey: 'duffel_test_key', baseUrl: 'https://api.test.duffel.local', liveMode: false });
 
     const result = await adapter.getOrder('ord_00009hthhsUZ8W4LxQgkjo');
 
@@ -529,7 +529,7 @@ describe('DuffelAdapter getOrder', () => {
 
   it('throws when order payload is missing', async () => {
     mockFetchResponse(200, { data: null });
-    const adapter = new DuffelAdapter('duffel_test_key');
+    const adapter = new DuffelAdapter({ apiKey: 'duffel_test_key', baseUrl: 'https://api.test.duffel.local', liveMode: false });
     await expect(adapter.getOrder('ord_missing')).rejects.toThrow('not found');
   });
 });
@@ -562,7 +562,7 @@ describe('DuffelAdapter book', () => {
         }),
     );
 
-    const adapter = new DuffelAdapter('duffel_test_key');
+    const adapter = new DuffelAdapter({ apiKey: 'duffel_test_key', baseUrl: 'https://api.test.duffel.local', liveMode: false });
     const result = await adapter.book({
       offer_id: 'off_test_123',
       passengers: [

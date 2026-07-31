@@ -29,6 +29,7 @@ function deepEqual(a: unknown, b: unknown): boolean {
  * (see LiveSafetyMode).
  */
 export class InMemoryPersistenceAdapter implements CompareAndSwapPersistenceAdapter {
+  readonly durability = 'ephemeral' as const;
   private readonly store = new Map<string, StoredEntry<unknown>>();
 
   async get<T>(key: string): Promise<T | null> {

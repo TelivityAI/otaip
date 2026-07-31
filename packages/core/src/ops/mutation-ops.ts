@@ -33,27 +33,50 @@ export interface IrreversibleAuditEntry {
   readonly at: string;
 }
 
+export type MutationOpsSubscriber = (signal: {
+  readonly kind: 'failure' | 'irreversible';
+  readonly payload: BookingFailureSignal | IrreversibleAuditEntry;
+}) => void;
+
 export class MutationOpsCollector {
   private readonly failures: BookingFailureSignal[] = [];
   private readonly audits: IrreversibleAuditEntry[] = [];
+  private readonly subscribers: MutationOpsSubscriber[] = [];
   private readonly now: () => Date;
 
   constructor(now: () => Date = () => new Date()) {
     this.now = now;
   }
 
+  /** Optional subscribe hook — no fake external APM. */
+  subscribe(subscriber: MutationOpsSubscriber): () => void {
+    this.subscribers.push(subscriber);
+    return () => {
+      const idx = this.subscribers.indexOf(subscriber);
+      if (idx >= 0) this.subscribers.splice(idx, 1);
+    };
+  }
+
   recordFailure(signal: Omit<BookingFailureSignal, 'at'> & { at?: string }): void {
-    this.failures.push({
+    const entry: BookingFailureSignal = {
       ...signal,
       at: signal.at ?? this.now().toISOString(),
-    });
+    };
+    this.failures.push(entry);
+    for (const sub of this.subscribers) {
+      sub({ kind: 'failure', payload: entry });
+    }
   }
 
   recordIrreversible(entry: Omit<IrreversibleAuditEntry, 'at'> & { at?: string }): void {
-    this.audits.push({
+    const audit: IrreversibleAuditEntry = {
       ...entry,
       at: entry.at ?? this.now().toISOString(),
-    });
+    };
+    this.audits.push(audit);
+    for (const sub of this.subscribers) {
+      sub({ kind: 'irreversible', payload: audit });
+    }
   }
 
   failuresByStage(): ReadonlyMap<BookingFailureStage, number> {
@@ -71,4 +94,11 @@ export class MutationOpsCollector {
   listAudits(): readonly IrreversibleAuditEntry[] {
     return this.audits;
   }
+}
+
+/** Process-global ops collector — mirror of process kill switch. */
+const processOpsCollector = new MutationOpsCollector();
+
+export function getProcessMutationOpsCollector(): MutationOpsCollector {
+  return processOpsCollector;
 }

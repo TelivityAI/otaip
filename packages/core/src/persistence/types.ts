@@ -9,7 +9,15 @@
  * multi-instance idempotency.
  */
 
+import type { StoreDurability } from '../safety/live-safety-mode.js';
+
 export interface PersistenceAdapter {
+  /**
+   * Store-declared durability. Never self-asserted by callers —
+   * live money paths read this from the concrete store.
+   */
+  readonly durability: StoreDurability;
+
   /** Retrieve a value by key. Returns null if not found or expired. */
   get<T>(key: string): Promise<T | null>;
 

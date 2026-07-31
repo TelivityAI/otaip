@@ -7,23 +7,20 @@
  *   - The full Hotels lifecycle (availability, checkrate, book, retrieve,
  *     cancel) as direct methods on this class.
  *
- * Endpoints used:
- *   POST   /hotel-api/1.0/availability
- *   POST   /hotel-api/1.0/checkrates
- *   POST   /hotel-api/1.0/bookings
- *   GET    /hotel-api/1.0/bookings/{ref}
- *   GET    /hotel-api/1.0/bookings
- *   DELETE /hotel-api/1.0/bookings/{ref}?cancellationFlag={SIMULATION|CANCELLATION}
- *   GET    /hotel-api/1.0/status                 (health)
- *
- * Retry policy is delegated to `fetchWithRetry`, which retries 5xx, 429,
- * and network errors. 4xx other than 429 is surfaced as an error.
- *
- * Hotelbeds test sandbox is rate-limited to 50 requests/day. The adapter
- * does NOT enforce that client-side; callers are expected to throttle.
+ * Unsafe mutations (book POST, hard-cancel DELETE) use fetchOnce + MoneyPathExecutor.
+ * Safe reads/search/checkrate/simulation cancel keep fetchWithRetry.
  */
 
-import { fetchWithRetry } from '@otaip/core';
+import {
+  CircuitBreaker,
+  CircuitOpenError,
+  fetchOnce,
+  fetchWithRetry,
+  isLiveModeFromEnv,
+  MoneyPathError,
+  MoneyPathExecutor,
+  RateLimiter,
+} from '@otaip/core';
 import type { RawHotelResult } from '@otaip/agents-lodging';
 
 import { buildAuthHeaders, type HotelbedsCredentials } from './auth.js';
@@ -31,12 +28,10 @@ import { mapHotelToRawResult, summarizeBooking, type BookingSummary } from './fi
 import {
   mapActivityAvailability,
   mapActivityBookingResponse,
-  mapActivityCancellation,
 } from './activities-mapper.js';
 import {
   mapTransferAvailability,
   mapTransferBookingResponse,
-  mapTransferCancellation,
 } from './transfers-mapper.js';
 import type {
   HotelbedsAdapterConfig,
@@ -63,14 +58,12 @@ import type {
   HotelbedsActivitiesAvailabilityResponse,
   HotelbedsActivitiesBookingRequest,
   HotelbedsActivitiesBookingResponse,
-  HotelbedsActivitiesCancellationResponse,
 } from './activities-types.js';
 import type {
   HotelbedsTransfersAvailabilityRequest,
   HotelbedsTransfersAvailabilityResponse,
   HotelbedsTransfersBookingRequest,
   HotelbedsTransfersBookingResponse,
-  HotelbedsTransfersCancellationResponse,
   TransferBookRequest,
   TransferBookResponse,
   TransferCancelResponse,
@@ -93,13 +86,41 @@ interface RequestOptions {
   signal?: AbortSignal;
 }
 
-/**
- * The `HotelSourceAdapter` interface lives in `@otaip/agents-lodging`. We
- * re-state it locally to keep this package's dependency surface narrow and
- * avoid a circular import — the lodging package is allowed to depend on
- * adapters in future iterations.
- */
 export type { HotelSearchParams, HotelSourceAdapter } from './lodging-source-interface.js';
+
+export interface HotelbedsBookOptions {
+  /** Required in live mode — same key → at most one supplier book. */
+  idempotencyKey?: string;
+}
+
+function isUnsafeHotelbedsPath(method: string, path: string): boolean {
+  const upper = method.toUpperCase();
+  const pathOnly = path.split('?')[0] ?? path;
+
+  if (upper === 'POST') {
+    if (pathOnly === `${HOTELS_BASE_PATH}/bookings`) return true;
+    if (pathOnly === `${ACTIVITIES_BASE_PATH}/activities/booking`) return true;
+    if (pathOnly === `${TRANSFERS_BASE_PATH}/bookings`) return true;
+  }
+  if (upper === 'DELETE') {
+    // Hard hotel cancel only — SIMULATION may retry
+    if (
+      pathOnly.startsWith(`${HOTELS_BASE_PATH}/bookings/`) &&
+      path.includes('cancellationFlag=CANCELLATION')
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function resolveLiveMode(config: HotelbedsAdapterConfig, environment: HotelbedsEnvironment, baseUrl: string): boolean {
+  const productionUrl = HOTELBEDS_BASE_URLS.production;
+  const forcedLive =
+    environment === 'production' || baseUrl === productionUrl || baseUrl.startsWith(`${productionUrl}/`);
+  if (forcedLive) return true;
+  return config.liveMode ?? isLiveModeFromEnv();
+}
 
 export class HotelbedsAdapter implements HotelSourceAdapter {
   readonly adapterId = 'hotelbeds';
@@ -109,6 +130,10 @@ export class HotelbedsAdapter implements HotelSourceAdapter {
   private readonly baseUrl: string;
   private readonly environment: HotelbedsEnvironment;
   private readonly timeoutMs: number | undefined;
+  private readonly rateLimiter: RateLimiter;
+  private readonly circuitBreaker: CircuitBreaker;
+  private readonly moneyPath: MoneyPathExecutor;
+  private readonly liveMode: boolean;
 
   constructor(config: HotelbedsAdapterConfig = {}) {
     const apiKey = config.apiKey ?? process.env['HOTELBEDS_API_KEY'] ?? '';
@@ -125,28 +150,43 @@ export class HotelbedsAdapter implements HotelSourceAdapter {
       );
     }
 
-    const envFromArgsOrEnv = config.environment ?? (process.env['HOTELBEDS_ENV'] as HotelbedsEnvironment | undefined);
+    const envFromArgsOrEnv =
+      config.environment ?? (process.env['HOTELBEDS_ENV'] as HotelbedsEnvironment | undefined);
     this.environment = envFromArgsOrEnv === 'production' ? 'production' : 'test';
     this.baseUrl = config.baseUrl ?? HOTELBEDS_BASE_URLS[this.environment];
     this.credentials = { apiKey, secret };
     this.timeoutMs = config.timeoutMs;
+    this.liveMode = resolveLiveMode(config, this.environment, this.baseUrl);
+
+    this.rateLimiter = new RateLimiter({ maxRequests: 50, windowMs: 1_000 });
+    this.circuitBreaker = new CircuitBreaker({
+      name: 'hotelbeds',
+      failureThreshold: 5,
+      resetMs: 30_000,
+    });
+
+    this.moneyPath = new MoneyPathExecutor({
+      reconcileHint: 'getBookingStatus',
+      ...config.moneyPath,
+      liveMode: this.liveMode,
+      ...(config.storeDurability !== undefined
+        ? { storeDurability: config.storeDurability }
+        : {}),
+    });
+  }
+
+  get moneyPathExecutor(): MoneyPathExecutor {
+    return this.moneyPath;
+  }
+
+  getCircuitBreakerStatus(): ReturnType<CircuitBreaker['getStatus']> {
+    return this.circuitBreaker.getStatus();
   }
 
   // -------------------------------------------------------------------------
   // HotelSourceAdapter — search bridge
   // -------------------------------------------------------------------------
 
-  /**
-   * Adapts the search-aggregator's `HotelSearchParams` to a Hotelbeds
-   * availability request and maps the response back to `RawHotelResult[]`.
-   *
-   * Destination handling: Hotelbeds expects a destination *code* (its own
-   * 3-letter identifier). When the caller hands us anything else we pass
-   * it through verbatim — Hotelbeds returns an empty result set rather
-   * than a 4xx for unknown codes. Resolving free-text destinations to
-   * Hotelbeds destination codes is the search-aggregator's job, not the
-   * adapter's.
-   */
   async searchHotels(params: HotelSearchParams): Promise<RawHotelResult[]> {
     const start = Date.now();
     const occupancies = [
@@ -176,11 +216,6 @@ export class HotelbedsAdapter implements HotelSourceAdapter {
     );
   }
 
-  /**
-   * Implementation of `HotelSourceAdapter.isAvailable`. Hits the Hotelbeds
-   * `/status` endpoint, which is small and cheap (counts toward the
-   * sandbox 50/day quota — call sparingly).
-   */
   async isAvailable(): Promise<boolean> {
     try {
       await this.request('GET', `${HOTELS_BASE_PATH}/status`);
@@ -210,12 +245,33 @@ export class HotelbedsAdapter implements HotelSourceAdapter {
     )) as HotelbedsCheckRateResponse;
   }
 
-  async book(request: HotelbedsBookingRequest): Promise<HotelbedsBookingResponse> {
-    return (await this.request(
-      'POST',
-      `${HOTELS_BASE_PATH}/bookings`,
-      request,
-    )) as HotelbedsBookingResponse;
+  async book(
+    request: HotelbedsBookingRequest,
+    options?: HotelbedsBookOptions,
+  ): Promise<HotelbedsBookingResponse> {
+    const key = options?.idempotencyKey?.trim();
+    if (this.liveMode && !key) {
+      throw new MoneyPathError(
+        'HotelbedsAdapter.book requires idempotencyKey in live mode (DoD 1/2)',
+      );
+    }
+    const idempotencyKey = key ?? `hotelbeds-book:${request.clientReference ?? 'noref'}`;
+
+    return this.moneyPath.executeUnsafeOrThrow({
+      operation: 'book',
+      idempotencyKey,
+      request: {
+        clientReference: request.clientReference,
+        holder: request.holder,
+      },
+      supplierId: 'hotelbeds',
+      fn: () =>
+        this.request(
+          'POST',
+          `${HOTELS_BASE_PATH}/bookings`,
+          request,
+        ) as Promise<HotelbedsBookingResponse>,
+    });
   }
 
   async getBooking(reference: string): Promise<HotelbedsBookingResponse> {
@@ -245,26 +301,38 @@ export class HotelbedsAdapter implements HotelSourceAdapter {
    *   1. Call with `flag = 'SIMULATION'` to preview the penalty.
    *   2. Call with `flag = 'CANCELLATION'` to actually cancel.
    *
-   * Callers (the hotel-modification agent) are responsible for the
-   * simulate-then-confirm flow.
+   * Hard cancel (CANCELLATION) goes through MoneyPathExecutor + fetchOnce.
    */
   async cancelBooking(
     reference: string,
     flag: HotelbedsCancellationFlag = 'SIMULATION',
+    options?: HotelbedsBookOptions,
   ): Promise<HotelbedsCancellationResponse> {
-    return (await this.request(
-      'DELETE',
-      `${HOTELS_BASE_PATH}/bookings/${encodeURIComponent(reference)}?cancellationFlag=${flag}`,
-    )) as HotelbedsCancellationResponse;
+    const path = `${HOTELS_BASE_PATH}/bookings/${encodeURIComponent(reference)}?cancellationFlag=${flag}`;
+
+    if (flag !== 'CANCELLATION') {
+      return (await this.request('DELETE', path)) as HotelbedsCancellationResponse;
+    }
+
+    const key = options?.idempotencyKey?.trim();
+    if (this.liveMode && !key) {
+      throw new MoneyPathError(
+        'HotelbedsAdapter.cancelBooking (CANCELLATION) requires idempotencyKey in live mode (DoD 1/2)',
+      );
+    }
+    const idempotencyKey = key ?? `hotelbeds-cancel:${reference}`;
+
+    return this.moneyPath.executeUnsafeOrThrow({
+      operation: 'cancelBooking',
+      idempotencyKey,
+      request: { reference, flag },
+      supplierId: 'hotelbeds',
+      fn: () => this.request('DELETE', path) as Promise<HotelbedsCancellationResponse>,
+    });
   }
 
   // -------------------------------------------------------------------------
   // Activities API — search / book / cancel
-  //
-  // Endpoints under /activity-api/3.0. Auth and retry policy are inherited
-  // from the shared `request()` helper. See
-  // `docs/knowledge-base/activities.md` for the authoritative domain input
-  // and outstanding DOMAIN_QUESTIONs.
   // -------------------------------------------------------------------------
 
   async searchActivities(request: ActivitySearchRequest): Promise<ActivityOffer[]> {
@@ -290,6 +358,14 @@ export class HotelbedsAdapter implements HotelSourceAdapter {
   }
 
   async bookActivity(request: ActivityBookRequest): Promise<ActivityBookResponse> {
+    const key = request.idempotencyKey?.trim();
+    if (this.liveMode && !key) {
+      throw new MoneyPathError(
+        'HotelbedsAdapter.bookActivity requires idempotencyKey in live mode (DoD 1/2)',
+      );
+    }
+    const idempotencyKey = key ?? `hotelbeds-activity-book:${request.clientReference}`;
+
     const body: HotelbedsActivitiesBookingRequest = {
       activities: [
         {
@@ -302,36 +378,42 @@ export class HotelbedsAdapter implements HotelSourceAdapter {
       holder: request.holder,
       clientReference: request.clientReference,
     };
-    const response = (await this.request(
-      'POST',
-      `${ACTIVITIES_BASE_PATH}/activities/booking`,
-      body,
-      request.signal ? { signal: request.signal } : {},
-    )) as HotelbedsActivitiesBookingResponse;
-    return mapActivityBookingResponse(response);
+
+    return this.moneyPath.executeUnsafeOrThrow({
+      operation: 'bookActivity',
+      idempotencyKey,
+      request: {
+        activityCode: request.activityCode,
+        modalityCode: request.modalityCode,
+        clientReference: request.clientReference,
+      },
+      supplierId: 'hotelbeds',
+      fn: async () => {
+        const response = (await this.request(
+          'POST',
+          `${ACTIVITIES_BASE_PATH}/activities/booking`,
+          body,
+          request.signal ? { signal: request.signal } : {},
+        )) as HotelbedsActivitiesBookingResponse;
+        return mapActivityBookingResponse(response);
+      },
+    });
   }
 
   /**
-   * Cancel an activity booking. The HTTP shape (DELETE vs POST,
-   * SIMULATION/CANCELLATION two-step) is not fully documented for
-   * Activities — see DQ-A1 in the KB. The adapter assumes
-   * `DELETE /activity-api/3.0/activities/booking/{ref}`. Update once
-   * verified against the live sandbox.
+   * Activity cancel HTTP contract is not fully documented.
+   * // TODO: DOMAIN_QUESTION: What is the authoritative Hotelbeds Activities
+   * // cancel HTTP shape (method, path, SIMULATION/CANCELLATION flags)?
+   * Fail closed — do not invent the wire call.
    */
-  async cancelActivity(bookingReference: string): Promise<ActivityCancelResponse> {
-    const response = (await this.request(
-      'DELETE',
-      `${ACTIVITIES_BASE_PATH}/activities/booking/${encodeURIComponent(bookingReference)}`,
-    )) as HotelbedsActivitiesCancellationResponse;
-    return mapActivityCancellation(response);
+  async cancelActivity(_bookingReference: string): Promise<ActivityCancelResponse> {
+    throw new MoneyPathError(
+      'Hotelbeds activity cancel is not wired — activity cancel HTTP contract undocumented (DOMAIN_QUESTION). Refusing rather than inventing.',
+    );
   }
 
   // -------------------------------------------------------------------------
   // Transfers API — search / book / cancel
-  //
-  // Endpoints under /transfer-api/1.0. See
-  // `docs/knowledge-base/transfers.md` for outstanding DOMAIN_QUESTIONs
-  // (location code formats, timezone semantics, vehicle taxonomy).
   // -------------------------------------------------------------------------
 
   async searchTransfers(request: TransferSearchRequest): Promise<TransferOffer[]> {
@@ -353,37 +435,57 @@ export class HotelbedsAdapter implements HotelSourceAdapter {
   }
 
   async bookTransfer(request: TransferBookRequest): Promise<TransferBookResponse> {
+    const key = request.idempotencyKey?.trim();
+    if (this.liveMode && !key) {
+      throw new MoneyPathError(
+        'HotelbedsAdapter.bookTransfer requires idempotencyKey in live mode (DoD 1/2)',
+      );
+    }
+    const idempotencyKey = key ?? `hotelbeds-transfer-book:${request.clientReference}`;
+
     const body: HotelbedsTransfersBookingRequest = {
       transferCode: request.transferCode,
       holder: request.holder,
       passengers: request.passengers,
       clientReference: request.clientReference,
     };
-    const response = (await this.request(
-      'POST',
-      `${TRANSFERS_BASE_PATH}/bookings`,
-      body,
-      request.signal ? { signal: request.signal } : {},
-    )) as HotelbedsTransfersBookingResponse;
-    return mapTransferBookingResponse(response);
+
+    return this.moneyPath.executeUnsafeOrThrow({
+      operation: 'bookTransfer',
+      idempotencyKey,
+      request: {
+        transferCode: request.transferCode,
+        clientReference: request.clientReference,
+      },
+      supplierId: 'hotelbeds',
+      fn: async () => {
+        const response = (await this.request(
+          'POST',
+          `${TRANSFERS_BASE_PATH}/bookings`,
+          body,
+          request.signal ? { signal: request.signal } : {},
+        )) as HotelbedsTransfersBookingResponse;
+        return mapTransferBookingResponse(response);
+      },
+    });
   }
 
   /**
-   * Cancel a transfer booking. Same caveat as `cancelActivity` — DQ-T1.
+   * Transfer cancel HTTP contract is not fully documented.
+   * // TODO: DOMAIN_QUESTION: What is the authoritative Hotelbeds Transfers
+   * // cancel HTTP shape (method, path, flags)?
+   * Fail closed — do not invent the wire call.
    */
-  async cancelTransfer(bookingReference: string): Promise<TransferCancelResponse> {
-    const response = (await this.request(
-      'DELETE',
-      `${TRANSFERS_BASE_PATH}/bookings/${encodeURIComponent(bookingReference)}`,
-    )) as HotelbedsTransfersCancellationResponse;
-    return mapTransferCancellation(response);
+  async cancelTransfer(_bookingReference: string): Promise<TransferCancelResponse> {
+    throw new MoneyPathError(
+      'Hotelbeds transfer cancel is not wired — transfer cancel HTTP contract undocumented (DOMAIN_QUESTION). Refusing rather than inventing.',
+    );
   }
 
   // -------------------------------------------------------------------------
   // Convenience helpers — mapped output
   // -------------------------------------------------------------------------
 
-  /** Run availability + map every hotel to OTAIP `RawHotelResult`. */
   async availabilityRawResults(
     request: HotelbedsAvailabilityRequest,
   ): Promise<RawHotelResult[]> {
@@ -400,9 +502,11 @@ export class HotelbedsAdapter implements HotelSourceAdapter {
     );
   }
 
-  /** Run book + return the OTAIP-friendly summary or null if Hotelbeds returned no booking. */
-  async bookSummary(request: HotelbedsBookingRequest): Promise<BookingSummary | null> {
-    const response = await this.book(request);
+  async bookSummary(
+    request: HotelbedsBookingRequest,
+    options?: HotelbedsBookOptions,
+  ): Promise<BookingSummary | null> {
+    const response = await this.book(request, options);
     if (!response.booking) return null;
     return summarizeBooking(response.booking);
   }
@@ -420,6 +524,17 @@ export class HotelbedsAdapter implements HotelSourceAdapter {
     if (options.signal?.aborted) {
       throw new Error('Hotelbeds API request aborted before dispatch');
     }
+
+    try {
+      this.circuitBreaker.assertClosed();
+    } catch (err) {
+      if (err instanceof CircuitOpenError) {
+        throw new Error(`Hotelbeds API circuit open: ${err.message}`);
+      }
+      throw err;
+    }
+    await this.rateLimiter.acquire();
+
     const url = `${this.baseUrl}${path}`;
     const headers: Record<string, string> = {
       ...buildAuthHeaders(this.credentials),
@@ -428,18 +543,21 @@ export class HotelbedsAdapter implements HotelSourceAdapter {
       headers['Content-Type'] = 'application/json';
     }
 
+    const unsafe = isUnsafeHotelbedsPath(method, path);
+    const init: RequestInit = {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    };
+    const fetchOpts = this.timeoutMs !== undefined ? { timeoutMs: this.timeoutMs } : {};
+
     let response: Response;
     try {
-      response = await fetchWithRetry(
-        url,
-        {
-          method,
-          headers,
-          body: body ? JSON.stringify(body) : undefined,
-        },
-        this.timeoutMs !== undefined ? { timeoutMs: this.timeoutMs } : {},
-      );
+      response = unsafe
+        ? await fetchOnce(url, init, fetchOpts)
+        : await fetchWithRetry(url, init, fetchOpts);
     } catch (err: unknown) {
+      this.circuitBreaker.recordFailure();
       const message = err instanceof Error ? err.message : 'Unknown network error';
       throw new Error(`Hotelbeds API network error: ${message}`);
     }
@@ -453,6 +571,10 @@ export class HotelbedsAdapter implements HotelSourceAdapter {
         // ignore parse errors — Hotelbeds occasionally returns text/html on 5xx
       }
 
+      if (response.status === 429 || response.status >= 500) {
+        this.circuitBreaker.recordFailure();
+      }
+
       if (response.status === 429) {
         throw new Error(`Hotelbeds API rate limited (429). ${detail}`.trim());
       }
@@ -461,6 +583,8 @@ export class HotelbedsAdapter implements HotelSourceAdapter {
         `Hotelbeds API error ${response.status}: ${detail || response.statusText}`.trim(),
       );
     }
+
+    this.circuitBreaker.recordSuccess();
 
     // 204 No Content — uncommon but the spec allows it for some empty results.
     if (response.status === 204) return {};

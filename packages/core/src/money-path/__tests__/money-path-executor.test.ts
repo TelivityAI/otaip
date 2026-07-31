@@ -1,12 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { InMemoryEffectLedger } from '../../effect-ledger/in-memory-effect-ledger.js';
-import { FileCompareAndSwapPersistenceAdapter } from '../../persistence/file-cas-adapter.js';
-import { MutationKillSwitch } from '../../safety/mutation-kill-switch.js';
-import { LiveSafetyError } from '../../safety/live-safety-mode.js';
-import { MoneyPathExecutor } from '../money-path-executor.js';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { FileEffectLedger } from '../../effect-ledger/file-effect-ledger.js';
+import { InMemoryEffectLedger } from '../../effect-ledger/in-memory-effect-ledger.js';
+import { MutationOpsCollector } from '../../ops/mutation-ops.js';
+import { MutationKillSwitch } from '../../safety/mutation-kill-switch.js';
+import { LiveSafetyError } from '../../safety/live-safety-mode.js';
+import { MoneyPathExecutor } from '../money-path-executor.js';
 
 describe('MoneyPathExecutor', () => {
   it('marks ambiguous 503 as unknown and does not re-invoke on replay', async () => {
@@ -38,8 +39,14 @@ describe('MoneyPathExecutor', () => {
     expect(calls).toBe(1);
   });
 
-  it('refuses live mode with ephemeral stores by default', async () => {
-    const exec = new MoneyPathExecutor({ liveMode: true });
+  it('refuses live mode with ephemeral InMemoryEffectLedger', async () => {
+    expect(
+      () => new MoneyPathExecutor({ ledger: new InMemoryEffectLedger(), liveMode: true }),
+    ).not.toThrow();
+    const exec = new MoneyPathExecutor({
+      ledger: new InMemoryEffectLedger(),
+      liveMode: true,
+    });
     await expect(
       exec.executeUnsafe({
         operation: 'book',
@@ -51,15 +58,25 @@ describe('MoneyPathExecutor', () => {
     ).rejects.toBeInstanceOf(LiveSafetyError);
   });
 
-  it('allows live mode with durable file-backed ledger', async () => {
+  it('rejects storeDurability upgrade of ephemeral ledger', () => {
+    expect(
+      () =>
+        new MoneyPathExecutor({
+          ledger: new InMemoryEffectLedger(),
+          storeDurability: 'durable',
+          liveMode: true,
+        }),
+    ).toThrow(LiveSafetyError);
+  });
+
+  it('allows live mode with FileEffectLedger (store-declared durable)', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'otaip-mp-'));
-    const persistence = new FileCompareAndSwapPersistenceAdapter(join(dir, 'ledger.json'));
-    const ledger = new InMemoryEffectLedger({ persistence });
+    const ledger = new FileEffectLedger({ filePath: join(dir, 'ledger.json') });
     const exec = new MoneyPathExecutor({
       ledger,
-      storeDurability: 'durable',
       liveMode: true,
     });
+    expect(exec.safetyConfig.storeDurability).toBe('durable');
     const outcome = await exec.executeUnsafe({
       operation: 'book',
       idempotencyKey: 'live-ok',
@@ -86,7 +103,8 @@ describe('MoneyPathExecutor', () => {
   });
 
   it('records ops audits on mutation', async () => {
-    const exec = new MoneyPathExecutor({ liveMode: false });
+    const ops = new MutationOpsCollector();
+    const exec = new MoneyPathExecutor({ liveMode: false, ops });
     await exec.executeUnsafe({
       operation: 'book',
       idempotencyKey: 'ops-1',
@@ -94,6 +112,37 @@ describe('MoneyPathExecutor', () => {
       supplierId: 'x',
       fn: async () => ({ ok: true }),
     });
-    expect(exec.opsCollector.listAudits().length).toBe(1);
+    expect(ops.listAudits().length).toBe(1);
+  });
+
+  it('maps refund failures to refund stage', async () => {
+    const ops = new MutationOpsCollector();
+    const exec = new MoneyPathExecutor({ liveMode: false, ops });
+    await exec.executeUnsafe({
+      operation: 'refund',
+      idempotencyKey: 'refund-1',
+      request: {},
+      supplierId: 'x',
+      fn: async () => {
+        throw new Error('refund failed hard');
+      },
+    });
+    expect(ops.failuresByStage().get('refund')).toBe(1);
+  });
+
+  it('listUnresolved includes aged pending left by crash', async () => {
+    let now = new Date('2026-01-01T00:00:00.000Z');
+    const ledger = new InMemoryEffectLedger({ now: () => now });
+    await ledger.begin({
+      effectId: 'e1',
+      effectType: 'book',
+      idempotencyKey: 'crash-pending',
+      requestHash: 'abc',
+      supplierId: 'x',
+    });
+    now = new Date('2026-01-01T00:05:00.000Z');
+    const unresolved = await ledger.listUnresolved(60_000);
+    expect(unresolved.some((r) => r.idempotencyKey === 'crash-pending')).toBe(true);
+    expect(unresolved[0]?.outcome).toBe('pending');
   });
 });

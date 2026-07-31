@@ -2,16 +2,22 @@
  * Bound, single-use approval tokens for mutation_irreversible actions.
  *
  * Tokens bind to (sessionId, agentId, inputHash) and expire. Default policy
- * no longer accepts arbitrary non-empty strings.
+ * no longer accepts arbitrary non-empty strings. Signatures use createHmac.
  */
 
-import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHmac, createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import type {
   ActionType,
   SemanticIssue,
   SemanticValidationResult,
 } from '../pipeline-validator/types.js';
 import type { ApprovalPolicy } from '../pipeline-validator/action-classifier.js';
+import type { CompareAndSwapPersistenceAdapter } from '../persistence/types.js';
+import type { StoreDurability } from '../safety/live-safety-mode.js';
+import { canonicalJson } from '../util/canonical-json.js';
+
+/** Token format version — old concatenated-hash tokens are rejected. */
+const TOKEN_VERSION = 'v1';
 
 export interface BoundApprovalClaims {
   readonly sessionId: string;
@@ -24,6 +30,8 @@ export interface BoundApprovalClaims {
 }
 
 export interface BoundApprovalTokenStore {
+  /** Store-declared durability for live-mode refusal of ephemeral stores. */
+  readonly durability: StoreDurability;
   /** Returns false if the jti was already consumed. */
   consume(jti: string): Promise<boolean>;
   /** Optional: check without consuming. */
@@ -31,6 +39,7 @@ export interface BoundApprovalTokenStore {
 }
 
 export class InMemoryBoundApprovalTokenStore implements BoundApprovalTokenStore {
+  readonly durability = 'ephemeral' as const;
   private readonly consumed = new Set<string>();
 
   async consume(jti: string): Promise<boolean> {
@@ -44,21 +53,49 @@ export class InMemoryBoundApprovalTokenStore implements BoundApprovalTokenStore 
   }
 }
 
+/**
+ * CAS-backed single-use jti tombstones — durable when the persistence
+ * adapter is durable (e.g. FileCompareAndSwapPersistenceAdapter).
+ */
+export class CasBoundApprovalTokenStore implements BoundApprovalTokenStore {
+  readonly durability: StoreDurability;
+  private readonly persistence: CompareAndSwapPersistenceAdapter;
+  private readonly keyPrefix: string;
+
+  constructor(
+    persistence: CompareAndSwapPersistenceAdapter,
+    options?: { keyPrefix?: string },
+  ) {
+    this.persistence = persistence;
+    this.durability = persistence.durability;
+    this.keyPrefix = options?.keyPrefix ?? 'approval-jti:';
+  }
+
+  async consume(jti: string): Promise<boolean> {
+    const key = `${this.keyPrefix}${jti}`;
+    return this.persistence.setIfAbsent(key, { consumedAt: Date.now() });
+  }
+
+  async isConsumed(jti: string): Promise<boolean> {
+    return this.persistence.has(`${this.keyPrefix}${jti}`);
+  }
+}
+
 function hmac(secret: string, payload: string): string {
-  return createHash('sha256').update(`${secret}:${payload}`).digest('hex');
+  return createHmac('sha256', secret).update(payload).digest('hex');
 }
 
 function encodeToken(claims: BoundApprovalClaims, secret: string): string {
   const body = Buffer.from(JSON.stringify(claims), 'utf8').toString('base64url');
   const sig = hmac(secret, body);
-  return `${body}.${sig}`;
+  return `${TOKEN_VERSION}.${body}.${sig}`;
 }
 
 function decodeToken(token: string, secret: string): BoundApprovalClaims | null {
   const parts = token.split('.');
-  if (parts.length !== 2) return null;
-  const [body, sig] = parts;
-  if (!body || !sig) return null;
+  if (parts.length !== 3) return null;
+  const [version, body, sig] = parts;
+  if (version !== TOKEN_VERSION || !body || !sig) return null;
   const expected = hmac(secret, body);
   const a = Buffer.from(sig);
   const b = Buffer.from(expected);
@@ -71,15 +108,17 @@ function decodeToken(token: string, secret: string): BoundApprovalClaims | null 
 }
 
 export function hashApprovalInput(input: unknown): string {
-  const json = JSON.stringify(input, (_k, v) => {
-    if (v && typeof v === 'object' && 'approvalToken' in v) {
-      const rest: Record<string, unknown> = { ...(v as Record<string, unknown>) };
-      delete rest['approvalToken'];
-      return rest;
-    }
-    return v;
-  });
-  return createHash('sha256').update(json).digest('hex');
+  const stripped = stripApprovalToken(input);
+  return createHash('sha256').update(canonicalJson(stripped)).digest('hex');
+}
+
+function stripApprovalToken(input: unknown): unknown {
+  if (input && typeof input === 'object' && !Array.isArray(input) && 'approvalToken' in input) {
+    const rest: Record<string, unknown> = { ...(input as Record<string, unknown>) };
+    delete rest['approvalToken'];
+    return rest;
+  }
+  return input;
 }
 
 export interface IssueBoundApprovalInput {

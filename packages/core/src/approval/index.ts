@@ -1,4 +1,5 @@
 export {
+  CasBoundApprovalTokenStore,
   consumeBoundApprovalToken,
   createBoundApprovalPolicy,
   hashApprovalInput,

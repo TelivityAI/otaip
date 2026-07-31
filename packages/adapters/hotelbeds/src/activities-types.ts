@@ -76,6 +76,8 @@ export interface ActivityBookRequest {
   paxes: Array<{ age: number }>;
   holder: { name: string; surname: string };
   clientReference: string;
+  /** Required in live mode for money-path idempotency. */
+  idempotencyKey?: string;
   signal?: AbortSignal;
 }
 

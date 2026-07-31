@@ -4,14 +4,17 @@
  * A thin HTTP client that calls the HAIP Connect API at /api/v1/connect/*
  * and maps responses to OTAIP-compatible hotel types.
  *
- * - Stateless: each call is independent
- * - Auto-confirm: HAIP confirms bookings immediately (no polling)
- * - Three confirmation codes: PMS confirmation + external reference
- * - No auth in HAIP v1.0.0 — Bearer header included but empty
- *
- * Extends BaseAdapter for retry, timeout, and error wrapping utilities.
+ * Unsafe mutations (create/modify/cancel) go through MoneyPathExecutor.
+ * Extends BaseAdapter for timeout and error wrapping; unsafe ops skip auto-retry.
  */
 
+import {
+  isLiveModeFromEnv,
+  MoneyPathError,
+  MoneyPathExecutor,
+  type MoneyPathExecutorConfig,
+  type StoreDurability,
+} from '@otaip/core';
 import { BaseAdapter, ConnectError } from '../../base-adapter.js';
 import type { HaipConfig } from './config.js';
 import { validateHaipConfig } from './config.js';
@@ -75,6 +78,8 @@ export interface HaipBookingParams {
   };
   externalConfirmationCode?: string;
   specialRequests?: string;
+  /** Required in live mode — same key → at most one supplier book. */
+  idempotencyKey?: string;
 }
 
 export interface HaipModifyParams {
@@ -90,11 +95,19 @@ export interface HaipModifyParams {
     phone?: string;
   };
   specialRequests?: string;
+  /** Required in live mode for money-path idempotency. */
+  idempotencyKey?: string;
 }
 
-// ---------------------------------------------------------------------------
-// Re-export mapper output types for consumers
-// ---------------------------------------------------------------------------
+export interface HaipAdapterOptions {
+  readonly moneyPath?: MoneyPathExecutorConfig;
+  readonly storeDurability?: StoreDurability;
+  /**
+   * Override live detection. Production-looking base URLs force live —
+   * cannot be overridden off.
+   */
+  readonly liveMode?: boolean;
+}
 
 export type {
   HaipHotelResult,
@@ -105,9 +118,19 @@ export type {
   HaipRawRate,
 } from './mapper.js';
 
-// ---------------------------------------------------------------------------
-// Adapter implementation
-// ---------------------------------------------------------------------------
+function resolveHaipLiveMode(
+  config: HaipConfig,
+  options?: HaipAdapterOptions,
+): boolean {
+  const base = config.baseUrl.toLowerCase();
+  const forcedLive =
+    base.includes('://api.') ||
+    base.includes('.production.') ||
+    base.endsWith('.haip.io') ||
+    (process.env['HAIP_ENV'] ?? '').toLowerCase() === 'production';
+  if (forcedLive) return true;
+  return options?.liveMode ?? isLiveModeFromEnv();
+}
 
 export class HaipAdapter extends BaseAdapter {
   protected readonly supplierId = 'haip';
@@ -115,14 +138,29 @@ export class HaipAdapter extends BaseAdapter {
   readonly adapterName = 'HAIP PMS';
 
   private readonly config: HaipConfig;
+  private readonly moneyPath: MoneyPathExecutor;
+  private readonly liveMode: boolean;
 
-  constructor(config: unknown) {
+  constructor(config: unknown, options?: HaipAdapterOptions) {
     const validated = validateHaipConfig(config);
     super({
       maxRetries: validated.maxRetries,
       baseDelayMs: validated.baseDelayMs,
     });
     this.config = validated;
+    this.liveMode = resolveHaipLiveMode(validated, options);
+    this.moneyPath = new MoneyPathExecutor({
+      reconcileHint: 'getBookingStatus',
+      ...options?.moneyPath,
+      liveMode: this.liveMode,
+      ...(options?.storeDurability !== undefined
+        ? { storeDurability: options.storeDurability }
+        : {}),
+    });
+  }
+
+  get moneyPathExecutor(): MoneyPathExecutor {
+    return this.moneyPath;
   }
 
   // -----------------------------------------------------------------------
@@ -208,24 +246,48 @@ export class HaipAdapter extends BaseAdapter {
   // -----------------------------------------------------------------------
 
   async createBooking(params: HaipBookingParams): Promise<HaipBookingResult> {
-    return this.withRetry('createBooking', async () => {
-      const body: HaipBookRequest = {
+    const key = params.idempotencyKey?.trim();
+    if (this.liveMode && !key) {
+      throw new MoneyPathError(
+        'HaipAdapter.createBooking requires idempotencyKey in live mode (DoD 1/2)',
+      );
+    }
+    const idempotencyKey =
+      key ??
+      `haip-book:${params.externalConfirmationCode ?? `${params.propertyId}:${params.checkIn}`}`;
+
+    return this.moneyPath.executeUnsafeOrThrow({
+      operation: 'createBooking',
+      idempotencyKey,
+      request: {
         propertyId: params.propertyId,
         roomTypeId: params.roomTypeId,
         rateId: params.rateId,
         checkIn: params.checkIn,
         checkOut: params.checkOut,
         rooms: params.rooms,
-        guest: params.guest,
-        externalConfirmationCode: params.externalConfirmationCode,
-        specialRequests: params.specialRequests,
-      };
-
-      const response = await this.request<HaipBookResponse>('POST', '/api/v1/connect/book', body);
-
-      // HAIP auto-confirms agent bookings — status should be 'confirmed'
-      return mapBookingResponse(response, params.externalConfirmationCode);
+      },
+      supplierId: 'haip',
+      fn: () => this.createBookingOnce(params),
     });
+  }
+
+  /** Single-attempt book — used by MoneyPathExecutor and Connect bridge. */
+  async createBookingOnce(params: HaipBookingParams): Promise<HaipBookingResult> {
+    const body: HaipBookRequest = {
+      propertyId: params.propertyId,
+      roomTypeId: params.roomTypeId,
+      rateId: params.rateId,
+      checkIn: params.checkIn,
+      checkOut: params.checkOut,
+      rooms: params.rooms,
+      guest: params.guest,
+      externalConfirmationCode: params.externalConfirmationCode,
+      specialRequests: params.specialRequests,
+    };
+
+    const response = await this.request<HaipBookResponse>('POST', '/api/v1/connect/book', body);
+    return mapBookingResponse(response, params.externalConfirmationCode);
   }
 
   async getBookingStatus(confirmationNumber: string): Promise<HaipVerificationResult> {
@@ -243,36 +305,74 @@ export class HaipAdapter extends BaseAdapter {
     confirmationNumber: string,
     changes: HaipModifyParams,
   ): Promise<HaipModificationResult> {
-    return this.withRetry('modifyBooking', async () => {
-      const body: HaipModifyRequest = {
-        checkIn: changes.checkIn,
-        checkOut: changes.checkOut,
-        rooms: changes.rooms,
-        roomTypeId: changes.roomTypeId,
-        rateId: changes.rateId,
-        guest: changes.guest,
-        specialRequests: changes.specialRequests,
-      };
-
-      const response = await this.request<HaipModifyResponse>(
-        'PATCH',
-        `/api/v1/connect/bookings/${encodeURIComponent(confirmationNumber)}`,
-        body,
+    const key = changes.idempotencyKey?.trim();
+    if (this.liveMode && !key) {
+      throw new MoneyPathError(
+        'HaipAdapter.modifyBooking requires idempotencyKey in live mode (DoD 1/2)',
       );
+    }
+    const idempotencyKey = key ?? `haip-modify:${confirmationNumber}`;
 
-      return mapModifyResponse(response);
+    return this.moneyPath.executeUnsafeOrThrow({
+      operation: 'modifyBooking',
+      idempotencyKey,
+      request: { confirmationNumber, changes },
+      supplierId: 'haip',
+      fn: () => this.modifyBookingOnce(confirmationNumber, changes),
     });
   }
 
-  async cancelBooking(confirmationNumber: string): Promise<HaipCancellationResult> {
-    return this.withRetry('cancelBooking', async () => {
-      const response = await this.request<HaipCancelResponse>(
-        'DELETE',
-        `/api/v1/connect/bookings/${encodeURIComponent(confirmationNumber)}`,
-      );
+  async modifyBookingOnce(
+    confirmationNumber: string,
+    changes: HaipModifyParams,
+  ): Promise<HaipModificationResult> {
+    const body: HaipModifyRequest = {
+      checkIn: changes.checkIn,
+      checkOut: changes.checkOut,
+      rooms: changes.rooms,
+      roomTypeId: changes.roomTypeId,
+      rateId: changes.rateId,
+      guest: changes.guest,
+      specialRequests: changes.specialRequests,
+    };
 
-      return mapCancelResponse(response);
+    const response = await this.request<HaipModifyResponse>(
+      'PATCH',
+      `/api/v1/connect/bookings/${encodeURIComponent(confirmationNumber)}`,
+      body,
+    );
+
+    return mapModifyResponse(response);
+  }
+
+  async cancelBooking(
+    confirmationNumber: string,
+    options?: { idempotencyKey?: string },
+  ): Promise<HaipCancellationResult> {
+    const key = options?.idempotencyKey?.trim();
+    if (this.liveMode && !key) {
+      throw new MoneyPathError(
+        'HaipAdapter.cancelBooking requires idempotencyKey in live mode (DoD 1/2)',
+      );
+    }
+    const idempotencyKey = key ?? `haip-cancel:${confirmationNumber}`;
+
+    return this.moneyPath.executeUnsafeOrThrow({
+      operation: 'cancelBooking',
+      idempotencyKey,
+      request: { confirmationNumber },
+      supplierId: 'haip',
+      fn: () => this.cancelBookingOnce(confirmationNumber),
     });
+  }
+
+  async cancelBookingOnce(confirmationNumber: string): Promise<HaipCancellationResult> {
+    const response = await this.request<HaipCancelResponse>(
+      'DELETE',
+      `/api/v1/connect/bookings/${encodeURIComponent(confirmationNumber)}`,
+    );
+
+    return mapCancelResponse(response);
   }
 
   // -----------------------------------------------------------------------
@@ -307,7 +407,6 @@ export class HaipAdapter extends BaseAdapter {
       Accept: 'application/json',
     };
 
-    // Auth header — empty for HAIP v1.0.0, ready for OAuth token later
     if (this.config.apiKey) {
       headers['Authorization'] = `Bearer ${this.config.apiKey}`;
     }
@@ -334,7 +433,6 @@ export class HaipAdapter extends BaseAdapter {
       );
     }
 
-    // DELETE may return 204 with no body
     if (response.status === 204) {
       return {} as T;
     }

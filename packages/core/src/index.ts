@@ -144,7 +144,7 @@ export type {
   EffectOutcome,
   EffectRecord,
 } from './effect-ledger/index.js';
-export { InMemoryEffectLedger } from './effect-ledger/index.js';
+export { FileEffectLedger, InMemoryEffectLedger } from './effect-ledger/index.js';
 
 export type { LiveSafetyModeConfig, StoreDurability } from './safety/index.js';
 export {
@@ -188,6 +188,7 @@ export type {
   IssueBoundApprovalInput,
 } from './approval/index.js';
 export {
+  CasBoundApprovalTokenStore,
   InMemoryBoundApprovalTokenStore,
   consumeBoundApprovalToken,
   createBoundApprovalPolicy,
@@ -200,8 +201,12 @@ export type {
   BookingFailureSignal,
   BookingFailureStage,
   IrreversibleAuditEntry,
+  MutationOpsSubscriber,
 } from './ops/index.js';
-export { MutationOpsCollector } from './ops/index.js';
+export {
+  getProcessMutationOpsCollector,
+  MutationOpsCollector,
+} from './ops/index.js';
 
 export type { RateLimiterConfig } from './rate-limiter/index.js';
 export { RateLimiter } from './rate-limiter/index.js';
