@@ -66,6 +66,8 @@ export interface TransferBookRequest {
   holder: { name: string; surname: string };
   passengers: Array<{ type: 'ADULT' | 'CHILD'; name: string; surname: string }>;
   clientReference: string;
+  /** Required in live mode for money-path idempotency. */
+  idempotencyKey?: string;
   signal?: AbortSignal;
 }
 

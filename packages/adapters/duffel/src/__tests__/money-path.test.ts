@@ -51,6 +51,7 @@ describe('Duffel money-path book', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     const adapter = new DuffelAdapter({
+      baseUrl: 'https://api.test.duffel.local',
       apiKey: 'duffel_test_key',
       liveMode: false,
     });
@@ -96,7 +97,9 @@ describe('Duffel money-path book', () => {
       }),
     );
 
-    const adapter = new DuffelAdapter({ apiKey: 'duffel_test_key', liveMode: false });
+    const adapter = new DuffelAdapter({
+      baseUrl: 'https://api.test.duffel.local',
+ apiKey: 'duffel_test_key', liveMode: false });
     await expect(
       adapter.book({
         offer_id: 'off_1',
@@ -117,14 +120,18 @@ describe('Duffel money-path book', () => {
   });
 
   it('requires idempotencyKey in live mode', async () => {
-    const adapter = new DuffelAdapter({ apiKey: 'duffel_test_key', liveMode: true });
+    const adapter = new DuffelAdapter({
+      baseUrl: 'https://api.test.duffel.local',
+ apiKey: 'duffel_test_key', liveMode: true });
     await expect(
       adapter.book({ offer_id: 'off_1', passengers: PASSENGERS }),
     ).rejects.toThrow(/idempotencyKey/);
   });
 
   it('flight cancel fails closed', async () => {
-    const adapter = new DuffelAdapter({ apiKey: 'duffel_test_key', liveMode: false });
+    const adapter = new DuffelAdapter({
+      baseUrl: 'https://api.test.duffel.local',
+ apiKey: 'duffel_test_key', liveMode: false });
     await expect(adapter.cancelFlightBooking('ord_1')).rejects.toThrow(/not supported/);
   });
 });

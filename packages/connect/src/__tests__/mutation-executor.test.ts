@@ -129,7 +129,7 @@ describe('MutationExecutor', () => {
 });
 
 describe('executeReversal', () => {
-  it('runs cancel through ledger', async () => {
+  it('refuses when shared executor is omitted', async () => {
     const adapter = {
       supplierId: 'test',
       cancelBooking: vi.fn(async () => ({ success: true, message: 'ok' })),
@@ -139,7 +139,39 @@ describe('executeReversal', () => {
       bookingId: 'B1',
       idempotencyKey: 'rev-1',
     });
+    expect(outcome.kind).toBe('failed');
+    expect(adapter.cancelBooking).not.toHaveBeenCalled();
+  });
+
+  it('runs cancel through shared executor ledger', async () => {
+    const adapter = {
+      supplierId: 'test',
+      cancelBooking: vi.fn(async () => ({ success: true, message: 'ok' })),
+    } as unknown as ConnectAdapter;
+    const executor = new MutationExecutor({ liveMode: false });
+    const outcome = await executeReversal(
+      adapter,
+      {
+        kind: 'cancel',
+        bookingId: 'B1',
+        idempotencyKey: 'rev-1',
+      },
+      executor,
+    );
     expect(outcome.kind).toBe('succeeded');
+    expect(adapter.cancelBooking).toHaveBeenCalledOnce();
+
+    // Idempotent across calls with same key
+    const replay = await executeReversal(
+      adapter,
+      {
+        kind: 'cancel',
+        bookingId: 'B1',
+        idempotencyKey: 'rev-1',
+      },
+      executor,
+    );
+    expect(replay.kind).toBe('succeeded');
     expect(adapter.cancelBooking).toHaveBeenCalledOnce();
   });
 
@@ -148,18 +180,27 @@ describe('executeReversal', () => {
       supplierId: 'test',
       cancelBooking: vi.fn(async () => ({ success: true, message: 'ok' })),
     } as unknown as ConnectAdapter;
-    const voidOut = await executeReversal(adapter, {
-      kind: 'void',
-      bookingId: 'B1',
-      idempotencyKey: 'void-1',
-    });
+    const executor = new MutationExecutor({ liveMode: false });
+    const voidOut = await executeReversal(
+      adapter,
+      {
+        kind: 'void',
+        bookingId: 'B1',
+        idempotencyKey: 'void-1',
+      },
+      executor,
+    );
     expect(voidOut.kind).toBe('failed');
     expect(adapter.cancelBooking).not.toHaveBeenCalled();
-    const refundOut = await executeReversal(adapter, {
-      kind: 'refund',
-      bookingId: 'B1',
-      idempotencyKey: 'refund-1',
-    });
+    const refundOut = await executeReversal(
+      adapter,
+      {
+        kind: 'refund',
+        bookingId: 'B1',
+        idempotencyKey: 'refund-1',
+      },
+      executor,
+    );
     expect(refundOut.kind).toBe('failed');
     expect(adapter.cancelBooking).not.toHaveBeenCalled();
   });

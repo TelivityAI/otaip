@@ -48,12 +48,11 @@ describe.skipIf(!HAS_CREDENTIALS)('Hotelbeds Activities — sandbox integration'
   });
 
   afterAll(async () => {
+    // Activity cancel is fail-closed pending DOMAIN_QUESTION — no adapter cleanup.
     if (bookingRef && !cancelled) {
-      try {
-        await adapter.cancelActivity(bookingRef);
-      } catch (err) {
-        console.warn(`[activities-integration] cleanup cancel failed for ${bookingRef}:`, err);
-      }
+      console.warn(
+        `[activities-integration] left sandbox booking ${bookingRef} (cancel not wired)`,
+      );
     }
   });
 
@@ -89,14 +88,9 @@ describe.skipIf(!HAS_CREDENTIALS)('Hotelbeds Activities — sandbox integration'
     bookingRef = result.bookingReference;
   });
 
-  it('cancelActivity returns a cancellation reference', async () => {
-    if (!bookingRef) {
-      console.warn('Skipping cancel: no booking reference from book step');
-      return;
-    }
-    const result = await adapter.cancelActivity(bookingRef);
-    expect(result.status).toBe('CANCELLED');
-    expect(result.cancellationReference.length).toBeGreaterThan(0);
-    cancelled = true;
+  it('cancelActivity fails closed until DOMAIN_QUESTION resolved', async () => {
+    await expect(adapter.cancelActivity(bookingRef ?? 'NOREF')).rejects.toThrow(
+      /DOMAIN_QUESTION|not wired|undocumented/i,
+    );
   });
 });

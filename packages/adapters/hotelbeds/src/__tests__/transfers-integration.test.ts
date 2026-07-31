@@ -46,12 +46,11 @@ describe.skipIf(!HAS_CREDENTIALS)('Hotelbeds Transfers — sandbox integration',
   });
 
   afterAll(async () => {
+    // Transfer cancel is fail-closed pending DOMAIN_QUESTION — no adapter cleanup.
     if (bookingRef && !cancelled) {
-      try {
-        await adapter.cancelTransfer(bookingRef);
-      } catch (err) {
-        console.warn(`[transfers-integration] cleanup cancel failed for ${bookingRef}:`, err);
-      }
+      console.warn(
+        `[transfers-integration] left sandbox booking ${bookingRef} (cancel not wired)`,
+      );
     }
   });
 
@@ -89,14 +88,9 @@ describe.skipIf(!HAS_CREDENTIALS)('Hotelbeds Transfers — sandbox integration',
     bookingRef = result.bookingReference;
   });
 
-  it('cancelTransfer returns a cancellation reference', async () => {
-    if (!bookingRef) {
-      console.warn('Skipping cancel: no booking reference from book step');
-      return;
-    }
-    const result = await adapter.cancelTransfer(bookingRef);
-    expect(result.status).toBe('CANCELLED');
-    expect(result.cancellationReference.length).toBeGreaterThan(0);
-    cancelled = true;
+  it('cancelTransfer fails closed until DOMAIN_QUESTION resolved', async () => {
+    await expect(adapter.cancelTransfer(bookingRef ?? 'NOREF')).rejects.toThrow(
+      /DOMAIN_QUESTION|not wired|undocumented/i,
+    );
   });
 });

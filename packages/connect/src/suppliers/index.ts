@@ -5,13 +5,14 @@
  * book/ticket/cancel cannot bypass the money-path executor.
  */
 
+import { isLiveModeFromEnv, LiveSafetyError, type MoneyPathExecutorConfig } from '@otaip/core';
 import type { ConnectAdapter } from '../types.js';
 import { AmadeusAdapter } from './amadeus/index.js';
 import { NavitaireAdapter } from './navitaire/index.js';
 import { SabreAdapter } from './sabre/index.js';
 import { TripProAdapter } from './trippro/index.js';
+import { HaipConnectBridge } from './haip/connect-bridge.js';
 import { guardAdapter, type GuardedConnectAdapter } from '../guarded-adapter.js';
-import type { MoneyPathExecutorConfig } from '@otaip/core';
 
 const SUPPLIER_FACTORIES: Record<string, (config: unknown) => ConnectAdapter> = {};
 
@@ -38,11 +39,17 @@ export function createAdapter(
       `Unknown supplier: ${supplierId}. Available: ${Object.keys(SUPPLIER_FACTORIES).join(', ')}`,
     );
   }
+  const liveMode = options?.liveMode ?? isLiveModeFromEnv();
+  if (options?.unguarded && liveMode) {
+    throw new LiveSafetyError(
+      'createAdapter({ unguarded: true }) is refused in live mode — money-path guard is mandatory',
+    );
+  }
   const raw = factory(config);
   if (options?.unguarded) return raw;
   const execConfig: Omit<CreateAdapterOptions, 'unguarded'> = { ...(options ?? {}) };
   delete (execConfig as { unguarded?: boolean }).unguarded;
-  return guardAdapter(raw, execConfig);
+  return guardAdapter(raw, { ...execConfig, liveMode });
 }
 
 export function listSuppliers(): string[] {
@@ -60,3 +67,6 @@ registerSupplier('navitaire', (config) => new NavitaireAdapter(config));
 
 // Auto-register Amadeus
 registerSupplier('amadeus', (config) => new AmadeusAdapter(config));
+
+// Auto-register HAIP (lodging Connect bridge → GuardedConnectAdapter by default)
+registerSupplier('haip', (config) => new HaipConnectBridge(config));

@@ -331,21 +331,9 @@ describe('HotelbedsAdapter.cancelTransfer', () => {
     adapter = new HotelbedsAdapter({ apiKey: 'test-key', secret: 'test-secret' });
   });
 
-  it('sends DELETE /bookings/{ref}', async () => {
-    const { calls } = captureFetch([{ status: 200, body: CANCELLATION_RESPONSE }]);
-    await adapter.cancelTransfer('HB-TRF-3001');
-    expect(calls[0]!.url).toBe(
-      'https://api.test.hotelbeds.com/transfer-api/1.0/bookings/HB-TRF-3001',
+  it('fails closed — transfer cancel HTTP contract undocumented (DOMAIN_QUESTION)', async () => {
+    await expect(adapter.cancelTransfer('HB-TRF-3001')).rejects.toThrow(
+      /DOMAIN_QUESTION|not wired|undocumented/i,
     );
-    expect(calls[0]!.init.method).toBe('DELETE');
-  });
-
-  it('returns the cancellation reference', async () => {
-    captureFetch([{ status: 200, body: CANCELLATION_RESPONSE }]);
-    const result = await adapter.cancelTransfer('HB-TRF-3001');
-    expect(result).toEqual({
-      status: 'CANCELLED',
-      cancellationReference: 'CXL-HB-TRF-3001',
-    });
   });
 });

@@ -26,6 +26,7 @@ function deepEqual(a: unknown, b: unknown): boolean {
 }
 
 export class FileCompareAndSwapPersistenceAdapter implements CompareAndSwapPersistenceAdapter {
+  readonly durability = 'durable' as const;
   private readonly path: string;
 
   constructor(filePath: string) {

@@ -27,8 +27,8 @@ export interface ApprovalPolicy {
   ): SemanticValidationResult;
 }
 
-/** Bound token shape: base64url_body.sha256_hex_signature */
-const BOUND_TOKEN_RE = /^[A-Za-z0-9_-]+\.[a-f0-9]{64}$/;
+/** Bound token shape: v1.base64url_body.hmac_sha256_hex_signature */
+const BOUND_TOKEN_RE = /^v1\.[A-Za-z0-9_-]+\.[a-f0-9]{64}$/;
 
 function defaultValidateApprovalToken(
   token: unknown,

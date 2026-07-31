@@ -6,6 +6,7 @@
  */
 
 import type { MutationEffectType } from '../command-store/types.js';
+import type { StoreDurability } from '../safety/live-safety-mode.js';
 
 export type EffectOutcome = 'pending' | 'succeeded' | 'failed' | 'unknown';
 
@@ -36,6 +37,12 @@ export type BeginEffectResult<TResponse = unknown> =
   | { readonly kind: 'conflict'; readonly record: EffectRecord<TResponse>; readonly reason: string };
 
 export interface EffectLedger {
+  /**
+   * Store-declared durability. MoneyPathExecutor reads this — callers cannot
+   * upgrade an ephemeral ledger to durable via config.
+   */
+  readonly durability: StoreDurability;
+
   begin<TResponse = unknown>(input: BeginEffectInput): Promise<BeginEffectResult<TResponse>>;
 
   resolve<TResponse = unknown>(
@@ -47,5 +54,12 @@ export interface EffectLedger {
 
   get<TResponse = unknown>(idempotencyKey: string): Promise<EffectRecord<TResponse> | null>;
 
+  /**
+   * List unresolved effects (outcome `unknown` or crash-left `pending`)
+   * older than the given age threshold.
+   */
+  listUnresolved(olderThanMs?: number): Promise<readonly EffectRecord[]>;
+
+  /** @deprecated Prefer {@link listUnresolved} — includes aged pending. */
   listUnknown(olderThanMs?: number): Promise<readonly EffectRecord[]>;
 }

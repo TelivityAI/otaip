@@ -1,12 +1,18 @@
 import { describe, it, expect, vi } from 'vitest';
 import { z } from 'zod';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { PipelineOrchestrator } from '../orchestrator.js';
 import type { Agent } from '../../types/agent.js';
 import type { AgentContract, ReferenceDataProvider } from '../types.js';
 import {
+  CasBoundApprovalTokenStore,
   InMemoryBoundApprovalTokenStore,
   issueBoundApprovalToken,
 } from '../../approval/bound-approval.js';
+import { FileCompareAndSwapPersistenceAdapter } from '../../persistence/file-cas-adapter.js';
+import { LiveSafetyError } from '../../safety/live-safety-mode.js';
 
 const emptyReference: ReferenceDataProvider = {
   async resolveAirport() {
@@ -19,6 +25,13 @@ const emptyReference: ReferenceDataProvider = {
     return null;
   },
 };
+
+function durableApprovalStore(): CasBoundApprovalTokenStore {
+  const dir = mkdtempSync(join(tmpdir(), 'otaip-orch-appr-'));
+  return new CasBoundApprovalTokenStore(
+    new FileCompareAndSwapPersistenceAdapter(join(dir, 'jti.json')),
+  );
+}
 
 describe('approval before execute (DoD 6)', () => {
   it('does not call execute when approval fails', async () => {
@@ -66,9 +79,22 @@ describe('approval before execute (DoD 6)', () => {
     expect(execute).not.toHaveBeenCalled();
   });
 
+  it('live mode refuses ephemeral approval token store', () => {
+    expect(
+      () =>
+        new PipelineOrchestrator({
+          reference: emptyReference,
+          contracts: new Map(),
+          agents: new Map(),
+          liveMode: true,
+          approvalTokenStore: new InMemoryBoundApprovalTokenStore(),
+        }),
+    ).toThrow(LiveSafetyError);
+  });
+
   it('live mode consumes single-use HMAC token before execute', async () => {
     const execute = vi.fn(async () => ({ data: { ok: true }, confidence: 1 }));
-    const store = new InMemoryBoundApprovalTokenStore();
+    const store = durableApprovalStore();
     const secret = 'live-secret';
     const contract: AgentContract = {
       agentId: 'irrev',
@@ -162,6 +188,7 @@ describe('approval before execute (DoD 6)', () => {
       agents: new Map([['irrev', agent]]),
       liveMode: true,
       approvalSecret: '',
+      approvalTokenStore: durableApprovalStore(),
     });
     const session = orch.createSession({
       type: 'test',

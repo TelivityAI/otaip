@@ -358,39 +358,10 @@ describe('HotelbedsAdapter.cancelActivity', () => {
     adapter = new HotelbedsAdapter({ apiKey: 'test-key', secret: 'test-secret' });
   });
 
-  it('sends DELETE /activities/booking/{ref}', async () => {
-    const { calls } = captureFetch([{ status: 200, body: CANCELLATION_RESPONSE }]);
-    await adapter.cancelActivity('HB-ACT-9001');
-    expect(calls[0]!.url).toBe(
-      'https://api.test.hotelbeds.com/activity-api/3.0/activities/booking/HB-ACT-9001',
+  it('fails closed — activity cancel HTTP contract undocumented (DOMAIN_QUESTION)', async () => {
+    await expect(adapter.cancelActivity('HB-ACT-9001')).rejects.toThrow(
+      /DOMAIN_QUESTION|not wired|undocumented/i,
     );
-    expect(calls[0]!.init.method).toBe('DELETE');
-  });
-
-  it('returns the cancellation reference', async () => {
-    captureFetch([{ status: 200, body: CANCELLATION_RESPONSE }]);
-    const result = await adapter.cancelActivity('HB-ACT-9001');
-    expect(result).toEqual({
-      status: 'CANCELLED',
-      cancellationReference: 'CXL-HB-ACT-9001',
-    });
-  });
-
-  it('falls back to booking reference when cancellationReference is missing', async () => {
-    captureFetch([
-      {
-        status: 200,
-        body: { booking: { reference: 'HB-ACT-9001', status: 'CANCELLED' } },
-      },
-    ]);
-    const result = await adapter.cancelActivity('HB-ACT-9001');
-    expect(result.cancellationReference).toBe('HB-ACT-9001');
-  });
-
-  it('URL-encodes the booking reference', async () => {
-    const { calls } = captureFetch([{ status: 200, body: CANCELLATION_RESPONSE }]);
-    await adapter.cancelActivity('HB ACT/01');
-    expect(calls[0]!.url).toContain('HB%20ACT%2F01');
   });
 });
 

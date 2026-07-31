@@ -10,7 +10,12 @@ import type {
 
 const KEY_PREFIX = 'effect:';
 
+/**
+ * In-memory effect ledger — always ephemeral, even if a custom persistence
+ * adapter is injected. Use {@link FileEffectLedger} for durable live drills.
+ */
 export class InMemoryEffectLedger implements EffectLedger {
+  readonly durability = 'ephemeral' as const;
   private readonly persistence: CompareAndSwapPersistenceAdapter;
   private readonly now: () => Date;
 
@@ -101,16 +106,22 @@ export class InMemoryEffectLedger implements EffectLedger {
     return this.persistence.get<EffectRecord<TResponse>>(`${KEY_PREFIX}${idempotencyKey}`);
   }
 
-  async listUnknown(olderThanMs = 0): Promise<readonly EffectRecord[]> {
+  async listUnresolved(olderThanMs = 0): Promise<readonly EffectRecord[]> {
     const keys = await this.persistence.list(KEY_PREFIX);
     const now = this.now().getTime();
     const out: EffectRecord[] = [];
     for (const key of keys) {
       const record = await this.persistence.get<EffectRecord>(key);
-      if (!record || record.outcome !== 'unknown') continue;
+      if (!record) continue;
+      if (record.outcome !== 'unknown' && record.outcome !== 'pending') continue;
       const age = now - Date.parse(record.updatedAt);
       if (age >= olderThanMs) out.push(record);
     }
     return out;
+  }
+
+  /** @deprecated Prefer {@link listUnresolved} */
+  async listUnknown(olderThanMs = 0): Promise<readonly EffectRecord[]> {
+    return this.listUnresolved(olderThanMs);
   }
 }

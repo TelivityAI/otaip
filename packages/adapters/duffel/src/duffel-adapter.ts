@@ -490,7 +490,10 @@ export class DuffelAdapter implements DistributionAdapter {
     }
     this.apiKey = resolvedKey;
     this.baseUrl = options.baseUrl ?? DUFFEL_BASE_URL;
-    this.liveMode = options.liveMode ?? isLiveModeFromEnv();
+    // Production Duffel endpoint forces live — cannot override off.
+    const productionEndpoint =
+      this.baseUrl === DUFFEL_BASE_URL || this.baseUrl.startsWith(`${DUFFEL_BASE_URL}/`);
+    this.liveMode = productionEndpoint ? true : (options.liveMode ?? isLiveModeFromEnv());
     this.rateLimiter = new RateLimiter({ maxRequests: 50, windowMs: 1_000 });
     this.circuitBreaker = new CircuitBreaker({
       name: 'duffel',
@@ -498,10 +501,12 @@ export class DuffelAdapter implements DistributionAdapter {
       resetMs: 30_000,
     });
     this.moneyPath = new MoneyPathExecutor({
-      liveMode: this.liveMode,
-      storeDurability: options.storeDurability ?? options.moneyPath?.storeDurability ?? 'ephemeral',
       reconcileHint: 'getOrder',
       ...options.moneyPath,
+      liveMode: this.liveMode,
+      ...(options.storeDurability !== undefined
+        ? { storeDurability: options.storeDurability }
+        : {}),
     });
   }
 

@@ -68,10 +68,6 @@ export class GuardedConnectAdapter implements ConnectAdapter {
     return this.executor;
   }
 
-  get unguarded(): ConnectAdapter {
-    return this.inner;
-  }
-
   async searchFlights(input: SearchFlightsInput): Promise<FlightOffer[]> {
     return this.inner.searchFlights(input);
   }

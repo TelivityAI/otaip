@@ -88,7 +88,11 @@ describe('DuffelOtaAdapter', () => {
   let adapter: DuffelOtaAdapter;
 
   beforeEach(() => {
-    duffel = new DuffelAdapter('duffel_test_key');
+    duffel = new DuffelAdapter({
+      apiKey: 'duffel_test_key',
+      baseUrl: 'https://api.test.duffel.local',
+      liveMode: false,
+    });
     adapter = new DuffelOtaAdapter(duffel);
   });
 
