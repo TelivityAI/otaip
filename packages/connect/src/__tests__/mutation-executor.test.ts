@@ -19,7 +19,7 @@ describe('operation classification', () => {
 describe('MutationExecutor', () => {
   it('does not auto-retry; marks unknown on ambiguous failure', async () => {
     const ledger = new InMemoryEffectLedger();
-    const exec = new MutationExecutor({ ledger });
+    const exec = new MutationExecutor({ ledger, liveMode: false });
     let calls = 0;
     const outcome = await exec.execute({
       operation: 'createBooking',
@@ -39,7 +39,7 @@ describe('MutationExecutor', () => {
 
   it('replays succeeded effect without re-invoking fn', async () => {
     const ledger = new InMemoryEffectLedger();
-    const exec = new MutationExecutor({ ledger });
+    const exec = new MutationExecutor({ ledger, liveMode: false });
     let calls = 0;
     const first = await exec.execute({
       operation: 'createBooking',
@@ -72,7 +72,7 @@ describe('MutationExecutor', () => {
 
   it('100 concurrent executes produce one supplier call', async () => {
     const ledger = new InMemoryEffectLedger();
-    const exec = new MutationExecutor({ ledger });
+    const exec = new MutationExecutor({ ledger, liveMode: false });
     let calls = 0;
     const results = await Promise.all(
       Array.from({ length: 100 }, () =>
@@ -96,7 +96,7 @@ describe('MutationExecutor', () => {
   it('respects kill switch', async () => {
     const killSwitch = new MutationKillSwitch();
     killSwitch.engage('test');
-    const exec = new MutationExecutor({ killSwitch });
+    const exec = new MutationExecutor({ killSwitch, liveMode: false });
     await expect(
       exec.execute({
         operation: 'createBooking',
@@ -109,7 +109,7 @@ describe('MutationExecutor', () => {
   });
 
   it('reconciles via getBookingStatus', async () => {
-    const exec = new MutationExecutor();
+    const exec = new MutationExecutor({ liveMode: false });
     const status: BookingStatusResult = {
       bookingId: 'B1',
       supplier: 'test',
@@ -141,5 +141,26 @@ describe('executeReversal', () => {
     });
     expect(outcome.kind).toBe('succeeded');
     expect(adapter.cancelBooking).toHaveBeenCalledOnce();
+  });
+
+  it('fails closed for void/refund without aliasing cancel', async () => {
+    const adapter = {
+      supplierId: 'test',
+      cancelBooking: vi.fn(async () => ({ success: true, message: 'ok' })),
+    } as unknown as ConnectAdapter;
+    const voidOut = await executeReversal(adapter, {
+      kind: 'void',
+      bookingId: 'B1',
+      idempotencyKey: 'void-1',
+    });
+    expect(voidOut.kind).toBe('failed');
+    expect(adapter.cancelBooking).not.toHaveBeenCalled();
+    const refundOut = await executeReversal(adapter, {
+      kind: 'refund',
+      bookingId: 'B1',
+      idempotencyKey: 'refund-1',
+    });
+    expect(refundOut.kind).toBe('failed');
+    expect(adapter.cancelBooking).not.toHaveBeenCalled();
   });
 });

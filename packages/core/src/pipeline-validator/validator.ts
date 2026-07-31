@@ -11,14 +11,12 @@
  *   2. schema_in         — Zod safeParse on input
  *   3. semantic_in       — contract.validate(input, ctx)
  *   4. cross_agent       — input fields consistent with session.contractState
+ *   5. action_class      — for mutations: approval + zero-warnings BEFORE side effects
  *   --- execute the agent ---
- *   5. schema_out        — Zod safeParse on output.data + optional validateOutput
- *   6. confidence        — output.confidence >= effective threshold
- *   7. action_class      — approval token + zero-warnings check
+ *   6. schema_out        — Zod safeParse on output.data + optional validateOutput
+ *   7. confidence        — output.confidence >= effective threshold
  *
- * Numbering inside this file follows the implementation order above;
- * the master plan counts six logical gates (schema, semantic, intent,
- * cross-agent, confidence, action).
+ * Queries skip pre-execute action_class (no approval / mutation warnings gate).
  */
 
 import type { z } from 'zod';
@@ -46,6 +44,13 @@ export interface RunGatesConfig {
   readonly approvalPolicy?: ApprovalPolicy;
   /** If true, the contract is marked as a reference-data agent for confidence floor purposes. */
   readonly isReferenceAgent?: boolean;
+  /**
+   * Optional single-use token consumption — invoked after sync approval policy
+   * passes and BEFORE agent.execute() for mutations.
+   */
+  readonly consumeApproval?: (
+    input: unknown,
+  ) => Promise<import('./types.js').SemanticValidationResult>;
 }
 
 export type GateRunResult =
@@ -148,6 +153,37 @@ export async function runGates<TIn extends z.ZodType, TOut extends z.ZodType>(
   }
   gateResults.push({ gate: 'cross_agent', passed: true, issues: crossAgent.warnings });
 
+  // Gate 5 (pre-execute for mutations): action_class — MUST run before side effects.
+  const isMutation =
+    contract.actionType === 'mutation_reversible' ||
+    contract.actionType === 'mutation_irreversible';
+  if (isMutation) {
+    const actionCheck = checkActionClassification(
+      contract.actionType,
+      input,
+      gateResults,
+      config.approvalPolicy,
+    );
+    if (!actionCheck.ok) {
+      gateResults.push({ gate: 'action_class', passed: false, issues: actionCheck.issues });
+      return fail('action_class_blocked', actionCheck.issues, gateResults);
+    }
+    gateResults.push({ gate: 'action_class', passed: true });
+  }
+
+  // Optional async consume hook (single-use tokens) — still before execute.
+  if (config.consumeApproval && isMutation) {
+    const consumeResult = await config.consumeApproval(input);
+    if (!consumeResult.ok) {
+      gateResults.push({
+        gate: 'action_class',
+        passed: false,
+        issues: consumeResult.issues,
+      });
+      return fail('action_class_blocked', consumeResult.issues, gateResults);
+    }
+  }
+
   // Execute
   let output: AgentOutput<z.output<TOut>>;
   try {
@@ -166,7 +202,7 @@ export async function runGates<TIn extends z.ZodType, TOut extends z.ZodType>(
     return fail('agent_error', issues, gateResults);
   }
 
-  // Gate 5: schema_out
+  // Gate 6: schema_out
   const outParse = contract.outputSchema.safeParse(output.data);
   if (!outParse.success) {
     const issues: SemanticIssue[] = outParse.error.issues.map((i) => ({
@@ -190,7 +226,7 @@ export async function runGates<TIn extends z.ZodType, TOut extends z.ZodType>(
     gateResults.push({ gate: 'schema_out', passed: true });
   }
 
-  // Gate 6: confidence
+  // Gate 7: confidence
   const conf = checkConfidence({
     outputConfidence: output.confidence,
     threshold: contract.confidenceThreshold,
@@ -202,19 +238,6 @@ export async function runGates<TIn extends z.ZodType, TOut extends z.ZodType>(
     return fail('low_confidence', conf.issues, gateResults);
   }
   gateResults.push({ gate: 'confidence', passed: true });
-
-  // Gate 7: action_class
-  const actionCheck = checkActionClassification(
-    contract.actionType,
-    input, // raw input (so approvalToken passthrough is visible)
-    gateResults,
-    config.approvalPolicy,
-  );
-  if (!actionCheck.ok) {
-    gateResults.push({ gate: 'action_class', passed: false, issues: actionCheck.issues });
-    return fail('action_class_blocked', actionCheck.issues, gateResults);
-  }
-  gateResults.push({ gate: 'action_class', passed: true });
 
   // Capture output contract into session state.
   captureOutputContract(contract.agentId, output.data, contract.outputContract, session);

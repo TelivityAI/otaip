@@ -37,15 +37,23 @@ export {
 export type { AdapterOperationClass, AdapterOperationName } from './operation-class.js';
 export { MutationExecutor } from './mutation-executor.js';
 export type { MutationExecutorConfig, MutationOutcome } from './mutation-executor.js';
-export { executeReversal } from './reversal-saga.js';
-export type { ReversalKind, ReversalRequest, ReversalResult } from './reversal-saga.js';
+export { GuardedConnectAdapter, guardAdapter } from './guarded-adapter.js';
+export type { GuardedConnectAdapterOptions } from './guarded-adapter.js';
+export { executeReversal, UnsupportedReversalError } from './reversal-saga.js';
+export type {
+  ReversalKind,
+  ReversalRequest,
+  ReversalResult,
+  ReversalCapabilities,
+} from './reversal-saga.js';
 
 // Config utilities
 export { validateConfig, baseAdapterConfigSchema } from './config.js';
 export type { BaseAdapterConfig } from './config.js';
 
-// Supplier registry
+// Supplier registry (createAdapter returns GuardedConnectAdapter by default)
 export { registerSupplier, createAdapter, listSuppliers } from './suppliers/index.js';
+export type { CreateAdapterOptions } from './suppliers/index.js';
 
 // TripPro adapter
 export { TripProAdapter } from './suppliers/trippro/index.js';

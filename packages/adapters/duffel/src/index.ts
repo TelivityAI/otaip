@@ -10,6 +10,7 @@ export type {
   BookResponse,
   BookSegment,
   BookTicketNumber,
+  DuffelAdapterOptions,
   DuffelOrder,
 } from './duffel-adapter.js';
 export { DuffelOrderBridge } from './order-bridge.js';

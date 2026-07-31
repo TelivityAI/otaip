@@ -2,20 +2,22 @@
 
 Binary scorecard for open-core money-path readiness. Catalog growth (more agents/adapters) does not move this bar.
 
+**PASS = default-enforced on the normal money-path API.** A class that exists but is optional or bypassable is FAIL / PARTIAL — see [PRODUCTION_DOD_SCORECARD.md](./PRODUCTION_DOD_SCORECARD.md).
+
 **Current score: see [PRODUCTION_DOD_SCORECARD.md](./PRODUCTION_DOD_SCORECARD.md).**
 
 ## Criteria (all must PASS)
 
 | # | Criterion | PASS only if |
 |---|---|---|
-| 1 | Mutations safe | Book/ticket/cancel not blindly retried after ambiguous failure; `OUTCOME_UNKNOWN` → reconcile via `getBookingStatus` / `getOrder`; fault-injection tests |
-| 2 | Money state survives crash | Pay→confirm + order durable; same idempotency key → one supplier effect; replay returns prior result |
-| 3 | Persistence can do #2 | CAS / command uniqueness / OCC APIs; reference durable impl; live mode refuses irreversible ops on in-memory/mock |
-| 4 | Supplier backpressure real | `RateLimiter` + circuit breaker on live adapter HTTP path; 429 handling |
+| 1 | Mutations safe | Book/ticket/cancel not blindly retried after ambiguous failure on the **default** adapter/Duffel path; `OUTCOME_UNKNOWN` → reconcile via `getBookingStatus` / `getOrder`; fault-injection tests |
+| 2 | Money state survives crash | Pay→confirm + order durable with CAS/OCC (not plain overwrite); same idempotency key → one supplier effect; replay returns prior result |
+| 3 | Persistence can do #2 | CAS / command uniqueness / OCC APIs; reference durable impl; **live mode refuses** irreversible ops on in-memory/mock **by default** |
+| 4 | Supplier backpressure real | `RateLimiter` + circuit breaker **on by default** on live adapter HTTP path (including Duffel); 429 handling |
 | 5 | Live tickets not invented | Live mode blocks hash/mock serials; ticket identity from supplier response |
-| 6 | Irreversible LLM gate has teeth | Bound approval tokens; uncontracted mutations blocked |
-| 7 | Reversal works | Cancel/void/refund via same ledger/idempotency rules; sandbox tests |
-| 8 | Ops see/stop damage | Failure-by-stage + unknown-outcome age; mutation kill switch |
+| 6 | Irreversible LLM gate has teeth | Bound approval **before** side effects; HMAC + single-use in live mode; uncontracted mutations blocked |
+| 7 | Reversal works | Cancel via same ledger/idempotency rules; void/refund fail closed unless capability exists (no silent cancel alias); sandbox tests |
+| 8 | Ops see/stop damage | Failure-by-stage + unknown-outcome age on the mutation path; kill switch stops new mutations |
 
 ## Key modules
 

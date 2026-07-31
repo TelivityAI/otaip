@@ -1,11 +1,9 @@
 /**
  * Duffel OTA Adapter — bridges the live DuffelAdapter into the reference OTA.
  *
- * Search / price / book are real Duffel API calls. The post-book lifecycle
- * (payment, ticketing, get/cancel) stays in-process: the demo flow that
- * Duffel's sandbox proves out is search→price→book; payment + ticketing in
- * the OTA app are mock by design (Stripe + e-ticketing are out of scope for
- * the reference implementation).
+ * Search / price / book go through Duffel's money-path executor (idempotent,
+ * no blind retry). Ticket numbers come from Duffel order documents — live
+ * mode refuses synthetic serials (DoD 5).
  */
 
 import type {
@@ -15,6 +13,7 @@ import type {
   SearchRequest,
   SearchResponse,
 } from '@otaip/core';
+import { isLiveModeFromEnv, MoneyPathError } from '@otaip/core';
 import { DuffelAdapter } from '@otaip/adapter-duffel';
 import type {
   BookingLifecycle,
@@ -51,15 +50,6 @@ interface BookingRecord {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function generateTicketNumber(): string {
-  const prefix = '016';
-  let digits = '';
-  for (let i = 0; i < 10; i++) {
-    digits += Math.floor(Math.random() * 10).toString();
-  }
-  return `${prefix}${digits}`;
-}
 
 function mapGender(gender: PassengerDetail['gender']): 'm' | 'f' {
   return gender === 'male' ? 'm' : 'f';
@@ -105,10 +95,13 @@ export class DuffelOtaAdapter implements OtaAdapter, BookingLifecycle {
     const response = await this.duffel.book({
       offer_id: request.offerId,
       passengers: duffelPassengers,
+      idempotencyKey:
+        request.idempotencyKey ?? `ota-book:${request.offerId}:${request.contactEmail}`,
     });
 
     const reference = response.booking_reference;
     const now = new Date().toISOString();
+    const supplierTickets = response.ticketNumbers?.map((t) => t.number);
 
     const record: BookingRecord = {
       bookingReference: reference,
@@ -116,11 +109,14 @@ export class DuffelOtaAdapter implements OtaAdapter, BookingLifecycle {
       passengers: request.passengers,
       contactEmail: request.contactEmail,
       contactPhone: request.contactPhone,
-      status: 'confirmed',
+      status: supplierTickets && supplierTickets.length > 0 ? 'ticketed' : 'confirmed',
       totalAmount: response.total_amount,
       currency: response.total_currency,
       createdAt: now,
       duffelOrderId: response.order_id,
+      ...(supplierTickets && supplierTickets.length > 0
+        ? { ticketNumbers: supplierTickets, ticketedAt: now }
+        : {}),
     };
 
     this.bookings.set(reference, record);
@@ -147,15 +143,22 @@ export class DuffelOtaAdapter implements OtaAdapter, BookingLifecycle {
     const record = this.bookings.get(reference);
     if (!record) return null;
 
-    if (record.status === 'ticketed' && record.ticketNumbers) {
+    if (record.ticketNumbers && record.ticketNumbers.length > 0) {
+      record.status = 'ticketed';
+      record.ticketedAt = record.ticketedAt ?? new Date().toISOString();
       return record.ticketNumbers;
     }
 
-    const ticketNumbers = record.passengers.map(() => generateTicketNumber());
-    record.ticketNumbers = ticketNumbers;
-    record.status = 'ticketed';
-    record.ticketedAt = new Date().toISOString();
-    return ticketNumbers;
+    // Try refresh from Duffel getOrder (documents may populate after instant issue).
+    // Sync API — refresh is async; callers should use getOrder path. Fail closed in live.
+    if (isLiveModeFromEnv()) {
+      throw new MoneyPathError(
+        'Live mode refuses synthetic ticket numbers — wait for Duffel order documents / getOrder',
+      );
+    }
+
+    // Demo / non-live only: no supplier documents yet.
+    return null;
   }
 
   async getBooking(reference: string): Promise<BookingResult | null> {

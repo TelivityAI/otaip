@@ -48,7 +48,8 @@ export type {
 export type { RetryConfig, IsRetryable } from './retry/index.js';
 export { DEFAULT_RETRY_CONFIG, withRetry, computeDelay } from './retry/index.js';
 
-export { fetchWithRetry } from './http/index.js';
+export { fetchWithRetry, fetchOnce } from './http/index.js';
+export type { FetchOnceOptions } from './http/index.js';
 export type { FetchWithRetryOptions } from './http/index.js';
 
 export type { DomainInputRequired } from './domain/index.js';
@@ -154,6 +155,19 @@ export {
   assertIrreversibleAllowed,
   isLiveModeFromEnv,
 } from './safety/index.js';
+
+export type {
+  MoneyPathExecutorConfig,
+  MoneyPathOutcome,
+  MoneyPathOutcomeKind,
+} from './money-path/index.js';
+export {
+  MoneyPathExecutor,
+  MoneyPathError,
+  OutcomeUnknownError,
+  getProcessMutationKillSwitch,
+  isAmbiguousMutationError,
+} from './money-path/index.js';
 
 export type { CircuitBreakerConfig, CircuitBreakerStatus, CircuitState } from './circuit-breaker/index.js';
 export { CircuitBreaker, CircuitOpenError } from './circuit-breaker/index.js';

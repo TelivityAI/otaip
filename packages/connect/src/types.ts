@@ -34,6 +34,11 @@ export interface CreateBookingInput {
   offerId: string;
   passengers: PassengerDetail[];
   contact: ContactInfo;
+  /**
+   * Required on GuardedConnectAdapter (default createAdapter path).
+   * Same key → at most one supplier side effect (DoD 2).
+   */
+  idempotencyKey?: string;
 }
 
 export interface PassengerDetail {

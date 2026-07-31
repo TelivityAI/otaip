@@ -70,6 +70,7 @@ export class BookingService {
       passengers,
       contactEmail,
       contactPhone,
+      idempotencyKey: `ota:${offerId}:${contactEmail}`,
     });
 
     // Update the booking with the actual price from the offer. Adapters that

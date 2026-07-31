@@ -29,6 +29,8 @@ export interface BookingRequest {
   passengers: PassengerDetail[];
   contactEmail: string;
   contactPhone: string;
+  /** Required for live Duffel money path — one supplier order per key. */
+  idempotencyKey?: string;
 }
 
 export type BookingStatus = 'confirmed' | 'pending' | 'ticketed' | 'cancelled';

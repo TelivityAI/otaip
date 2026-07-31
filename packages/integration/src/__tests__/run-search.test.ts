@@ -116,6 +116,7 @@ describe('runAvailabilitySearch (offline)', () => {
     expect(exec.agentId).toBe('1.1');
     expect(exec.success).toBe(true);
     const passedGates = new Set(exec.gateResults.filter((g) => g.passed).map((g) => g.gate));
+    // Query agents skip action_class (approval runs pre-execute for mutations only).
     for (const gate of [
       'intent_lock',
       'schema_in',
@@ -124,10 +125,10 @@ describe('runAvailabilitySearch (offline)', () => {
       'execute',
       'schema_out',
       'confidence',
-      'action_class',
     ]) {
       expect(passedGates.has(gate)).toBe(true);
     }
+    expect(passedGates.has('action_class')).toBe(false);
 
     expect(trace.adapterHealth).toHaveLength(1);
     expect(trace.adapterHealth[0]?.status).toBe('healthy');
