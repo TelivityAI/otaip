@@ -10,8 +10,13 @@ import type { OrderManagementInput, OrderItem, CreateOrderData } from '../types.
 
 let agent: OrderManagement;
 
+let idSeq = 0;
+
 beforeEach(async () => {
-  agent = new OrderManagement();
+  idSeq = 0;
+  agent = new OrderManagement({
+    idFactory: () => `ORD${String(++idSeq).padStart(6, '0')}`,
+  });
   await agent.initialize();
 });
 

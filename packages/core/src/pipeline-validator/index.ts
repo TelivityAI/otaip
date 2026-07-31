@@ -43,6 +43,7 @@ export type { ConfidenceCheckInput } from './confidence-gate.js';
 
 export {
   DEFAULT_APPROVAL_POLICY,
+  LEGACY_ANY_NONEMPTY_APPROVAL_POLICY,
   checkActionClassification,
 } from './action-classifier.js';
 export type { ApprovalPolicy } from './action-classifier.js';

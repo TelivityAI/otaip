@@ -10,6 +10,8 @@ export type {
   BookingFailedEvent,
   EventFilter,
   EventStore,
+  MutationIrreversibleEvent,
+  MutationUnknownEvent,
   OtaipEvent,
   OtaipEventType,
   RoutingDecidedEvent,

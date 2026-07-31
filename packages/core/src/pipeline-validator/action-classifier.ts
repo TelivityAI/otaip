@@ -3,12 +3,9 @@
  *
  *  - query: pass-through.
  *  - mutation_reversible: requires zero warnings on prior gates.
- *  - mutation_irreversible: requires zero warnings on prior gates AND an
- *    `approvalToken` on the input (or in the configured ApprovalPolicy).
- *
- * The token is a coarse proxy for "a human (or a developer-coded policy)
- * has signed off on this action." Sprint A treats any non-empty string
- * as a valid token; Sprint B+ may attach scoped JWTs.
+ *  - mutation_irreversible: requires zero warnings on prior gates AND a
+ *    bound approval token (session + agent + inputHash). Plain non-empty
+ *    strings are rejected by the default policy (DoD 6).
  */
 
 import type {
@@ -20,8 +17,7 @@ import type {
 
 /**
  * Per-deployment policy for which action types require an approval token
- * and how to validate it. Default: only `mutation_irreversible` requires
- * an approval token, and any non-empty string is accepted.
+ * and how to validate it.
  */
 export interface ApprovalPolicy {
   readonly requiresApproval: ReadonlySet<ActionType>;
@@ -31,7 +27,47 @@ export interface ApprovalPolicy {
   ): SemanticValidationResult;
 }
 
+/** Bound token shape: base64url_body.sha256_hex_signature */
+const BOUND_TOKEN_RE = /^[A-Za-z0-9_-]+\.[a-f0-9]{64}$/;
+
 function defaultValidateApprovalToken(
+  token: unknown,
+  _actionType: ActionType,
+): SemanticValidationResult {
+  if (typeof token !== 'string' || token.length === 0) {
+    return {
+      ok: false,
+      issues: [
+        {
+          code: 'APPROVAL_TOKEN_INVALID',
+          path: ['approvalToken'],
+          message: 'Approval token is missing or empty',
+          severity: 'error',
+        },
+      ],
+    };
+  }
+  // Default policy requires bound-token format. Full crypto + single-use
+  // validation is provided by createBoundApprovalPolicy / consumeBoundApprovalToken.
+  if (!BOUND_TOKEN_RE.test(token)) {
+    return {
+      ok: false,
+      issues: [
+        {
+          code: 'APPROVAL_TOKEN_FORGED',
+          path: ['approvalToken'],
+          message:
+            'Approval token must be a bound token (issueBoundApprovalToken). Arbitrary strings are rejected.',
+          severity: 'error',
+        },
+      ],
+    };
+  }
+  return { ok: true, warnings: [] };
+}
+
+/** @deprecated Prefer bound tokens via createBoundApprovalPolicy. */
+function legacyAnyNonEmpty(
   token: unknown,
   _actionType: ActionType,
 ): SemanticValidationResult {
@@ -56,14 +92,14 @@ export const DEFAULT_APPROVAL_POLICY: ApprovalPolicy = Object.freeze({
   validateApprovalToken: defaultValidateApprovalToken,
 });
 
+/** Opt-in legacy policy — any non-empty string. Not for live money paths. */
+export const LEGACY_ANY_NONEMPTY_APPROVAL_POLICY: ApprovalPolicy = Object.freeze({
+  requiresApproval: new Set<ActionType>(['mutation_irreversible']),
+  validateApprovalToken: legacyAnyNonEmpty,
+});
+
 /**
  * Run the action-class checks against an agent invocation.
- *
- * @param actionType the contract's declared action type
- * @param input the (already-Zod-validated) input to the agent
- * @param priorGates the gate results so far this invocation (used to enforce
- *                   "zero warnings" on reversible/irreversible mutations)
- * @param policy approval policy (optional; uses DEFAULT_APPROVAL_POLICY)
  */
 export function checkActionClassification(
   actionType: ActionType,
@@ -73,7 +109,6 @@ export function checkActionClassification(
 ): SemanticValidationResult {
   const issues: SemanticIssue[] = [];
 
-  // Reversible/irreversible mutations require zero warnings on prior gates.
   if (actionType !== 'query') {
     const warnings = priorGates.flatMap((g) =>
       (g.issues ?? []).filter((i) => i.severity === 'warning'),
@@ -88,7 +123,6 @@ export function checkActionClassification(
     }
   }
 
-  // Approval check.
   if (policy.requiresApproval.has(actionType)) {
     const token =
       input && typeof input === 'object'

@@ -182,7 +182,15 @@ describe('PipelineOrchestrator', () => {
       expect(r1.failureClass).toBe('validation');
     }
 
-    const r2 = await orch.runAgent(session, 'irrev', { approvalToken: 'tok' });
+    const { issueBoundApprovalToken } = await import('../../approval/bound-approval.js');
+    const input = { x: 1 };
+    const token = issueBoundApprovalToken({
+      sessionId: session.sessionId,
+      agentId: 'irrev',
+      input,
+      secret: 'test-secret',
+    });
+    const r2 = await orch.runAgent(session, 'irrev', { ...input, approvalToken: token });
     expect(r2.ok).toBe(true);
   });
 

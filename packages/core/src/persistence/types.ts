@@ -3,6 +3,10 @@
  *
  * Default implementation is in-memory (InMemoryPersistenceAdapter).
  * Consumers can inject Redis, PostgreSQL, or any other backend.
+ *
+ * For money-path durability, prefer {@link CompareAndSwapPersistenceAdapter}
+ * (CAS / conditional write). Plain get/set alone cannot safely implement
+ * multi-instance idempotency.
  */
 
 export interface PersistenceAdapter {
@@ -20,4 +24,46 @@ export interface PersistenceAdapter {
 
   /** List all keys matching a prefix. */
   list(prefix: string): Promise<string[]>;
+}
+
+/**
+ * Compare-and-swap / conditional-write capabilities required for
+ * multi-instance money-path state (idempotency, OCC).
+ */
+export interface CompareAndSwapPersistenceAdapter extends PersistenceAdapter {
+  /**
+   * Atomically set `key` to `value` only if the current stored value deep-equals
+   * `expected` (or the key is absent when `expected` is `undefined`).
+   * Returns true if the write succeeded.
+   */
+  compareAndSet<T>(key: string, expected: T | undefined, value: T, ttlMs?: number): Promise<boolean>;
+
+  /**
+   * Set `key` only if it does not already exist. Returns true if created.
+   */
+  setIfAbsent<T>(key: string, value: T, ttlMs?: number): Promise<boolean>;
+}
+
+/** Versioned aggregate row used with optimistic concurrency. */
+export interface VersionedAggregate<T> {
+  readonly version: number;
+  readonly data: T;
+}
+
+/**
+ * Optimistic-concurrency store for versioned aggregates (orders, pay-confirm).
+ */
+export interface VersionedAggregateStore {
+  get<T>(aggregateId: string): Promise<VersionedAggregate<T> | null>;
+
+  /**
+   * Create aggregate at version 1 if absent. Returns false if already exists.
+   */
+  create<T>(aggregateId: string, data: T): Promise<boolean>;
+
+  /**
+   * Update only when `expectedVersion` matches. On success, version becomes
+   * expectedVersion + 1. Returns false on conflict or missing aggregate.
+   */
+  update<T>(aggregateId: string, expectedVersion: number, data: T): Promise<boolean>;
 }

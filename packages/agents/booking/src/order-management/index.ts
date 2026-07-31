@@ -7,6 +7,7 @@
  * Implements the base Agent interface from @otaip/core.
  */
 
+import { randomUUID } from 'node:crypto';
 import type {
   Agent,
   AgentInput,
@@ -59,16 +60,16 @@ export class OrderManagement implements Agent<OrderManagementInput, OrderManagem
 
   private initialized = false;
   private orders: Map<string, Order> = new Map();
-  private orderCounter = 0;
   private readonly persistence: PersistenceAdapter | undefined;
+  private readonly idFactory: () => string;
 
-  constructor(config?: OrderManagementConfig) {
+  constructor(config?: OrderManagementConfig & { idFactory?: () => string }) {
     this.persistence = config?.persistence;
+    this.idFactory = config?.idFactory ?? ((): string => `ORD-${randomUUID()}`);
   }
 
   async initialize(): Promise<void> {
     this.orders.clear();
-    this.orderCounter = 0;
     this.initialized = true;
   }
 
@@ -136,7 +137,6 @@ export class OrderManagement implements Agent<OrderManagementInput, OrderManagem
 
   destroy(): void {
     this.orders.clear();
-    this.orderCounter = 0;
     this.initialized = false;
   }
 
@@ -177,8 +177,7 @@ export class OrderManagement implements Agent<OrderManagementInput, OrderManagem
   // ---------------------------------------------------------------------------
 
   private async handleCreate(data: CreateOrderData): Promise<OrderManagementOutput> {
-    this.orderCounter++;
-    const orderId = `ORD${String(this.orderCounter).padStart(6, '0')}`;
+    const orderId = this.idFactory();
     const now = new Date().toISOString();
 
     const totalAmount = data.items

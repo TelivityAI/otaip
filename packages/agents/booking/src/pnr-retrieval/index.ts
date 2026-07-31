@@ -10,19 +10,33 @@
 import type { Agent, AgentInput, AgentOutput, AgentHealthStatus } from '@otaip/core';
 import { AgentNotInitializedError, AgentInputValidationError } from '@otaip/core';
 import type { PnrRetrievalInput, PnrRetrievalOutput } from './types.js';
-import { retrievePnr } from './retrieval-engine.js';
+import {
+  retrievePnr,
+  type OrderRetrievalPort,
+  type PnrRetrievalPort,
+} from './retrieval-engine.js';
 
 const RECORD_LOCATOR_RE = /^[A-Z0-9]{5,8}$/;
 const VALID_SOURCES = new Set(['AMADEUS', 'SABRE', 'TRAVELPORT', 'NDC', 'DIRECT']);
 
-export class PnrRetrieval
-  implements Agent<PnrRetrievalInput, PnrRetrievalOutput>
-{
+export interface PnrRetrievalConfig {
+  readonly bookingStatusPort?: PnrRetrievalPort;
+  readonly orderPort?: OrderRetrievalPort;
+}
+
+export class PnrRetrieval implements Agent<PnrRetrievalInput, PnrRetrievalOutput> {
   readonly id = '3.8';
   readonly name = 'PNR Retrieval';
   readonly version = '0.1.0';
 
   private initialized = false;
+  private readonly bookingStatusPort: PnrRetrievalPort | undefined;
+  private readonly orderPort: OrderRetrievalPort | undefined;
+
+  constructor(config?: PnrRetrievalConfig) {
+    this.bookingStatusPort = config?.bookingStatusPort;
+    this.orderPort = config?.orderPort;
+  }
 
   async initialize(): Promise<void> {
     this.initialized = true;
@@ -37,14 +51,17 @@ export class PnrRetrieval
 
     this.validateInput(input.data);
 
-    const result = retrievePnr(input.data);
+    const result = await retrievePnr(input.data, {
+      bookingStatusPort: this.bookingStatusPort,
+      orderPort: this.orderPort,
+    });
 
-    // Confidence: 1.0 for a confirmed record, lower for unknown/pending.
-    const confidence = result.booking_status === 'CONFIRMED'
-      ? 1.0
-      : result.booking_status === 'UNKNOWN'
-        ? 0.5
-        : 0.8;
+    const confidence =
+      result.booking_status === 'CONFIRMED'
+        ? 1.0
+        : result.booking_status === 'UNKNOWN'
+          ? 0.5
+          : 0.8;
 
     return {
       data: result,
@@ -53,6 +70,7 @@ export class PnrRetrieval
         agent_id: this.id,
         agent_version: this.version,
         source: result.source,
+        wired: Boolean(this.bookingStatusPort ?? this.orderPort),
       },
     };
   }
@@ -82,6 +100,9 @@ export class PnrRetrieval
       );
     }
 
+    // Normalize for downstream.
+    data.record_locator = trimmed;
+
     if (data.source !== undefined && !VALID_SOURCES.has(data.source)) {
       throw new AgentInputValidationError(
         this.id,
@@ -102,3 +123,10 @@ export type {
   BookingStatus,
   SegmentStatus as PnrRetrievalSegmentStatus,
 } from './types.js';
+export type {
+  BookingStatusPortResult,
+  OrderRetrievalPort,
+  PnrRetrievalPort,
+  RetrievePnrOptions,
+} from './retrieval-engine.js';
+export { retrievePnr } from './retrieval-engine.js';

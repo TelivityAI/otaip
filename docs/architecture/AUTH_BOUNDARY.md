@@ -14,8 +14,8 @@ OTAIP is a library, not a SaaS platform. Authentication and authorization live i
 - User authentication (JWT, sessions, OAuth flows)
 - Role-based access control
 - API key management or rotation
-- Rate limiting per user/tenant (the core RateLimiter is per-adapter, not per-user)
-- Multi-tenant isolation
+- Rate limiting per user/tenant (adapter `RateLimiter` is per-adapter-instance, not per-user)
+- Multi-tenant isolation / RBAC enforcement
 
 ## Recommended patterns for consuming applications
 
@@ -29,7 +29,7 @@ Your server handles auth. OTAIP agents are called as library functions.
 ```
 Your API Server → auth + tenant middleware → per-tenant adapter config → OTAIP agents
 ```
-Each tenant gets their own adapter instances with their own credentials. OTAIP is stateless, so no tenant isolation concerns at the agent level.
+Each tenant gets their own adapter instances with their own credentials. Pure agents are stateless, but **stateful** components (offer store, order management, pay-confirm, effect ledger) must use tenant-scoped keys or per-tenant store instances — do not share a single in-memory store across tenants.
 
 ### Credential injection
 ```typescript

@@ -16,7 +16,9 @@ export type OtaipEventType =
   | 'routing.outcome'
   | 'booking.completed'
   | 'booking.failed'
-  | 'adapter.health';
+  | 'adapter.health'
+  | 'mutation.unknown'
+  | 'mutation.irreversible';
 
 interface BaseEvent {
   readonly eventId: string;
@@ -80,13 +82,34 @@ export interface AdapterHealthEvent extends BaseEvent {
   readonly errorRate?: number;
 }
 
+/** Ambiguous mutation outcome awaiting reconcile (DoD 1 / 8). */
+export interface MutationUnknownEvent extends BaseEvent {
+  readonly type: 'mutation.unknown';
+  readonly effectType: string;
+  readonly idempotencyKey: string;
+  readonly supplierId?: string;
+  readonly failurePoint: string;
+}
+
+/** Irreversible action audit (no PII) — DoD 8. */
+export interface MutationIrreversibleEvent extends BaseEvent {
+  readonly type: 'mutation.irreversible';
+  readonly actionId: string;
+  readonly effectType: string;
+  readonly payloadHash: string;
+  readonly agentId?: string;
+  readonly externalRef?: string;
+}
+
 export type OtaipEvent =
   | AgentExecutedEvent
   | RoutingDecidedEvent
   | RoutingOutcomeEvent
   | BookingCompletedEvent
   | BookingFailedEvent
-  | AdapterHealthEvent;
+  | AdapterHealthEvent
+  | MutationUnknownEvent
+  | MutationIrreversibleEvent;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Query / aggregation

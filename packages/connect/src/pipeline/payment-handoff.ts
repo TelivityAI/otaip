@@ -1,6 +1,7 @@
 /**
  * STUB — Payment link handoff + status polling.
- * Full implementation in a separate build.
+ *
+ * Maturity: stub. Not a production money path.
  */
 
 import type { BookingStatus } from '../types.js';
@@ -20,6 +21,9 @@ export class PaymentHandoff {
   constructor(private _config: PaymentHandoffConfig) {}
 
   async awaitPayment(_bookingId: string): Promise<PaymentHandoffResult> {
-    throw new Error('Not implemented — payment handoff is a stub');
+    throw new Error(
+      'Not implemented — PaymentHandoff is a stub (maturity: stub). ' +
+        'Wire payment capture in the consuming application.',
+    );
   }
 }

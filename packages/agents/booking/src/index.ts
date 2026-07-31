@@ -109,6 +109,17 @@ export type {
   ListOrdersData,
   ListOrdersFilter,
 } from './order-management/index.js';
+export {
+  PaymentConfirmationStateMachine,
+} from './order-management/state-machine.js';
+export type {
+  AuditPort,
+  MonitoringPort,
+  ManagedOrder,
+  ConflictResolution,
+  ConflictResolutionAction,
+} from './order-management/state-machine.js';
+export { DurablePaymentConfirmationStateMachine } from './order-management/durable-state-machine.js';
 
 export { PaymentProcessing } from './payment-processing/index.js';
 export type {
