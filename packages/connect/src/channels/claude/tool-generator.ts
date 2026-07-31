@@ -57,12 +57,19 @@ const passengerDetailSchema = {
   required: ['type', 'gender', 'firstName', 'lastName', 'dateOfBirth'],
 } as const;
 
+export interface GenerateMcpToolsOptions {
+  /** When true, mutation tools require approvalToken in the schema. */
+  readonly liveMode?: boolean;
+}
+
 export function generateMcpTools(
   adapter: ConnectAdapter,
   whiteLabel?: WhiteLabelConfig,
+  options?: GenerateMcpToolsOptions,
 ): McpToolDefinition[] {
   const brand = whiteLabel?.brandName;
   const brandPrefix = brand ? `${brand}: ` : '';
+  const liveMode = options?.liveMode ?? false;
 
   const tools: McpToolDefinition[] = [
     {
@@ -106,7 +113,7 @@ export function generateMcpTools(
     },
     {
       name: 'create_booking',
-      description: `${brandPrefix}Create a flight booking with passenger details and contact information. Payment is held, not charged immediately.`,
+      description: `${brandPrefix}Create a flight booking with passenger details and contact information. Payment is held, not charged immediately.${liveMode ? ' Requires bound approvalToken in live mode.' : ''}`,
       inputSchema: {
         type: 'object',
         properties: {
@@ -117,8 +124,22 @@ export function generateMcpTools(
             description: 'Passenger details for all travelers',
           },
           contact: { ...contactInfoSchema, description: 'Primary contact information' },
+          ...(liveMode
+            ? {
+                approvalToken: {
+                  type: 'string',
+                  description: 'Bound single-use approval token (issueBoundApprovalToken)',
+                },
+                idempotencyKey: {
+                  type: 'string',
+                  description: 'Idempotency key for money-path book',
+                },
+              }
+            : {}),
         },
-        required: ['offerId', 'passengers', 'contact'],
+        required: liveMode
+          ? ['offerId', 'passengers', 'contact', 'approvalToken', 'idempotencyKey']
+          : ['offerId', 'passengers', 'contact'],
       },
     },
     {
@@ -145,13 +166,21 @@ export function generateMcpTools(
   if (adapter.requestTicketing) {
     tools.splice(4, 0, {
       name: 'request_ticketing',
-      description: `${brandPrefix}Request ticket issuance for a confirmed booking.`,
+      description: `${brandPrefix}Request ticket issuance for a confirmed booking.${liveMode ? ' Requires bound approvalToken in live mode.' : ''}`,
       inputSchema: {
         type: 'object',
         properties: {
           bookingId: { type: 'string', description: 'The booking reference ID to ticket' },
+          ...(liveMode
+            ? {
+                approvalToken: {
+                  type: 'string',
+                  description: 'Bound single-use approval token (issueBoundApprovalToken)',
+                },
+              }
+            : {}),
         },
-        required: ['bookingId'],
+        required: liveMode ? ['bookingId', 'approvalToken'] : ['bookingId'],
       },
     });
   }
@@ -159,13 +188,21 @@ export function generateMcpTools(
   if (adapter.cancelBooking) {
     tools.splice(adapter.requestTicketing ? 5 : 4, 0, {
       name: 'cancel_booking',
-      description: `${brandPrefix}Cancel an existing booking.`,
+      description: `${brandPrefix}Cancel an existing booking.${liveMode ? ' Requires bound approvalToken in live mode.' : ''}`,
       inputSchema: {
         type: 'object',
         properties: {
           bookingId: { type: 'string', description: 'The booking reference ID to cancel' },
+          ...(liveMode
+            ? {
+                approvalToken: {
+                  type: 'string',
+                  description: 'Bound single-use approval token (issueBoundApprovalToken)',
+                },
+              }
+            : {}),
         },
-        required: ['bookingId'],
+        required: liveMode ? ['bookingId', 'approvalToken'] : ['bookingId'],
       },
     });
   }

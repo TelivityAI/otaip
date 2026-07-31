@@ -1,8 +1,12 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
   InMemoryPersistenceAdapter,
   InMemoryVersionedAggregateStore,
 } from '../in-memory-adapter.js';
+import { FileCompareAndSwapPersistenceAdapter } from '../file-cas-adapter.js';
 import { InMemoryCommandStore } from '../../command-store/in-memory-command-store.js';
 import { InMemoryEffectLedger } from '../../effect-ledger/in-memory-effect-ledger.js';
 
@@ -104,3 +108,33 @@ describe('CommandStore + EffectLedger idempotency', () => {
     expect(unknown[0]?.outcome).toBe('unknown');
   });
 });
+
+describe('FileCompareAndSwapPersistenceAdapter flock', () => {
+  it('concurrent setIfAbsent yields a single create', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'otaip-filecas-'));
+    const adapter = new FileCompareAndSwapPersistenceAdapter(join(dir, 'db.json'));
+    const results = await Promise.all(
+      Array.from({ length: 50 }, (_, i) => adapter.setIfAbsent('k', i)),
+    );
+    expect(results.filter(Boolean).length).toBe(1);
+    expect(await adapter.get('k')).toBe(0);
+  });
+
+  it('compareAndSet is serialized under lock', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'otaip-filecas-'));
+    const adapter = new FileCompareAndSwapPersistenceAdapter(join(dir, 'db.json'));
+    await adapter.set('counter', 0);
+    await Promise.all(
+      Array.from({ length: 20 }, async () => {
+        for (;;) {
+          const cur = await adapter.get<number>('counter');
+          if (cur === null) throw new Error('missing');
+          const ok = await adapter.compareAndSet('counter', cur, cur + 1);
+          if (ok) break;
+        }
+      }),
+    );
+    expect(await adapter.get('counter')).toBe(20);
+  });
+});
+

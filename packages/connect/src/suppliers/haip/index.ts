@@ -268,26 +268,28 @@ export class HaipAdapter extends BaseAdapter {
         rooms: params.rooms,
       },
       supplierId: 'haip',
-      fn: () => this.createBookingOnce(params),
+      fn: () => this.#createBookingOnce(params),
     });
   }
 
-  /** Single-attempt book — used by MoneyPathExecutor and Connect bridge. */
-  async createBookingOnce(params: HaipBookingParams): Promise<HaipBookingResult> {
-    const body: HaipBookRequest = {
-      propertyId: params.propertyId,
-      roomTypeId: params.roomTypeId,
-      rateId: params.rateId,
-      checkIn: params.checkIn,
-      checkOut: params.checkOut,
-      rooms: params.rooms,
-      guest: params.guest,
-      externalConfirmationCode: params.externalConfirmationCode,
-      specialRequests: params.specialRequests,
-    };
+  /** Single-attempt book with RL+CB (unsafe → maxRetries 0). */
+  async #createBookingOnce(params: HaipBookingParams): Promise<HaipBookingResult> {
+    return this.withRetry('createBooking', async () => {
+      const body: HaipBookRequest = {
+        propertyId: params.propertyId,
+        roomTypeId: params.roomTypeId,
+        rateId: params.rateId,
+        checkIn: params.checkIn,
+        checkOut: params.checkOut,
+        rooms: params.rooms,
+        guest: params.guest,
+        externalConfirmationCode: params.externalConfirmationCode,
+        specialRequests: params.specialRequests,
+      };
 
-    const response = await this.request<HaipBookResponse>('POST', '/api/v1/connect/book', body);
-    return mapBookingResponse(response, params.externalConfirmationCode);
+      const response = await this.request<HaipBookResponse>('POST', '/api/v1/connect/book', body);
+      return mapBookingResponse(response, params.externalConfirmationCode);
+    });
   }
 
   async getBookingStatus(confirmationNumber: string): Promise<HaipVerificationResult> {
@@ -318,31 +320,33 @@ export class HaipAdapter extends BaseAdapter {
       idempotencyKey,
       request: { confirmationNumber, changes },
       supplierId: 'haip',
-      fn: () => this.modifyBookingOnce(confirmationNumber, changes),
+      fn: () => this.#modifyBookingOnce(confirmationNumber, changes),
     });
   }
 
-  async modifyBookingOnce(
+  async #modifyBookingOnce(
     confirmationNumber: string,
     changes: HaipModifyParams,
   ): Promise<HaipModificationResult> {
-    const body: HaipModifyRequest = {
-      checkIn: changes.checkIn,
-      checkOut: changes.checkOut,
-      rooms: changes.rooms,
-      roomTypeId: changes.roomTypeId,
-      rateId: changes.rateId,
-      guest: changes.guest,
-      specialRequests: changes.specialRequests,
-    };
+    return this.withRetry('modifyBooking', async () => {
+      const body: HaipModifyRequest = {
+        checkIn: changes.checkIn,
+        checkOut: changes.checkOut,
+        rooms: changes.rooms,
+        roomTypeId: changes.roomTypeId,
+        rateId: changes.rateId,
+        guest: changes.guest,
+        specialRequests: changes.specialRequests,
+      };
 
-    const response = await this.request<HaipModifyResponse>(
-      'PATCH',
-      `/api/v1/connect/bookings/${encodeURIComponent(confirmationNumber)}`,
-      body,
-    );
+      const response = await this.request<HaipModifyResponse>(
+        'PATCH',
+        `/api/v1/connect/bookings/${encodeURIComponent(confirmationNumber)}`,
+        body,
+      );
 
-    return mapModifyResponse(response);
+      return mapModifyResponse(response);
+    });
   }
 
   async cancelBooking(
@@ -362,17 +366,19 @@ export class HaipAdapter extends BaseAdapter {
       idempotencyKey,
       request: { confirmationNumber },
       supplierId: 'haip',
-      fn: () => this.cancelBookingOnce(confirmationNumber),
+      fn: () => this.#cancelBookingOnce(confirmationNumber),
     });
   }
 
-  async cancelBookingOnce(confirmationNumber: string): Promise<HaipCancellationResult> {
-    const response = await this.request<HaipCancelResponse>(
-      'DELETE',
-      `/api/v1/connect/bookings/${encodeURIComponent(confirmationNumber)}`,
-    );
+  async #cancelBookingOnce(confirmationNumber: string): Promise<HaipCancellationResult> {
+    return this.withRetry('cancelBooking', async () => {
+      const response = await this.request<HaipCancelResponse>(
+        'DELETE',
+        `/api/v1/connect/bookings/${encodeURIComponent(confirmationNumber)}`,
+      );
 
-    return mapCancelResponse(response);
+      return mapCancelResponse(response);
+    });
   }
 
   // -----------------------------------------------------------------------

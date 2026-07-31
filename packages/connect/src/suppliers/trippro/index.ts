@@ -177,6 +177,7 @@ export class TripProAdapter extends BaseAdapter implements ConnectAdapter {
         'OrderTicket',
         buildOrderTicketBody(bookingId),
         this.config.accessToken,
+        { unsafe: true },
       );
 
       if (hasSoapFault(xml)) {
@@ -201,19 +202,23 @@ export class TripProAdapter extends BaseAdapter implements ConnectAdapter {
   }
 
   async cancelBooking(bookingId: string): Promise<{ success: boolean; message: string }> {
-    const xml = await soapRequest(
-      this.config.soapBaseUrl,
-      'CancelPNR',
-      buildCancelPnrBody(bookingId),
-      this.config.accessToken,
-    );
+    return this.withRetry('cancelBooking', async () => {
+      const xml = await soapRequest(
+        this.config.soapBaseUrl,
+        'CancelPNR',
+        buildCancelPnrBody(bookingId),
+        this.config.accessToken,
+        { unsafe: true },
+      );
 
-    if (hasSoapFault(xml)) {
-      const fault = extractSoapFaultMessage(xml) ?? 'Unknown SOAP fault';
-      return { success: false, message: fault };
-    }
+      if (hasSoapFault(xml)) {
+        const fault = extractSoapFaultMessage(xml) ?? 'Unknown SOAP fault';
+        // Business SOAP fault — definitive, not ambiguous transport failure.
+        return { success: false, message: fault };
+      }
 
-    return { success: true, message: `PNR ${bookingId} cancelled` };
+      return { success: true, message: `PNR ${bookingId} cancelled` };
+    });
   }
 
   async healthCheck(): Promise<{ healthy: boolean; latencyMs: number }> {

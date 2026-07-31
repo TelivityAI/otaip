@@ -1,15 +1,21 @@
 /**
  * Thin SOAP wrapper for TripPro PNR/ticketing endpoints.
  * Uses raw XML templates — no SOAP client library.
+ *
+ * Unsafe money-path SOAP actions (OrderTicket, CancelPNR) use fetchOnce.
+ * Safe reads (ReadPNR, ReadETicket) keep fetchWithRetry.
  */
 
-import { fetchWithRetry } from '@otaip/core';
+import { fetchOnce, fetchWithRetry } from '@otaip/core';
+
+const UNSAFE_SOAP_ACTIONS = new Set(['OrderTicket', 'CancelPNR']);
 
 export async function soapRequest(
   wsdlUrl: string,
   action: string,
   body: string,
   token: string,
+  options?: { unsafe?: boolean },
 ): Promise<string> {
   const envelope = `<?xml version="1.0" encoding="utf-8"?>
 <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
@@ -21,14 +27,19 @@ export async function soapRequest(
   </soap:Body>
 </soap:Envelope>`;
 
-  const response = await fetchWithRetry(wsdlUrl, {
+  const init: RequestInit = {
     method: 'POST',
     headers: {
       'Content-Type': 'text/xml; charset=utf-8',
       SOAPAction: action,
     },
     body: envelope,
-  });
+  };
+
+  const unsafe = options?.unsafe ?? UNSAFE_SOAP_ACTIONS.has(action);
+  const response = unsafe
+    ? await fetchOnce(wsdlUrl, init)
+    : await fetchWithRetry(wsdlUrl, init);
 
   if (!response.ok) {
     throw new Error(`SOAP request failed: ${response.status} ${response.statusText}`);

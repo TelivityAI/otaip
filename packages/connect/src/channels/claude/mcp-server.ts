@@ -1,10 +1,25 @@
 /**
  * Creates an MCP server that exposes ConnectAdapter methods as tools.
  * The server is transport-agnostic — the consumer connects it to stdio, SSE, etc.
+ *
+ * Live mode: create_booking / request_ticketing / cancel_booking require a
+ * bound approval token (createHmac + durable single-use consume) before the
+ * adapter is called (DoD 6).
  */
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import {
+  CasBoundApprovalTokenStore,
+  consumeBoundApprovalToken,
+  createBoundApprovalPolicy,
+  FileCompareAndSwapPersistenceAdapter,
+  isLiveModeFromEnv,
+  type BoundApprovalTokenStore,
+} from '@otaip/core';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type {
   ConnectAdapter,
   CreateBookingInput,
@@ -14,11 +29,26 @@ import type {
 } from '../../types.js';
 import { generateMcpTools } from './tool-generator.js';
 
+const MUTATION_TOOLS = new Set(['create_booking', 'request_ticketing', 'cancel_booking']);
+
 export interface McpServerConfig {
   serverName: string;
   serverDescription?: string;
   version: string;
   whiteLabel?: WhiteLabelConfig;
+  /**
+   * Override live detection. Default: isLiveModeFromEnv().
+   * Live mutations require approvalToken + OTAIP_APPROVAL_SECRET.
+   */
+  liveMode?: boolean;
+  /** HMAC secret. Defaults to OTAIP_APPROVAL_SECRET. */
+  approvalSecret?: string;
+  /** Durable token store for live single-use. Defaults to file-backed CAS. */
+  approvalTokenStore?: BoundApprovalTokenStore;
+  /** Session id bound into approval tokens. Default: mcp-session. */
+  sessionId?: string;
+  /** Agent id bound into approval tokens. Default: mcp-connect. */
+  agentId?: string;
 }
 
 function arg<T>(args: Record<string, unknown> | undefined, key: string): T {
@@ -29,13 +59,45 @@ function argsAs<T>(args: Record<string, unknown> | undefined): T {
   return (args ?? {}) as unknown as T;
 }
 
+function defaultDurableApprovalStore(): BoundApprovalTokenStore {
+  const dir = mkdtempSync(join(tmpdir(), 'otaip-mcp-appr-'));
+  return new CasBoundApprovalTokenStore(
+    new FileCompareAndSwapPersistenceAdapter(join(dir, 'jti.json')),
+  );
+}
+
+function toolError(message: string): {
+  content: Array<{ type: 'text'; text: string }>;
+  isError: true;
+} {
+  return {
+    content: [{ type: 'text' as const, text: message }],
+    isError: true,
+  };
+}
+
 export function generateMcpServer(adapter: ConnectAdapter, config: McpServerConfig): Server {
   const server = new Server(
     { name: config.serverName, version: config.version },
     { capabilities: { tools: {} } },
   );
 
-  const tools = generateMcpTools(adapter, config.whiteLabel);
+  const liveMode = config.liveMode ?? isLiveModeFromEnv();
+  const approvalSecret =
+    (config.approvalSecret ?? process.env['OTAIP_APPROVAL_SECRET'] ?? '').trim() || undefined;
+  const sessionId = config.sessionId ?? 'mcp-session';
+  const agentId = config.agentId ?? 'mcp-connect';
+  const approvalTokenStore =
+    config.approvalTokenStore ??
+    (liveMode ? defaultDurableApprovalStore() : undefined);
+
+  if (liveMode && approvalTokenStore && approvalTokenStore.durability === 'ephemeral') {
+    throw new Error(
+      'MCP live mode refuses ephemeral BoundApprovalTokenStore — inject CasBoundApprovalTokenStore with durable CAS',
+    );
+  }
+
+  const tools = generateMcpTools(adapter, config.whiteLabel, { liveMode });
 
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
     tools,
@@ -45,6 +107,46 @@ export function generateMcpServer(adapter: ConnectAdapter, config: McpServerConf
     const { name, arguments: args } = request.params;
 
     try {
+      if (MUTATION_TOOLS.has(name) && liveMode) {
+        if (!approvalSecret) {
+          return toolError(
+            'Live mode requires OTAIP_APPROVAL_SECRET (or approvalSecret) for MCP mutation tools',
+          );
+        }
+        if (!approvalTokenStore) {
+          return toolError('Live mode requires a durable BoundApprovalTokenStore');
+        }
+        const token = args?.['approvalToken'];
+        if (typeof token !== 'string' || token.length === 0) {
+          return toolError('Approval token is missing or empty');
+        }
+        const expectedInput = { ...(args ?? {}) };
+        delete expectedInput['approvalToken'];
+        const policy = createBoundApprovalPolicy({
+          secret: approvalSecret,
+          store: approvalTokenStore,
+          sessionId,
+          agentId,
+          expectedInput,
+        });
+        const structural = policy.validateApprovalToken?.(token, 'mutation_irreversible');
+        if (!structural?.ok) {
+          const msg =
+            structural && !structural.ok
+              ? (structural.issues[0]?.message ?? 'Approval token invalid')
+              : 'Approval token invalid';
+          return toolError(msg);
+        }
+        const consumed = await consumeBoundApprovalToken(token, approvalSecret, approvalTokenStore);
+        if (!consumed.ok) {
+          const msg =
+            !consumed.ok
+              ? (consumed.issues[0]?.message ?? 'Approval token rejected')
+              : 'Approval token rejected';
+          return toolError(msg);
+        }
+      }
+
       let result: unknown;
 
       switch (name) {
@@ -59,9 +161,12 @@ export function generateMcpServer(adapter: ConnectAdapter, config: McpServerConf
           );
           break;
 
-        case 'create_booking':
-          result = await adapter.createBooking(argsAs<CreateBookingInput>(args));
+        case 'create_booking': {
+          const bookingArgs = { ...(args ?? {}) };
+          delete bookingArgs['approvalToken'];
+          result = await adapter.createBooking(argsAs<CreateBookingInput>(bookingArgs));
           break;
+        }
 
         case 'get_booking':
           result = await adapter.getBookingStatus(arg<string>(args, 'bookingId'));
@@ -69,24 +174,14 @@ export function generateMcpServer(adapter: ConnectAdapter, config: McpServerConf
 
         case 'request_ticketing':
           if (!adapter.requestTicketing) {
-            return {
-              content: [
-                { type: 'text' as const, text: 'Ticketing is not supported by this supplier.' },
-              ],
-              isError: true,
-            };
+            return toolError('Ticketing is not supported by this supplier.');
           }
           result = await adapter.requestTicketing(arg<string>(args, 'bookingId'));
           break;
 
         case 'cancel_booking':
           if (!adapter.cancelBooking) {
-            return {
-              content: [
-                { type: 'text' as const, text: 'Cancellation is not supported by this supplier.' },
-              ],
-              isError: true,
-            };
+            return toolError('Cancellation is not supported by this supplier.');
           }
           result = await adapter.cancelBooking(arg<string>(args, 'bookingId'));
           break;
@@ -96,10 +191,7 @@ export function generateMcpServer(adapter: ConnectAdapter, config: McpServerConf
           break;
 
         default:
-          return {
-            content: [{ type: 'text' as const, text: `Unknown tool: ${name}` }],
-            isError: true,
-          };
+          return toolError(`Unknown tool: ${name}`);
       }
 
       return {
@@ -107,10 +199,7 @@ export function generateMcpServer(adapter: ConnectAdapter, config: McpServerConf
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      return {
-        content: [{ type: 'text' as const, text: message }],
-        isError: true,
-      };
+      return toolError(message);
     }
   });
 
