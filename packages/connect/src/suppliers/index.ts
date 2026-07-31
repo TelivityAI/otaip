@@ -40,7 +40,8 @@ export function createAdapter(
   }
   const raw = factory(config);
   if (options?.unguarded) return raw;
-  const { unguarded: _u, ...execConfig } = options ?? {};
+  const execConfig: Omit<CreateAdapterOptions, 'unguarded'> = { ...(options ?? {}) };
+  delete (execConfig as { unguarded?: boolean }).unguarded;
   return guardAdapter(raw, execConfig);
 }
 

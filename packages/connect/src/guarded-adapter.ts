@@ -57,10 +57,10 @@ export class GuardedConnectAdapter implements ConnectAdapter {
   private readonly executor: MutationExecutor;
 
   constructor(options: GuardedConnectAdapterOptions) {
-    this.inner = options.adapter;
-    this.supplierId = options.adapter.supplierId;
-    this.supplierName = options.adapter.supplierName;
-    const { adapter: _a, ...execConfig } = options;
+    const { adapter, ...execConfig } = options;
+    this.inner = adapter;
+    this.supplierId = adapter.supplierId;
+    this.supplierName = adapter.supplierName;
     this.executor = new MutationExecutor(execConfig);
   }
 

@@ -41,6 +41,7 @@ import type {
   PipelineSession,
   ReferenceDataProvider,
   SemanticIssue,
+  SemanticValidationResult,
 } from './types.js';
 
 export interface PipelineOrchestratorConfig {
@@ -316,20 +317,20 @@ export class PipelineOrchestrator {
       : (this.config.approvalPolicy ?? DEFAULT_APPROVAL_POLICY);
 
     const consumeApproval = useBoundCrypto
-      ? async (rawInput: unknown) => {
+      ? async (rawInput: unknown): Promise<SemanticValidationResult> => {
           const token =
             rawInput && typeof rawInput === 'object'
               ? (rawInput as Record<string, unknown>)['approvalToken']
               : undefined;
           if (typeof token !== 'string') {
             return {
-              ok: false as const,
+              ok: false,
               issues: [
                 {
                   code: 'APPROVAL_TOKEN_INVALID',
                   path: ['approvalToken'],
                   message: 'Approval token is missing or empty',
-                  severity: 'error' as const,
+                  severity: 'error',
                 },
               ],
             };
