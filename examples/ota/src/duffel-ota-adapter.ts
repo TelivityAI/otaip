@@ -7,6 +7,7 @@
  */
 
 import type {
+  DistributionAdapter,
   PriceRequest,
   PriceResponse,
   SearchRequest,
