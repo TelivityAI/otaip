@@ -65,7 +65,7 @@ export class OrderManagement implements Agent<OrderManagementInput, OrderManagem
 
   constructor(config?: OrderManagementConfig & { idFactory?: () => string }) {
     this.persistence = config?.persistence;
-    this.idFactory = config?.idFactory ?? (() => `ORD-${randomUUID()}`);
+    this.idFactory = config?.idFactory ?? ((): string => `ORD-${randomUUID()}`);
   }
 
   async initialize(): Promise<void> {

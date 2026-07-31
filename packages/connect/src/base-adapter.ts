@@ -75,7 +75,7 @@ export abstract class BaseAdapter {
   }
 
   /** Expose breaker status for health / tests. */
-  getCircuitBreakerStatus() {
+  getCircuitBreakerStatus(): ReturnType<CircuitBreaker['getStatus']> {
     return this.circuitBreaker.getStatus();
   }
 

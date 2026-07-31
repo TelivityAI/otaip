@@ -22,8 +22,8 @@ export class InMemoryOutboxStore implements OutboxStore {
     idFactory?: () => string;
   }) {
     this.persistence = options?.persistence ?? new InMemoryPersistenceAdapter();
-    this.now = options?.now ?? (() => new Date());
-    this.idFactory = options?.idFactory ?? (() => randomUUID());
+    this.now = options?.now ?? ((): Date => new Date());
+    this.idFactory = options?.idFactory ?? ((): string => randomUUID());
   }
 
   async enqueue<TPayload = unknown>(
@@ -102,8 +102,8 @@ export class InMemoryDurableTimerStore implements DurableTimerStore {
     idFactory?: () => string;
   }) {
     this.persistence = options?.persistence ?? new InMemoryPersistenceAdapter();
-    this.now = options?.now ?? (() => new Date());
-    this.idFactory = options?.idFactory ?? (() => randomUUID());
+    this.now = options?.now ?? ((): Date => new Date());
+    this.idFactory = options?.idFactory ?? ((): string => randomUUID());
   }
 
   async schedule(kind: string, fireAt: Date, payload: unknown): Promise<DurableTimer> {

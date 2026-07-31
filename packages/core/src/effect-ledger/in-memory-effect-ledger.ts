@@ -19,7 +19,7 @@ export class InMemoryEffectLedger implements EffectLedger {
     now?: () => Date;
   }) {
     this.persistence = options?.persistence ?? new InMemoryPersistenceAdapter();
-    this.now = options?.now ?? (() => new Date());
+    this.now = options?.now ?? ((): Date => new Date());
   }
 
   async begin<TResponse = unknown>(

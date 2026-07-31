@@ -78,7 +78,7 @@ export class MutationExecutor {
     this.ledger = config?.ledger ?? new InMemoryEffectLedger();
     this.killSwitch = config?.killSwitch ?? new MutationKillSwitch();
     this.safety = config?.safety;
-    this.idFactory = config?.idFactory ?? (() => randomUUID());
+    this.idFactory = config?.idFactory ?? ((): string => randomUUID());
   }
 
   get effectLedger(): EffectLedger {

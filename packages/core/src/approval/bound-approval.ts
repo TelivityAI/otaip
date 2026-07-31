@@ -73,7 +73,8 @@ function decodeToken(token: string, secret: string): BoundApprovalClaims | null 
 export function hashApprovalInput(input: unknown): string {
   const json = JSON.stringify(input, (_k, v) => {
     if (v && typeof v === 'object' && 'approvalToken' in v) {
-      const { approvalToken: _t, ...rest } = v as Record<string, unknown>;
+      const rest: Record<string, unknown> = { ...(v as Record<string, unknown>) };
+      delete rest['approvalToken'];
       return rest;
     }
     return v;
