@@ -20,8 +20,19 @@ import {
   makeInvocation,
   runGates,
 } from './validator.js';
-import type { ApprovalPolicy } from './action-classifier.js';
+import {
+  DEFAULT_APPROVAL_POLICY,
+  type ApprovalPolicy,
+} from './action-classifier.js';
 import type { MutationKillSwitch } from '../safety/mutation-kill-switch.js';
+import { getProcessMutationKillSwitch } from '../money-path/money-path-executor.js';
+import { isLiveModeFromEnv } from '../safety/live-safety-mode.js';
+import {
+  InMemoryBoundApprovalTokenStore,
+  consumeBoundApprovalToken,
+  createBoundApprovalPolicy,
+  type BoundApprovalTokenStore,
+} from '../approval/bound-approval.js';
 import type {
   AgentContract,
   AgentInvocation,
@@ -44,6 +55,11 @@ export interface PipelineOrchestratorConfig {
   readonly retryBudget?: number;
   /** Set of agent ids that should be treated as reference-data agents. */
   readonly referenceAgentIds?: ReadonlySet<string>;
+  /**
+   * Approval policy. In live mode (or when OTAIP_APPROVAL_SECRET is set),
+   * per-invocation HMAC + single-use policy overrides this for irreversible
+   * mutations.
+   */
   readonly approvalPolicy?: ApprovalPolicy;
   /**
    * When an agent id is known to be a mutation but has no contract, fail with
@@ -51,8 +67,15 @@ export interface PipelineOrchestratorConfig {
    * for ids in this set as uncontracted mutations.
    */
   readonly mutationAgentIds?: ReadonlySet<string>;
-  /** Optional kill switch — blocks irreversible/mutation runs when engaged. */
+  /**
+   * Kill switch — defaults to process-global switch (env OTAIP_MUTATION_KILL_SWITCH=1).
+   */
   readonly killSwitch?: MutationKillSwitch;
+  /** HMAC secret for bound approvals. Defaults to OTAIP_APPROVAL_SECRET. */
+  readonly approvalSecret?: string;
+  readonly approvalTokenStore?: BoundApprovalTokenStore;
+  /** Override live detection. Default: isLiveModeFromEnv(). */
+  readonly liveMode?: boolean;
   /** Clock injection for tests. */
   readonly now?: () => Date;
   /** Deterministic id source for sessions/invocations (tests). */
@@ -166,7 +189,22 @@ export class PipelineOrchestrator {
       reference: config.reference,
       contracts: config.contracts,
       agents: config.agents,
+      killSwitch: config.killSwitch ?? getProcessMutationKillSwitch(),
+      approvalTokenStore:
+        config.approvalTokenStore ?? new InMemoryBoundApprovalTokenStore(),
+      liveMode: config.liveMode ?? isLiveModeFromEnv(),
+      approvalSecret:
+        config.approvalSecret ?? process.env['OTAIP_APPROVAL_SECRET'],
     };
+  }
+
+  private get liveMode(): boolean {
+    return this.config.liveMode ?? false;
+  }
+
+  private get approvalSecret(): string | undefined {
+    const s = this.config.approvalSecret;
+    return s && s.trim().length > 0 ? s : undefined;
   }
 
   /** Open a new session with the given locked intent. */
@@ -205,12 +243,13 @@ export class PipelineOrchestrator {
     const agent = this.config.agents.get(agentId);
     const startedAt = this.now();
 
-    if (this.config.killSwitch?.isEngaged) {
+    const killSwitch = this.config.killSwitch ?? getProcessMutationKillSwitch();
+    if (killSwitch.isEngaged) {
       return this.recordFailure(session, agentId, startedAt, input, 'kill_switch', [
         {
           code: 'MUTATION_KILL_SWITCH',
           path: [],
-          message: `Mutation kill switch engaged: ${this.config.killSwitch.engagedReason ?? 'unspecified'}`,
+          message: `Mutation kill switch engaged: ${killSwitch.engagedReason ?? 'unspecified'}`,
           severity: 'error',
         },
       ]);
@@ -243,6 +282,66 @@ export class PipelineOrchestrator {
       ]);
     }
 
+    // Live mode refuses irreversible mutations without an HMAC approval secret.
+    if (
+      this.liveMode &&
+      contract.actionType === 'mutation_irreversible' &&
+      !this.approvalSecret
+    ) {
+      return this.recordFailure(session, agentId, startedAt, input, 'action_class_blocked', [
+        {
+          code: 'APPROVAL_SECRET_REQUIRED',
+          path: ['approvalToken'],
+          message:
+            'Live mode requires OTAIP_APPROVAL_SECRET (or approvalSecret) for mutation_irreversible agents',
+          severity: 'error',
+        },
+      ]);
+    }
+
+    const secret = this.approvalSecret;
+    const useBoundCrypto =
+      (this.liveMode || secret !== undefined) &&
+      contract.actionType === 'mutation_irreversible' &&
+      secret !== undefined;
+
+    const approvalPolicy: ApprovalPolicy = useBoundCrypto
+      ? createBoundApprovalPolicy({
+          secret,
+          store: this.config.approvalTokenStore ?? new InMemoryBoundApprovalTokenStore(),
+          sessionId: session.sessionId,
+          agentId,
+          expectedInput: input,
+        })
+      : (this.config.approvalPolicy ?? DEFAULT_APPROVAL_POLICY);
+
+    const consumeApproval = useBoundCrypto
+      ? async (rawInput: unknown) => {
+          const token =
+            rawInput && typeof rawInput === 'object'
+              ? (rawInput as Record<string, unknown>)['approvalToken']
+              : undefined;
+          if (typeof token !== 'string') {
+            return {
+              ok: false as const,
+              issues: [
+                {
+                  code: 'APPROVAL_TOKEN_INVALID',
+                  path: ['approvalToken'],
+                  message: 'Approval token is missing or empty',
+                  severity: 'error' as const,
+                },
+              ],
+            };
+          }
+          return consumeBoundApprovalToken(
+            token,
+            secret,
+            this.config.approvalTokenStore ?? new InMemoryBoundApprovalTokenStore(),
+          );
+        }
+      : undefined;
+
     const retryBudget = this.config.retryBudget ?? 3;
     let attempt = 0;
     let lastResult: GateRunResult | undefined;
@@ -251,7 +350,8 @@ export class PipelineOrchestrator {
       const result = await runGates(contract, agent as Agent, input, session, {
         now: startedAt,
         reference: this.config.reference,
-        approvalPolicy: this.config.approvalPolicy,
+        approvalPolicy,
+        ...(consumeApproval !== undefined ? { consumeApproval } : {}),
         isReferenceAgent:
           this.config.referenceAgentIds?.has(agentId) ?? false,
       });

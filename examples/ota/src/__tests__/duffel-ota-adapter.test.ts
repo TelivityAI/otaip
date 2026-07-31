@@ -68,7 +68,14 @@ const DUFFEL_ORDER_RESPONSE = {
     booking_reference: 'PNR123',
     total_amount: '212.40',
     total_currency: 'GBP',
-    passengers: [{ id: 'pas_test_1' }],
+    passengers: [{ id: 'pas_test_1', given_name: 'Ada', family_name: 'Lovelace' }],
+    owner: { iata_code: 'BA' },
+    documents: [
+      {
+        type: 'electronic_ticket',
+        unique_identifier: '1252106312810',
+      },
+    ],
   },
 };
 
@@ -141,7 +148,8 @@ describe('DuffelOtaAdapter', () => {
       const result = await adapter.book(VALID_REQUEST);
 
       expect(result.bookingReference).toBe('PNR123');
-      expect(result.status).toBe('confirmed');
+      expect(result.status).toBe('ticketed');
+      expect(result.ticketNumbers).toEqual(['1252106312810']);
       expect(result.offerId).toBe('off_test_xyz');
       expect(result.totalAmount).toBe('212.40');
       expect(result.currency).toBe('GBP');
@@ -196,11 +204,11 @@ describe('DuffelOtaAdapter', () => {
       expect(fetched?.currency).toBe('USD');
     });
 
-    it('issueTickets generates one number per passenger and flips status', async () => {
+    it('issueTickets returns supplier ticket numbers from book documents', async () => {
       const booking = await bookOnce();
+      expect(booking.status).toBe('ticketed');
       const tickets = adapter.issueTickets(booking.bookingReference);
-      expect(tickets).toHaveLength(VALID_REQUEST.passengers.length);
-      expect(tickets![0]).toMatch(/^016\d{10}$/);
+      expect(tickets).toEqual(['1252106312810']);
 
       const fetched = await adapter.getBooking(booking.bookingReference);
       expect(fetched?.status).toBe('ticketed');
@@ -214,8 +222,28 @@ describe('DuffelOtaAdapter', () => {
       expect(second).toEqual(first);
     });
 
-    it('cancelBooking succeeds for confirmed booking', async () => {
-      const booking = await bookOnce();
+    it('cancelBooking succeeds for confirmed booking without tickets', async () => {
+      queueFetchResponses([
+        { status: 200, body: DUFFEL_OFFER_RESPONSE },
+        {
+          status: 200,
+          body: {
+            data: {
+              id: 'ord_no_tix',
+              booking_reference: 'NOTIX1',
+              total_amount: '10.00',
+              total_currency: 'GBP',
+              passengers: [{ id: 'pas_1' }],
+            },
+          },
+        },
+      ]);
+      const booking = await adapter.book({
+        ...VALID_REQUEST,
+        offerId: 'off_no_tix',
+        idempotencyKey: 'cancel-confirmed',
+      });
+      expect(booking.status).toBe('confirmed');
       const result = await adapter.cancelBooking(booking.bookingReference);
       expect(result.success).toBe(true);
       const fetched = await adapter.getBooking(booking.bookingReference);
@@ -224,7 +252,7 @@ describe('DuffelOtaAdapter', () => {
 
     it('cancelBooking refuses to cancel a ticketed booking', async () => {
       const booking = await bookOnce();
-      adapter.issueTickets(booking.bookingReference);
+      expect(booking.status).toBe('ticketed');
       const result = await adapter.cancelBooking(booking.bookingReference);
       expect(result.success).toBe(false);
       expect(result.message).toContain('ticketed');

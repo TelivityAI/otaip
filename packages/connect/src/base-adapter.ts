@@ -39,13 +39,23 @@ const DEFAULT_RETRY_CONFIG: RetryConfig = {
   maxDelayMs: 10_000,
 };
 
+/** Default rate limit — always on unless explicitly disabled. */
+const DEFAULT_RATE_LIMITER: RateLimiterConfig = {
+  maxRequests: 100,
+  windowMs: 1_000,
+};
+
 export interface BaseAdapterResilienceConfig {
-  readonly rateLimiter?: RateLimiterConfig;
+  /**
+   * Rate limiter config. Defaults to generous per-adapter limits.
+   * Pass `false` only for tightly controlled unit tests.
+   */
+  readonly rateLimiter?: RateLimiterConfig | false;
   readonly circuitBreaker?: Partial<CircuitBreakerConfig>;
   /**
    * When true (default), unsafe ops (book/ticket/cancel) are never
    * auto-retried by withRetry after failure — callers must use
-   * MutationExecutor + reconcile.
+   * MutationExecutor / GuardedConnectAdapter + reconcile.
    */
   readonly disableUnsafeAutoRetry?: boolean;
 }
@@ -62,9 +72,13 @@ export abstract class BaseAdapter {
     resilience?: BaseAdapterResilienceConfig,
   ) {
     this.retryConfig = { ...DEFAULT_RETRY_CONFIG, ...retryConfig };
-    this.rateLimiter = resilience?.rateLimiter
-      ? new RateLimiter(resilience.rateLimiter)
-      : null;
+    if (resilience?.rateLimiter === false) {
+      this.rateLimiter = null;
+    } else {
+      this.rateLimiter = new RateLimiter(
+        resilience?.rateLimiter ?? DEFAULT_RATE_LIMITER,
+      );
+    }
     this.circuitBreaker = new CircuitBreaker({
       name: undefined,
       failureThreshold: 5,
@@ -126,14 +140,16 @@ export abstract class BaseAdapter {
       }
 
       if (lastError instanceof ConnectError) {
+        // Preserve retryable from the inner error so OUTCOME_UNKNOWN classification works.
         throw lastError;
       }
 
+      const ambiguous = this.isTransportFailure(lastError);
       throw new ConnectError(
         `${operation} failed after ${maxRetries + 1} attempts`,
         this.supplierId,
         operation,
-        false,
+        ambiguous,
         lastError,
       );
     }

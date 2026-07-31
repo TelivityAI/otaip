@@ -70,7 +70,8 @@ describe('PipelineOrchestrator', () => {
       expect(result.output.data).toEqual({ out: 'HI' });
       expect(session.history).toHaveLength(1);
       expect(session.contractState.get('echo')).toEqual({ out: 'HI' });
-      // All six logical gates fire at least once.
+      // Query path: input gates + execute + output gates.
+      // action_class runs pre-execute for mutations only (DoD 6).
       const gates = result.invocation.gateResults.map((g) => g.gate);
       expect(gates).toContain('intent_lock');
       expect(gates).toContain('schema_in');
@@ -78,7 +79,7 @@ describe('PipelineOrchestrator', () => {
       expect(gates).toContain('cross_agent');
       expect(gates).toContain('schema_out');
       expect(gates).toContain('confidence');
-      expect(gates).toContain('action_class');
+      expect(gates).not.toContain('action_class');
     }
   });
 

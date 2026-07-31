@@ -187,6 +187,8 @@ export interface CarBookRequest {
   inboundFlightNumber?: string;
   metadata?: Record<string, string>;
   signal?: AbortSignal;
+  /** Required in live mode — same key → one supplier car booking. */
+  idempotencyKey?: string;
 }
 
 export interface CarBookResponse {

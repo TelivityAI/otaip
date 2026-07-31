@@ -19,8 +19,19 @@ import type {
   PriceRequest,
   PriceResponse,
   PriceBreakdown,
+  MoneyPathExecutorConfig,
+  StoreDurability,
 } from '@otaip/core';
-import { fetchWithRetry } from '@otaip/core';
+import {
+  fetchWithRetry,
+  fetchOnce,
+  MoneyPathExecutor,
+  RateLimiter,
+  CircuitBreaker,
+  CircuitOpenError,
+  isLiveModeFromEnv,
+  MoneyPathError,
+} from '@otaip/core';
 import Decimal from 'decimal.js';
 
 import type {
@@ -273,6 +284,18 @@ export interface BookRequest {
     gender: 'm' | 'f';
     type: 'adult' | 'child' | 'infant_without_seat';
   }>;
+  /**
+   * Required in live mode. Same key → at most one POST /air/orders (DoD 1/2).
+   */
+  idempotencyKey?: string;
+}
+
+/** Paths that create/cancel money-path side effects — never auto-retried. */
+function isUnsafeDuffelPath(method: string, path: string): boolean {
+  if (method !== 'POST' && method !== 'DELETE' && method !== 'PATCH') return false;
+  if (path === '/air/orders' || path.startsWith('/air/orders/')) return true;
+  if (path === '/cars/bookings' || path.includes('/cars/bookings/')) return true;
+  return false;
 }
 
 export interface BookTicketNumber {
@@ -435,20 +458,63 @@ export function mapOrderToBookResponse(order: DuffelOrder): BookResponse {
   return response;
 }
 
+export interface DuffelAdapterOptions {
+  readonly apiKey?: string;
+  readonly baseUrl?: string;
+  readonly moneyPath?: MoneyPathExecutorConfig;
+  /** Store durability of the money-path ledger. Default ephemeral unless set. */
+  readonly storeDurability?: StoreDurability;
+  readonly liveMode?: boolean;
+}
+
 export class DuffelAdapter implements DistributionAdapter {
   readonly name = 'duffel';
   private readonly apiKey: string;
   private readonly baseUrl: string;
+  private readonly rateLimiter: RateLimiter;
+  private readonly circuitBreaker: CircuitBreaker;
+  private readonly moneyPath: MoneyPathExecutor;
+  private readonly liveMode: boolean;
 
-  constructor(apiKey?: string, baseUrl?: string) {
-    const resolvedKey = apiKey ?? process.env['DUFFEL_API_KEY'] ?? '';
+  constructor(apiKeyOrOptions?: string | DuffelAdapterOptions, baseUrl?: string) {
+    const options: DuffelAdapterOptions =
+      typeof apiKeyOrOptions === 'string' || apiKeyOrOptions === undefined
+        ? { apiKey: apiKeyOrOptions, baseUrl }
+        : apiKeyOrOptions;
+
+    const resolvedKey = options.apiKey ?? process.env['DUFFEL_API_KEY'] ?? '';
     if (!resolvedKey || resolvedKey.trim().length === 0) {
       throw new Error(
         'DuffelAdapter requires a valid API key. Pass it to the constructor or set DUFFEL_API_KEY env var.',
       );
     }
     this.apiKey = resolvedKey;
-    this.baseUrl = baseUrl ?? DUFFEL_BASE_URL;
+    this.baseUrl = options.baseUrl ?? DUFFEL_BASE_URL;
+    this.liveMode = options.liveMode ?? isLiveModeFromEnv();
+    this.rateLimiter = new RateLimiter({ maxRequests: 50, windowMs: 1_000 });
+    this.circuitBreaker = new CircuitBreaker({
+      name: 'duffel',
+      failureThreshold: 5,
+      resetMs: 30_000,
+    });
+    this.moneyPath = new MoneyPathExecutor({
+      liveMode: this.liveMode,
+      storeDurability: options.storeDurability ?? options.moneyPath?.storeDurability ?? 'ephemeral',
+      reconcileHint: 'getOrder',
+      ...options.moneyPath,
+    });
+  }
+
+  get moneyPathExecutor(): MoneyPathExecutor {
+    return this.moneyPath;
+  }
+
+  getCircuitBreakerStatus(): ReturnType<CircuitBreaker['getStatus']> {
+    return this.circuitBreaker.getStatus();
+  }
+
+  resetCircuitBreaker(): void {
+    this.circuitBreaker.reset();
   }
 
   async search(request: SearchRequest): Promise<SearchResponse> {
@@ -524,7 +590,28 @@ export class DuffelAdapter implements DistributionAdapter {
   }
 
   async book(request: BookRequest): Promise<BookResponse> {
-    // Fetch the offer to get Duffel passenger IDs and total for payment
+    const key = request.idempotencyKey?.trim();
+    if (this.liveMode && !key) {
+      throw new MoneyPathError(
+        'DuffelAdapter.book requires idempotencyKey in live mode (DoD 1/2)',
+      );
+    }
+    const idempotencyKey = key ?? `duffel-book:${request.offer_id}`;
+
+    return this.moneyPath.executeUnsafeOrThrow({
+      operation: 'book',
+      idempotencyKey,
+      request: {
+        offer_id: request.offer_id,
+        passengerCount: request.passengers.length,
+      },
+      supplierId: 'duffel',
+      fn: () => this.bookOnce(request),
+    });
+  }
+
+  /** Single-attempt order create — used only inside MoneyPathExecutor. */
+  private async bookOnce(request: BookRequest): Promise<BookResponse> {
     const offerResponse = (await this.request(
       'GET',
       `/air/offers/${request.offer_id}?return_available_services=false`,
@@ -534,7 +621,6 @@ export class DuffelAdapter implements DistributionAdapter {
       throw new Error('Could not fetch offer details for booking');
     }
 
-    // Map Duffel passenger IDs to the provided passenger details
     const duffelPassengers: Array<{ id?: string; type?: string }> = offer.passengers ?? [];
     const passengers = request.passengers.map((pax, i) => ({
       ...pax,
@@ -644,30 +730,47 @@ export class DuffelAdapter implements DistributionAdapter {
   }
 
   async bookCar(request: CarBookRequest): Promise<CarBookResponse> {
-    const body: DuffelCarsBookingRequest = {
-      data: {
-        quote_id: request.quoteId,
-        driver: {
-          given_name: request.driver.givenName,
-          family_name: request.driver.familyName,
-          email: request.driver.email,
-          phone_number: request.driver.phoneNumber,
-          ...(request.driver.dateOfBirth ? { date_of_birth: request.driver.dateOfBirth } : {}),
-        },
-        ...(request.payment ? { payment: request.payment } : {}),
-        ...(request.metadata ? { metadata: request.metadata } : {}),
-        ...(request.inboundFlightNumber
-          ? { inbound_flight_number: request.inboundFlightNumber }
-          : {}),
+    const key = request.idempotencyKey?.trim();
+    if (this.liveMode && !key) {
+      throw new MoneyPathError(
+        'DuffelAdapter.bookCar requires idempotencyKey in live mode (DoD 1/2)',
+      );
+    }
+    const idempotencyKey = key ?? `duffel-car-book:${request.quoteId}`;
+    return this.moneyPath.executeUnsafeOrThrow({
+      operation: 'bookCar',
+      idempotencyKey,
+      request: { quoteId: request.quoteId },
+      supplierId: 'duffel',
+      fn: async () => {
+        const body: DuffelCarsBookingRequest = {
+          data: {
+            quote_id: request.quoteId,
+            driver: {
+              given_name: request.driver.givenName,
+              family_name: request.driver.familyName,
+              email: request.driver.email,
+              phone_number: request.driver.phoneNumber,
+              ...(request.driver.dateOfBirth
+                ? { date_of_birth: request.driver.dateOfBirth }
+                : {}),
+            },
+            ...(request.payment ? { payment: request.payment } : {}),
+            ...(request.metadata ? { metadata: request.metadata } : {}),
+            ...(request.inboundFlightNumber
+              ? { inbound_flight_number: request.inboundFlightNumber }
+              : {}),
+          },
+        };
+        const response = (await this.request(
+          'POST',
+          '/cars/bookings',
+          body as unknown as Record<string, unknown>,
+          request.signal ? { signal: request.signal } : {},
+        )) as DuffelCarsBookingResponse;
+        return mapCarBookingResponse(response);
       },
-    };
-    const response = (await this.request(
-      'POST',
-      '/cars/bookings',
-      body as unknown as Record<string, unknown>,
-      request.signal ? { signal: request.signal } : {},
-    )) as DuffelCarsBookingResponse;
-    return mapCarBookingResponse(response);
+    });
   }
 
   async getCarBooking(bookingId: string, signal?: AbortSignal): Promise<CarBookResponse> {
@@ -684,13 +787,31 @@ export class DuffelAdapter implements DistributionAdapter {
     bookingId: string,
     signal?: AbortSignal,
   ): Promise<CarCancelResponse> {
-    const response = (await this.request(
-      'POST',
-      `/cars/bookings/${encodeURIComponent(bookingId)}/actions/cancel`,
-      undefined,
-      signal ? { signal } : {},
-    )) as DuffelCarsCancelResponse;
-    return mapCarCancelResponse(response);
+    return this.moneyPath.executeUnsafeOrThrow({
+      operation: 'cancelCarBooking',
+      idempotencyKey: `duffel-car-cancel:${bookingId}`,
+      request: { bookingId },
+      supplierId: 'duffel',
+      fn: async () => {
+        const response = (await this.request(
+          'POST',
+          `/cars/bookings/${encodeURIComponent(bookingId)}/actions/cancel`,
+          undefined,
+          signal ? { signal } : {},
+        )) as DuffelCarsCancelResponse;
+        return mapCarCancelResponse(response);
+      },
+    });
+  }
+
+  /**
+   * Flight cancel is not available on the Duffel public order API used here.
+   * Do not invent cancel behavior — fail closed (DoD 7).
+   */
+  async cancelFlightBooking(_orderId: string): Promise<never> {
+    throw new MoneyPathError(
+      'Duffel flight cancel is not supported on this adapter — refuse rather than alias',
+    );
   }
 
   private async request(
@@ -702,6 +823,17 @@ export class DuffelAdapter implements DistributionAdapter {
     if (options.signal?.aborted) {
       throw new Error('Duffel API request aborted before dispatch');
     }
+
+    try {
+      this.circuitBreaker.assertClosed();
+    } catch (err) {
+      if (err instanceof CircuitOpenError) {
+        throw new Error(`Duffel API circuit open: ${err.message}`);
+      }
+      throw err;
+    }
+    await this.rateLimiter.acquire();
+
     const url = `${this.baseUrl}${path}`;
     const headers: Record<string, string> = {
       Authorization: `Bearer ${this.apiKey}`,
@@ -712,14 +844,20 @@ export class DuffelAdapter implements DistributionAdapter {
       headers['Content-Type'] = 'application/json';
     }
 
+    const init: RequestInit = {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    };
+
+    const unsafe = isUnsafeDuffelPath(method, path);
     let response: Response;
     try {
-      response = await fetchWithRetry(url, {
-        method,
-        headers,
-        body: body ? JSON.stringify(body) : undefined,
-      });
+      response = unsafe
+        ? await fetchOnce(url, init)
+        : await fetchWithRetry(url, init);
     } catch (err: unknown) {
+      this.circuitBreaker.recordFailure();
       const message = err instanceof Error ? err.message : 'Unknown network error';
       throw new Error(`Duffel API network error: ${message}`);
     }
@@ -733,6 +871,10 @@ export class DuffelAdapter implements DistributionAdapter {
         // ignore parse errors
       }
 
+      if (response.status === 429 || response.status >= 500) {
+        this.circuitBreaker.recordFailure();
+      }
+
       if (response.status === 429) {
         throw new Error(`Duffel API rate limited (429). ${errorDetail}`.trim());
       }
@@ -742,6 +884,7 @@ export class DuffelAdapter implements DistributionAdapter {
       );
     }
 
+    this.circuitBreaker.recordSuccess();
     return response.json();
   }
 }
