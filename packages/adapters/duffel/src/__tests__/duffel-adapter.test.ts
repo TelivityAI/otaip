@@ -522,7 +522,7 @@ describe('DuffelAdapter getOrder', () => {
 
     const fetchCall = vi.mocked(fetch).mock.calls[0]!;
     expect(fetchCall[0]).toBe(
-      'https://api.duffel.com/air/orders/ord_00009hthhsUZ8W4LxQgkjo',
+      'https://api.test.duffel.local/air/orders/ord_00009hthhsUZ8W4LxQgkjo',
     );
     expect((fetchCall[1] as RequestInit).method).toBe('GET');
   });

@@ -175,7 +175,7 @@ describe('DuffelAdapter.searchCars', () => {
     await adapter.searchCars(SEARCH_REQUEST);
 
     expect(calls).toHaveLength(1);
-    expect(calls[0]!.url).toBe('https://api.duffel.com/cars/search');
+    expect(calls[0]!.url).toBe('https://api.test.duffel.local/cars/search');
     expect(calls[0]!.init.method).toBe('POST');
     const body = JSON.parse(calls[0]!.init.body as string);
     expect(body).toEqual({
@@ -316,7 +316,7 @@ describe('DuffelAdapter.quoteCar', () => {
   it('posts /cars/quotes with rate_id wrapped in data', async () => {
     const { calls } = captureFetch([{ status: 200, body: QUOTE_RESPONSE }]);
     await adapter.quoteCar('rae_test_alpha');
-    expect(calls[0]!.url).toBe('https://api.duffel.com/cars/quotes');
+    expect(calls[0]!.url).toBe('https://api.test.duffel.local/cars/quotes');
     expect(calls[0]!.init.method).toBe('POST');
     expect(JSON.parse(calls[0]!.init.body as string)).toEqual({
       data: { rate_id: 'rae_test_alpha' },
@@ -371,7 +371,7 @@ describe('DuffelAdapter.bookCar', () => {
       metadata: { trip: 'business' },
       inboundFlightNumber: 'BA123',
     });
-    expect(calls[0]!.url).toBe('https://api.duffel.com/cars/bookings');
+    expect(calls[0]!.url).toBe('https://api.test.duffel.local/cars/bookings');
     const body = JSON.parse(calls[0]!.init.body as string);
     expect(body).toEqual({
       data: {
@@ -436,7 +436,7 @@ describe('DuffelAdapter.getCarBooking', () => {
     const adapter = new DuffelAdapter({ apiKey: 'duffel_test_key', baseUrl: 'https://api.test.duffel.local', liveMode: false });
     const { calls } = captureFetch([{ status: 200, body: BOOKING_RESPONSE }]);
     const result = await adapter.getCarBooking('boo_test_001');
-    expect(calls[0]!.url).toBe('https://api.duffel.com/cars/bookings/boo_test_001');
+    expect(calls[0]!.url).toBe('https://api.test.duffel.local/cars/bookings/boo_test_001');
     expect(calls[0]!.init.method).toBe('GET');
     expect(result.bookingId).toBe('boo_test_001');
   });
@@ -455,7 +455,7 @@ describe('DuffelAdapter.cancelCarBooking', () => {
     const { calls } = captureFetch([{ status: 200, body: CANCEL_RESPONSE }]);
     const result = await adapter.cancelCarBooking('boo_test_001');
     expect(calls[0]!.url).toBe(
-      'https://api.duffel.com/cars/bookings/boo_test_001/actions/cancel',
+      'https://api.test.duffel.local/cars/bookings/boo_test_001/actions/cancel',
     );
     expect(calls[0]!.init.method).toBe('POST');
     expect(result.status).toBe('cancelled');
