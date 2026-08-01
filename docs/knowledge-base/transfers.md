@@ -69,7 +69,17 @@ Returns `{ bookingReference, status: 'CONFIRMED' | 'ON_REQUEST', clientReference
 
 ## Cancellation
 
-The brief specifies the OTAIP method signature `cancelTransfer(bookingReference)` returning `{ status: 'CANCELLED', cancellationReference }`. The HTTP-level details (DELETE vs POST, simulate-confirm pattern) are NOT documented for Transfers — DQ-T1.
+Official Hotelbeds Transfers Booking API cancel:
+
+`DELETE /transfer-api/1.0/bookings/{language}/reference/{booking_reference}`
+
+Optional `?simulation=true`. Absent simulation = hard cancel. Partial cancel via `/id/{service_id}` is out of scope for the adapter.
+
+Source: https://developer.hotelbeds.com/documentation/transfers/booking-api/booking-post-booking/booking-cancellation/
+
+OTAIP method: `cancelTransfer(bookingReference, options?)` → `{ status: 'CANCELLED', cancellationReference }`.
+
+**DQ-T1: CLOSED** (official docs above).
 
 ## Sandbox
 
@@ -79,7 +89,6 @@ The brief specifies the OTAIP method signature `cancelTransfer(bookingReference)
 
 ## Open DOMAIN_QUESTIONs
 
-- **DQ-T1** — Cancellation HTTP shape. Same situation as Activities. The adapter assumes `DELETE /bookings/{ref}` with no flag. Confirm against sandbox.
 - **DQ-T2** — `GPS` location code format. The brief lists `'GPS'` as a `from.type` / `to.type` value but does not document the `code` payload — comma-separated `lat,lon`? URL-encoded JSON? Unknown. The adapter passes the supplied string through verbatim; callers must format correctly until verified.
 - **DQ-T3** — `outbound.time` timezone. Local at `from` or UTC? The adapter passes through unchanged. Operators using non-IATA `from` types must confirm.
 - **DQ-T4** — Per-vehicle vs per-pax pricing. Brief implies per-vehicle but doesn't state. The adapter exposes a single `price` and treats it as the booking-line total.

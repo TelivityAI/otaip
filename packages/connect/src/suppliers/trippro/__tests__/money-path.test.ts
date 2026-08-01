@@ -51,4 +51,39 @@ describe('TripPro money-path SOAP', () => {
     await expect(adapter.requestTicketing!('ABC123')).rejects.toBeInstanceOf(OutcomeUnknownError);
     expect(posts).toBe(1);
   });
+
+  it('REST createBooking 503 → one wire; replay → zero', async () => {
+    let bookPosts = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes('bookItinerary') || url.includes('/book')) {
+          bookPosts += 1;
+          return new Response('unavailable', { status: 503, statusText: 'Service Unavailable' });
+        }
+        return new Response('{}', { status: 200 });
+      }),
+    );
+
+    const adapter = createAdapter('trippro', CONFIG, { liveMode: false });
+    const input = {
+      offerId: 'off-1',
+      passengers: [
+        {
+          type: 'adult' as const,
+          gender: 'M' as const,
+          firstName: 'A',
+          lastName: 'B',
+          dateOfBirth: '1990-01-01',
+        },
+      ],
+      contact: { email: 'a@b.com', phone: '+1' },
+      idempotencyKey: 'tp-book-1',
+    };
+
+    await expect(adapter.createBooking(input)).rejects.toBeInstanceOf(OutcomeUnknownError);
+    await expect(adapter.createBooking(input)).rejects.toBeInstanceOf(OutcomeUnknownError);
+    expect(bookPosts).toBe(1);
+  });
 });

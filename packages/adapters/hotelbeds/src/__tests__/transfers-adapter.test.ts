@@ -331,9 +331,39 @@ describe('HotelbedsAdapter.cancelTransfer', () => {
     adapter = new HotelbedsAdapter({ apiKey: 'test-key', secret: 'test-secret' });
   });
 
-  it('fails closed — transfer cancel HTTP contract undocumented (DOMAIN_QUESTION)', async () => {
-    await expect(adapter.cancelTransfer('HB-TRF-3001')).rejects.toThrow(
-      /DOMAIN_QUESTION|not wired|undocumented/i,
+  it('simulation hits documented DELETE path with simulation=true', async () => {
+    const { calls } = captureFetch([{ status: 200, body: CANCELLATION_RESPONSE }]);
+    const result = await adapter.cancelTransfer('HB-TRF-3001', { simulation: true });
+    expect(result).toEqual({
+      status: 'CANCELLED',
+      cancellationReference: 'CXL-HB-TRF-3001',
+    });
+    expect(calls[0]!.url).toContain(
+      '/transfer-api/1.0/bookings/en/reference/HB-TRF-3001?simulation=true',
     );
+    expect(calls[0]!.init.method).toBe('DELETE');
+  });
+
+  it('hard cancel 503 → one wire; replay → zero', async () => {
+    let deletes = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        deletes += 1;
+        return {
+          ok: false,
+          status: 503,
+          statusText: 'Service Unavailable',
+          json: async () => ({}),
+        };
+      }),
+    );
+    await expect(
+      adapter.cancelTransfer('HB-TRF-3001', { idempotencyKey: 'trf-cxl-1' }),
+    ).rejects.toThrow(/503|unknown|reconcil/i);
+    await expect(
+      adapter.cancelTransfer('HB-TRF-3001', { idempotencyKey: 'trf-cxl-1' }),
+    ).rejects.toThrow(/503|unknown|reconcil/i);
+    expect(deletes).toBe(1);
   });
 });

@@ -128,10 +128,36 @@ describe('Duffel money-path book', () => {
     ).rejects.toThrow(/idempotencyKey/);
   });
 
-  it('flight cancel fails closed', async () => {
+  it('flight cancel confirm 503 → one confirm wire; replay → zero', async () => {
+    let confirms = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes('/air/order_cancellations') && !url.includes('/actions/confirm')) {
+          return new Response(JSON.stringify({ data: { id: 'ore_1' } }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+        if (url.includes('/actions/confirm')) {
+          confirms += 1;
+          return new Response('unavailable', { status: 503, statusText: 'Service Unavailable' });
+        }
+        return new Response('{}', { status: 200 });
+      }),
+    );
     const adapter = new DuffelAdapter({
       baseUrl: 'https://api.test.duffel.local',
- apiKey: 'duffel_test_key', liveMode: false });
-    await expect(adapter.cancelFlightBooking('ord_1')).rejects.toThrow(/not supported/);
+      apiKey: 'duffel_test_key',
+      liveMode: false,
+    });
+    await expect(
+      adapter.cancelFlightBooking('ord_1', { idempotencyKey: 'air-cxl-1' }),
+    ).rejects.toThrow(/503|unknown|reconcil/i);
+    await expect(
+      adapter.cancelFlightBooking('ord_1', { idempotencyKey: 'air-cxl-1' }),
+    ).rejects.toThrow(/503|unknown|reconcil/i);
+    expect(confirms).toBe(1);
   });
 });

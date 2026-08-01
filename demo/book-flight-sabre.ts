@@ -17,9 +17,10 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
-import { SabreAdapter } from '../packages/connect/src/suppliers/sabre/index.ts';
+import { createAdapter } from '../packages/connect/src/suppliers/index.ts';
 import type {
   CabinClass,
+  ConnectAdapter,
   FlightOffer,
   PassengerDetail,
 } from '../packages/connect/src/types.ts';
@@ -32,12 +33,16 @@ config({ path: resolve(__dirname, '../.env') });
 
 const client = new Anthropic({ apiKey: process.env['ANTHROPIC_API_KEY'] });
 
-const adapter = new SabreAdapter({
-  environment: (process.env['SABRE_ENVIRONMENT'] ?? 'cert') as 'cert' | 'prod',
-  clientId: process.env['SABRE_CLIENT_ID'] ?? '',
-  clientSecret: process.env['SABRE_CLIENT_SECRET'] ?? '',
-  pcc: process.env['SABRE_PCC'],
-});
+const adapter: ConnectAdapter = createAdapter(
+  'sabre',
+  {
+    environment: (process.env['SABRE_ENVIRONMENT'] ?? 'cert') as 'cert' | 'prod',
+    clientId: process.env['SABRE_CLIENT_ID'] ?? '',
+    clientSecret: process.env['SABRE_CLIENT_SECRET'] ?? '',
+    pcc: process.env['SABRE_PCC'],
+  },
+  { liveMode: false },
+);
 
 // Cache search results so the agent can reference offers by ID
 let lastSearchResults: FlightOffer[] = [];

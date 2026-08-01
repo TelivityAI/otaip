@@ -60,9 +60,9 @@ Validated at construction time with Zod.
 ## Usage
 
 ```typescript
-import { TripProAdapter } from '@otaip/connect';
+import { createAdapter } from '@otaip/connect';
 
-const adapter = new TripProAdapter({
+const adapter = createAdapter('trippro', {
   soapBaseUrl: 'https://soap.trippro.com',
   accessToken: process.env.TRIPPRO_ACCESS_TOKEN,
   searchAccessToken: process.env.TRIPPRO_SEARCH_TOKEN,

@@ -54,9 +54,9 @@ Validated at construction time with Zod. Invalid config throws immediately.
 ## Usage
 
 ```typescript
-import { AmadeusAdapter } from '@otaip/connect';
+import { createAdapter } from '@otaip/connect';
 
-const adapter = new AmadeusAdapter({
+const adapter = createAdapter('amadeus', {
   environment: 'test',
   clientId: process.env.AMADEUS_CLIENT_ID,
   clientSecret: process.env.AMADEUS_CLIENT_SECRET,

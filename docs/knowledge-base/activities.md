@@ -72,7 +72,17 @@ Returns `{ bookingReference, status: 'CONFIRMED' | 'ON_REQUEST', clientReference
 
 ## Cancellation
 
-The brief specifies the OTAIP method signature `cancelActivity(bookingReference)` returning `{ status: 'CANCELLED', cancellationReference }`. The HTTP-level details (DELETE vs POST, two-step simulate-confirm pattern à la Hotels) are NOT documented for Activities — DQ-A1.
+Official Hotelbeds Activities Booking API cancel:
+
+`DELETE /activity-api/3.0/bookings/{language}/{reference}?cancellationFlag=SIMULATION|CANCELLATION`
+
+Source: https://developer.hotelbeds.com/documentation/activities/booking-api/booking-and-post-booking/cancel/
+
+Two-step: SIMULATION previews fees; CANCELLATION is the hard cancel (money-path / once-only).
+
+OTAIP method: `cancelActivity(bookingReference, flag?, options?)` → `{ status: 'CANCELLED', cancellationReference }`.
+
+**DQ-A1: CLOSED** (official docs above).
 
 ## Sandbox
 
@@ -82,7 +92,6 @@ The brief specifies the OTAIP method signature `cancelActivity(bookingReference)
 
 ## Open DOMAIN_QUESTIONs
 
-- **DQ-A1** — Cancellation HTTP shape. Hotels supports a SIMULATION/CANCELLATION two-step (DELETE with `cancellationFlag` query param). Activities cancel HTTP shape is unverified. The adapter assumes `DELETE /activities/booking/{ref}` with no flag. Confirm against sandbox and update if different.
 - **DQ-A2** — Net vs selling rate field names. The brief uses a single `Money` per modality. The Hotels API returns `net` and `sellingRate` as separate string fields. The adapter mapper currently treats the modality price as net and does not surface a separate selling rate. If Activities does the same, surface it; if not, the price field is treated as net per the brief.
 - **DQ-A3** — `'ON_REQUEST'` confirmation flow. No retrieval endpoint or poll cadence is documented. The adapter returns the status as-is and leaves the orchestration agent to decide whether and how to confirm later.
 - **DQ-A4** — `voucherUrl` access semantics. Whether the URL requires auth, has an expiry, or is anonymously accessible is unverified. The adapter passes the URL through unmodified.

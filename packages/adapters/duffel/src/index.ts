@@ -12,6 +12,7 @@ export type {
   BookTicketNumber,
   DuffelAdapterOptions,
   DuffelOrder,
+  FlightCancelResponse,
 } from './duffel-adapter.js';
 export { DuffelOrderBridge } from './order-bridge.js';
 export { duffelCapabilities } from './capabilities.js';

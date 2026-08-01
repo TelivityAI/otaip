@@ -3,7 +3,7 @@
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -12,6 +12,7 @@ import {
   CasBoundApprovalTokenStore,
   FileCompareAndSwapPersistenceAdapter,
   issueBoundApprovalToken,
+  LiveSafetyError,
 } from '@otaip/core';
 import type { ConnectAdapter } from '../../../types.js';
 import { generateMcpServer } from '../mcp-server.js';
@@ -209,6 +210,124 @@ describe('MCP live approval gate', () => {
         expect(createBooking).toHaveBeenCalledOnce();
 
         createBooking.mockClear();
+        const replay = await client.callTool({
+          name: 'create_booking',
+          arguments: { ...input, approvalToken: token },
+        });
+        expect(replay.isError).toBe(true);
+        expect(createBooking).not.toHaveBeenCalled();
+      },
+    );
+  });
+
+  it('live mode without store or OTAIP_MCP_APPROVAL_STORE_PATH throws at construction', () => {
+    const prev = process.env['OTAIP_MCP_APPROVAL_STORE_PATH'];
+    delete process.env['OTAIP_MCP_APPROVAL_STORE_PATH'];
+    try {
+      expect(() =>
+        generateMcpServer(mockAdapter({ createBooking: vi.fn(), cancelBooking: vi.fn() }), {
+          serverName: 'test',
+          version: '1',
+          liveMode: true,
+          approvalSecret: 'live-secret',
+        }),
+      ).toThrow(LiveSafetyError);
+    } finally {
+      if (prev !== undefined) process.env['OTAIP_MCP_APPROVAL_STORE_PATH'] = prev;
+      else delete process.env['OTAIP_MCP_APPROVAL_STORE_PATH'];
+    }
+  });
+
+  it('live mode refuses approval store path under os.tmpdir()', () => {
+    const prev = process.env['OTAIP_MCP_APPROVAL_STORE_PATH'];
+    const underTmp = join(mkdtempSync(join(tmpdir(), 'mcp-bad-')), 'jti.json');
+    process.env['OTAIP_MCP_APPROVAL_STORE_PATH'] = underTmp;
+    try {
+      expect(() =>
+        generateMcpServer(mockAdapter({ createBooking: vi.fn(), cancelBooking: vi.fn() }), {
+          serverName: 'test',
+          version: '1',
+          liveMode: true,
+          approvalSecret: 'live-secret',
+        }),
+      ).toThrow(/tmpdir/i);
+    } finally {
+      if (prev !== undefined) process.env['OTAIP_MCP_APPROVAL_STORE_PATH'] = prev;
+      else delete process.env['OTAIP_MCP_APPROVAL_STORE_PATH'];
+    }
+  });
+
+  it('restart-replay: consumed jti refused on fresh store sharing persistent path', async () => {
+    const persistentDir = join(process.cwd(), '.tmp-mcp-appr-test');
+    mkdirSync(persistentDir, { recursive: true });
+    const storePath = join(persistentDir, `jti-${Date.now()}.json`);
+    const secret = 'live-secret';
+    const sessionId = 'mcp-session';
+    const agentId = 'mcp-connect';
+    const input = {
+      offerId: 'off_1',
+      passengers: [
+        {
+          type: 'adult' as const,
+          gender: 'M' as const,
+          firstName: 'A',
+          lastName: 'B',
+          dateOfBirth: '1990-01-01',
+        },
+      ],
+      contact: { email: 'a@b.com', phone: '+1' },
+      idempotencyKey: 'k-restart',
+    };
+    const token = issueBoundApprovalToken({ sessionId, agentId, input, secret });
+
+    const storeA = new CasBoundApprovalTokenStore(
+      new FileCompareAndSwapPersistenceAdapter(storePath),
+    );
+    const createBooking = vi.fn(async () => ({
+      bookingId: 'B1',
+      supplier: 'mock',
+      status: 'confirmed' as const,
+      segments: [],
+      passengers: [],
+      totalPrice: { amount: '1', currency: 'USD' },
+    }));
+
+    await withClient(
+      mockAdapter({ createBooking, cancelBooking: vi.fn() }),
+      {
+        serverName: 'test',
+        version: '1',
+        liveMode: true,
+        approvalSecret: secret,
+        approvalTokenStore: storeA,
+        sessionId,
+        agentId,
+      },
+      async (client) => {
+        const ok = await client.callTool({
+          name: 'create_booking',
+          arguments: { ...input, approvalToken: token },
+        });
+        expect(ok.isError).toBeFalsy();
+      },
+    );
+
+    createBooking.mockClear();
+    const storeB = new CasBoundApprovalTokenStore(
+      new FileCompareAndSwapPersistenceAdapter(storePath),
+    );
+    await withClient(
+      mockAdapter({ createBooking, cancelBooking: vi.fn() }),
+      {
+        serverName: 'test',
+        version: '1',
+        liveMode: true,
+        approvalSecret: secret,
+        approvalTokenStore: storeB,
+        sessionId,
+        agentId,
+      },
+      async (client) => {
         const replay = await client.callTool({
           name: 'create_booking',
           arguments: { ...input, approvalToken: token },

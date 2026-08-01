@@ -28,10 +28,12 @@ import { mapHotelToRawResult, summarizeBooking, type BookingSummary } from './fi
 import {
   mapActivityAvailability,
   mapActivityBookingResponse,
+  mapActivityCancellation,
 } from './activities-mapper.js';
 import {
   mapTransferAvailability,
   mapTransferBookingResponse,
+  mapTransferCancellation,
 } from './transfers-mapper.js';
 import type {
   HotelbedsAdapterConfig,
@@ -58,12 +60,14 @@ import type {
   HotelbedsActivitiesAvailabilityResponse,
   HotelbedsActivitiesBookingRequest,
   HotelbedsActivitiesBookingResponse,
+  HotelbedsActivitiesCancellationResponse,
 } from './activities-types.js';
 import type {
   HotelbedsTransfersAvailabilityRequest,
   HotelbedsTransfersAvailabilityResponse,
   HotelbedsTransfersBookingRequest,
   HotelbedsTransfersBookingResponse,
+  HotelbedsTransfersCancellationResponse,
   TransferBookRequest,
   TransferBookResponse,
   TransferCancelResponse,
@@ -91,11 +95,19 @@ export type { HotelSearchParams, HotelSourceAdapter } from './lodging-source-int
 export interface HotelbedsBookOptions {
   /** Required in live mode — same key → at most one supplier book. */
   idempotencyKey?: string;
+  /** Language path segment for activity/transfer cancel. Default: en. */
+  language?: string;
+}
+
+export interface HotelbedsTransferCancelOptions extends HotelbedsBookOptions {
+  /** When true, simulate cancel (retryable). Hard cancel when false/absent. */
+  simulation?: boolean;
 }
 
 function isUnsafeHotelbedsPath(method: string, path: string): boolean {
   const upper = method.toUpperCase();
   const pathOnly = path.split('?')[0] ?? path;
+  const query = path.includes('?') ? (path.split('?')[1] ?? '') : '';
 
   if (upper === 'POST') {
     if (pathOnly === `${HOTELS_BASE_PATH}/bookings`) return true;
@@ -103,10 +115,25 @@ function isUnsafeHotelbedsPath(method: string, path: string): boolean {
     if (pathOnly === `${TRANSFERS_BASE_PATH}/bookings`) return true;
   }
   if (upper === 'DELETE') {
-    // Hard hotel cancel only — SIMULATION may retry
+    // Hard hotel cancel — SIMULATION may retry
     if (
       pathOnly.startsWith(`${HOTELS_BASE_PATH}/bookings/`) &&
-      path.includes('cancellationFlag=CANCELLATION')
+      query.includes('cancellationFlag=CANCELLATION')
+    ) {
+      return true;
+    }
+    // Hard activity cancel
+    if (
+      pathOnly.startsWith(`${ACTIVITIES_BASE_PATH}/bookings/`) &&
+      query.includes('cancellationFlag=CANCELLATION')
+    ) {
+      return true;
+    }
+    // Hard transfer cancel: DELETE .../reference/{ref} without simulation=true
+    if (
+      pathOnly.includes(`${TRANSFERS_BASE_PATH}/bookings/`) &&
+      pathOnly.includes('/reference/') &&
+      !query.includes('simulation=true')
     ) {
       return true;
     }
@@ -401,15 +428,49 @@ export class HotelbedsAdapter implements HotelSourceAdapter {
   }
 
   /**
-   * Activity cancel HTTP contract is not fully documented.
-   * // TODO: DOMAIN_QUESTION: What is the authoritative Hotelbeds Activities
-   * // cancel HTTP shape (method, path, SIMULATION/CANCELLATION flags)?
-   * Fail closed — do not invent the wire call.
+   * Cancel an activity booking.
+   * Official: DELETE /activity-api/3.0/bookings/{language}/{reference}?cancellationFlag=
+   * SIMULATION | CANCELLATION (see Hotelbeds Activities Cancel docs).
    */
-  async cancelActivity(_bookingReference: string): Promise<ActivityCancelResponse> {
-    throw new MoneyPathError(
-      'Hotelbeds activity cancel is not wired — activity cancel HTTP contract undocumented (DOMAIN_QUESTION). Refusing rather than inventing.',
-    );
+  async cancelActivity(
+    bookingReference: string,
+    flag: HotelbedsCancellationFlag = 'SIMULATION',
+    options?: HotelbedsBookOptions,
+  ): Promise<ActivityCancelResponse> {
+    const language = options?.language?.trim() || 'en';
+    const path =
+      `${ACTIVITIES_BASE_PATH}/bookings/${encodeURIComponent(language)}/` +
+      `${encodeURIComponent(bookingReference)}?cancellationFlag=${flag}`;
+
+    if (flag !== 'CANCELLATION') {
+      const response = (await this.request(
+        'DELETE',
+        path,
+      )) as HotelbedsActivitiesCancellationResponse;
+      return mapActivityCancellation(response);
+    }
+
+    const key = options?.idempotencyKey?.trim();
+    if (this.liveMode && !key) {
+      throw new MoneyPathError(
+        'HotelbedsAdapter.cancelActivity (CANCELLATION) requires idempotencyKey in live mode (DoD 1/2)',
+      );
+    }
+    const idempotencyKey = key ?? `hotelbeds-activity-cancel:${bookingReference}`;
+
+    return this.moneyPath.executeUnsafeOrThrow({
+      operation: 'cancelActivity',
+      idempotencyKey,
+      request: { bookingReference, flag, language },
+      supplierId: 'hotelbeds',
+      fn: async () => {
+        const response = (await this.request(
+          'DELETE',
+          path,
+        )) as HotelbedsActivitiesCancellationResponse;
+        return mapActivityCancellation(response);
+      },
+    });
   }
 
   // -------------------------------------------------------------------------
@@ -471,15 +532,53 @@ export class HotelbedsAdapter implements HotelSourceAdapter {
   }
 
   /**
-   * Transfer cancel HTTP contract is not fully documented.
-   * // TODO: DOMAIN_QUESTION: What is the authoritative Hotelbeds Transfers
-   * // cancel HTTP shape (method, path, flags)?
-   * Fail closed — do not invent the wire call.
+   * Cancel a transfer booking.
+   * Official: DELETE /transfer-api/1.0/bookings/{language}/reference/{ref}
+   * Optional ?simulation=true. Absent simulation = hard cancel.
+   * Partial cancel via /id/{service_id} is out of scope.
    */
-  async cancelTransfer(_bookingReference: string): Promise<TransferCancelResponse> {
-    throw new MoneyPathError(
-      'Hotelbeds transfer cancel is not wired — transfer cancel HTTP contract undocumented (DOMAIN_QUESTION). Refusing rather than inventing.',
-    );
+  async cancelTransfer(
+    bookingReference: string,
+    options?: HotelbedsTransferCancelOptions,
+  ): Promise<TransferCancelResponse> {
+    const language = options?.language?.trim() || 'en';
+    const simulation = options?.simulation === true;
+    let path =
+      `${TRANSFERS_BASE_PATH}/bookings/${encodeURIComponent(language)}/reference/` +
+      `${encodeURIComponent(bookingReference)}`;
+    if (simulation) {
+      path += '?simulation=true';
+    }
+
+    if (simulation) {
+      const response = (await this.request(
+        'DELETE',
+        path,
+      )) as HotelbedsTransfersCancellationResponse;
+      return mapTransferCancellation(response);
+    }
+
+    const key = options?.idempotencyKey?.trim();
+    if (this.liveMode && !key) {
+      throw new MoneyPathError(
+        'HotelbedsAdapter.cancelTransfer (hard cancel) requires idempotencyKey in live mode (DoD 1/2)',
+      );
+    }
+    const idempotencyKey = key ?? `hotelbeds-transfer-cancel:${bookingReference}`;
+
+    return this.moneyPath.executeUnsafeOrThrow({
+      operation: 'cancelTransfer',
+      idempotencyKey,
+      request: { bookingReference, language, simulation: false },
+      supplierId: 'hotelbeds',
+      fn: async () => {
+        const response = (await this.request(
+          'DELETE',
+          path,
+        )) as HotelbedsTransfersCancellationResponse;
+        return mapTransferCancellation(response);
+      },
+    });
   }
 
   // -------------------------------------------------------------------------
