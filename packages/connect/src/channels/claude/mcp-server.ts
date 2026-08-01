@@ -4,7 +4,8 @@
  *
  * Live mode: create_booking / request_ticketing / cancel_booking require a
  * bound approval token (createHmac + durable single-use consume) before the
- * adapter is called (DoD 6).
+ * adapter is called (DoD 6). Tokens bind to tool name + args so a ticket
+ * approval cannot authorize cancel (and vice versa).
  */
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
@@ -30,6 +31,24 @@ import type {
 import { generateMcpTools } from './tool-generator.js';
 
 const MUTATION_TOOLS = new Set(['create_booking', 'request_ticketing', 'cancel_booking']);
+
+/** Reserved key in approval input hash — binds token to the MCP tool name. */
+export const MCP_APPROVAL_TOOL_KEY = 'mcpTool' as const;
+
+/**
+ * Canonical input for {@link issueBoundApprovalToken} / live MCP validation.
+ * Includes tool name so ticketing and cancel tokens for the same bookingId
+ * cannot be cross-used.
+ */
+export function mcpMutationApprovalInput(
+  toolName: string,
+  args: Record<string, unknown> | undefined,
+): Record<string, unknown> {
+  const rest: Record<string, unknown> = { ...(args ?? {}) };
+  delete rest['approvalToken'];
+  delete rest[MCP_APPROVAL_TOOL_KEY];
+  return { [MCP_APPROVAL_TOOL_KEY]: toolName, ...rest };
+}
 
 export interface McpServerConfig {
   serverName: string;
@@ -141,8 +160,7 @@ export function generateMcpServer(adapter: ConnectAdapter, config: McpServerConf
         if (typeof token !== 'string' || token.length === 0) {
           return toolError('Approval token is missing or empty');
         }
-        const expectedInput = { ...(args ?? {}) };
-        delete expectedInput['approvalToken'];
+        const expectedInput = mcpMutationApprovalInput(name, args as Record<string, unknown>);
         const policy = createBoundApprovalPolicy({
           secret: approvalSecret,
           store: approvalTokenStore,

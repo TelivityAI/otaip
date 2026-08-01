@@ -19,7 +19,7 @@ Covered money-path surfaces: Connect `createAdapter` (TripPro/Sabre/Navitaire/Am
 | 3 | Persistence can do #2 | PASS | default (single-host) | Store-declared durability; `FileEffectLedger` + File CAS lockfile (`cas-persistence.test.ts`). **Reference store:** single-host File CAS — multi-node deployers inject their own CAS |
 | 4 | Supplier backpressure real | PASS | default | `BaseAdapter` RL+CB on by default; Duffel/Hotelbeds RL+CB on `request()`; HAIP/TripPro mutations via `withRetry` (unsafe → maxRetries 0) — `rate-limiter.test.ts`, `haip/.../money-path.test.ts` |
 | 5 | Live tickets not invented | PASS | default | `issueTickets` liveMode guard; Duffel maps order documents only |
-| 6 | Irreversible LLM gate has teeth | PASS | default | Orchestrator HMAC + durable single-use. MCP live: no tmpdir fallback; requires inject or `OTAIP_MCP_APPROVAL_STORE_PATH`; restart-replay refuses consumed jti (`mcp-live-approval.test.ts`) |
+| 6 | Irreversible LLM gate has teeth | PASS | default | Orchestrator HMAC + durable single-use. MCP live: no tmpdir fallback; requires inject or `OTAIP_MCP_APPROVAL_STORE_PATH`; tokens bind via `mcpMutationApprovalInput(tool, args)` so ticket≠cancel; restart-replay refuses consumed jti (`mcp-live-approval.test.ts`) |
 | 7 | Reversal works | PASS | default | `executeReversal` shared executor; void/refund fail closed without capability; Duffel air cancel via order_cancellations confirm (once); Hotelbeds activity/transfer hard cancel once (`money-path` / adapter cancel drills) |
 | 8 | Ops see/stop damage | PASS | default | Durable damage visibility = `FileEffectLedger.listUnresolved` across fresh instance (`file-ledger-crash-visibility.test.ts`) + `OTAIP_MUTATION_KILL_SWITCH=1`. `MutationOpsCollector` is in-process only |
 
