@@ -19,7 +19,7 @@
     "@fastify/cors": "^11.1.0",
     "@fastify/helmet": "^13.0.2",
     "@fastify/rate-limit": "^10.3.0",
-    "@fastify/static": "^9.1.1",
+    "@fastify/static": "^10.1.1",
     "dotenv": "^17.4.0",
     "stripe": "^18.0.0"
   },
