@@ -89,7 +89,11 @@ export { generateOpenAPISpec } from './channels/chatgpt/openapi-generator.js';
 export type { OpenAPIGeneratorConfig } from './channels/chatgpt/openapi-generator.js';
 export { generateGptInstructions } from './channels/chatgpt/gpt-instructions.js';
 export type { GptInstructionsConfig } from './channels/chatgpt/gpt-instructions.js';
-export { generateMcpServer } from './channels/claude/mcp-server.js';
+export {
+  generateMcpServer,
+  mcpMutationApprovalInput,
+  MCP_APPROVAL_TOOL_KEY,
+} from './channels/claude/mcp-server.js';
 export type { McpServerConfig } from './channels/claude/mcp-server.js';
 export { generateMcpTools } from './channels/claude/tool-generator.js';
 export type { McpToolDefinition } from './channels/claude/tool-generator.js';

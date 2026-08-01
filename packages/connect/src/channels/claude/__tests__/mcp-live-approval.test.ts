@@ -15,7 +15,7 @@ import {
   LiveSafetyError,
 } from '@otaip/core';
 import type { ConnectAdapter } from '../../../types.js';
-import { generateMcpServer } from '../mcp-server.js';
+import { generateMcpServer, mcpMutationApprovalInput } from '../mcp-server.js';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -198,7 +198,7 @@ describe('MCP live approval gate', () => {
         const token = issueBoundApprovalToken({
           sessionId,
           agentId,
-          input,
+          input: mcpMutationApprovalInput('create_booking', input),
           secret,
         });
 
@@ -216,6 +216,61 @@ describe('MCP live approval gate', () => {
         });
         expect(replay.isError).toBe(true);
         expect(createBooking).not.toHaveBeenCalled();
+      },
+    );
+  });
+
+  it('refuses ticket approval token on cancel_booking (tool binding)', async () => {
+    const createBooking = vi.fn(async () => ({ bookingId: 'B1' }));
+    const cancelBooking = vi.fn(async () => ({ success: true, message: 'ok' }));
+    const requestTicketing = vi.fn(async () => ({
+      bookingId: 'B1',
+      supplier: 'mock',
+      status: 'ticketed' as const,
+      segments: [],
+      passengers: [],
+      totalPrice: { amount: '1', currency: 'USD' },
+    }));
+    const store = new CasBoundApprovalTokenStore(
+      new FileCompareAndSwapPersistenceAdapter(
+        join(mkdtempSync(join(tmpdir(), 'mcp-appr-')), 'jti.json'),
+      ),
+    );
+    const secret = 'live-secret';
+    const sessionId = 'mcp-session';
+    const agentId = 'mcp-connect';
+    const bookingArgs = { bookingId: 'B1' };
+    const ticketToken = issueBoundApprovalToken({
+      sessionId,
+      agentId,
+      input: mcpMutationApprovalInput('request_ticketing', bookingArgs),
+      secret,
+    });
+
+    await withClient(
+      {
+        ...mockAdapter({ createBooking, cancelBooking }),
+        requestTicketing,
+      },
+      {
+        serverName: 'test',
+        version: '1',
+        liveMode: true,
+        approvalSecret: secret,
+        approvalTokenStore: store,
+        sessionId,
+        agentId,
+      },
+      async (client) => {
+        const result = await client.callTool({
+          name: 'cancel_booking',
+          arguments: { ...bookingArgs, approvalToken: ticketToken },
+        });
+        expect(result.isError).toBe(true);
+        const content = result.content as Array<{ type: string; text: string }>;
+        expect(content[0]!.text).toMatch(/input hash mismatch|approval/i);
+        expect(cancelBooking).not.toHaveBeenCalled();
+        expect(requestTicketing).not.toHaveBeenCalled();
       },
     );
   });
@@ -278,7 +333,12 @@ describe('MCP live approval gate', () => {
       contact: { email: 'a@b.com', phone: '+1' },
       idempotencyKey: 'k-restart',
     };
-    const token = issueBoundApprovalToken({ sessionId, agentId, input, secret });
+    const token = issueBoundApprovalToken({
+      sessionId,
+      agentId,
+      input: mcpMutationApprovalInput('create_booking', input),
+      secret,
+    });
 
     const storeA = new CasBoundApprovalTokenStore(
       new FileCompareAndSwapPersistenceAdapter(storePath),

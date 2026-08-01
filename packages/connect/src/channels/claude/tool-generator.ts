@@ -128,7 +128,8 @@ export function generateMcpTools(
             ? {
                 approvalToken: {
                   type: 'string',
-                  description: 'Bound single-use approval token (issueBoundApprovalToken)',
+                  description:
+                    'Bound single-use approval token — issueBoundApprovalToken with mcpMutationApprovalInput("create_booking", args)',
                 },
                 idempotencyKey: {
                   type: 'string',
@@ -175,7 +176,8 @@ export function generateMcpTools(
             ? {
                 approvalToken: {
                   type: 'string',
-                  description: 'Bound single-use approval token (issueBoundApprovalToken)',
+                  description:
+                    'Bound single-use approval token — issueBoundApprovalToken with mcpMutationApprovalInput("request_ticketing", args)',
                 },
               }
             : {}),
@@ -197,7 +199,8 @@ export function generateMcpTools(
             ? {
                 approvalToken: {
                   type: 'string',
-                  description: 'Bound single-use approval token (issueBoundApprovalToken)',
+                  description:
+                    'Bound single-use approval token — issueBoundApprovalToken with mcpMutationApprovalInput("cancel_booking", args)',
                 },
               }
             : {}),
