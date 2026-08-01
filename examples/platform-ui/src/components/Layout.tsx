@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet } from 'react-router';
 
 const NAV = [
   { to: '/', label: 'Dashboard', match: 'exact' as const },
