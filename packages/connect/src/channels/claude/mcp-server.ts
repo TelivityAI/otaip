@@ -15,11 +15,11 @@ import {
   createBoundApprovalPolicy,
   FileCompareAndSwapPersistenceAdapter,
   isLiveModeFromEnv,
+  LiveSafetyError,
   type BoundApprovalTokenStore,
 } from '@otaip/core';
-import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { isAbsolute, resolve } from 'node:path';
 import type {
   ConnectAdapter,
   CreateBookingInput,
@@ -43,7 +43,11 @@ export interface McpServerConfig {
   liveMode?: boolean;
   /** HMAC secret. Defaults to OTAIP_APPROVAL_SECRET. */
   approvalSecret?: string;
-  /** Durable token store for live single-use. Defaults to file-backed CAS. */
+  /**
+   * Durable token store for live single-use.
+   * Live mode: inject this, or set OTAIP_MCP_APPROVAL_STORE_PATH (persistent path).
+   * Paths under os.tmpdir() are refused.
+   */
   approvalTokenStore?: BoundApprovalTokenStore;
   /** Session id bound into approval tokens. Default: mcp-session. */
   sessionId?: string;
@@ -59,11 +63,27 @@ function argsAs<T>(args: Record<string, unknown> | undefined): T {
   return (args ?? {}) as unknown as T;
 }
 
-function defaultDurableApprovalStore(): BoundApprovalTokenStore {
-  const dir = mkdtempSync(join(tmpdir(), 'otaip-mcp-appr-'));
-  return new CasBoundApprovalTokenStore(
-    new FileCompareAndSwapPersistenceAdapter(join(dir, 'jti.json')),
-  );
+function isUnderTmpdir(filePath: string): boolean {
+  const resolved = resolve(filePath);
+  const tmp = resolve(tmpdir());
+  return resolved === tmp || resolved.startsWith(tmp + '/');
+}
+
+function approvalStoreFromEnvPath(): BoundApprovalTokenStore {
+  const raw = (process.env['OTAIP_MCP_APPROVAL_STORE_PATH'] ?? '').trim();
+  if (!raw) {
+    throw new LiveSafetyError(
+      'MCP live mode requires approvalTokenStore or OTAIP_MCP_APPROVAL_STORE_PATH ' +
+        '(persistent path). No tmpdir fallback.',
+    );
+  }
+  const filePath = isAbsolute(raw) ? resolve(raw) : resolve(process.cwd(), raw);
+  if (isUnderTmpdir(filePath)) {
+    throw new LiveSafetyError(
+      'MCP live mode refuses approval store under os.tmpdir() — set OTAIP_MCP_APPROVAL_STORE_PATH to a persistent path',
+    );
+  }
+  return new CasBoundApprovalTokenStore(new FileCompareAndSwapPersistenceAdapter(filePath));
 }
 
 function toolError(message: string): {
@@ -87,12 +107,13 @@ export function generateMcpServer(adapter: ConnectAdapter, config: McpServerConf
     (config.approvalSecret ?? process.env['OTAIP_APPROVAL_SECRET'] ?? '').trim() || undefined;
   const sessionId = config.sessionId ?? 'mcp-session';
   const agentId = config.agentId ?? 'mcp-connect';
-  const approvalTokenStore =
-    config.approvalTokenStore ??
-    (liveMode ? defaultDurableApprovalStore() : undefined);
+  let approvalTokenStore = config.approvalTokenStore;
+  if (liveMode && !approvalTokenStore) {
+    approvalTokenStore = approvalStoreFromEnvPath();
+  }
 
   if (liveMode && approvalTokenStore && approvalTokenStore.durability === 'ephemeral') {
-    throw new Error(
+    throw new LiveSafetyError(
       'MCP live mode refuses ephemeral BoundApprovalTokenStore — inject CasBoundApprovalTokenStore with durable CAS',
     );
   }

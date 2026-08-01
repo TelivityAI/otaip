@@ -358,10 +358,44 @@ describe('HotelbedsAdapter.cancelActivity', () => {
     adapter = new HotelbedsAdapter({ apiKey: 'test-key', secret: 'test-secret' });
   });
 
-  it('fails closed — activity cancel HTTP contract undocumented (DOMAIN_QUESTION)', async () => {
-    await expect(adapter.cancelActivity('HB-ACT-9001')).rejects.toThrow(
-      /DOMAIN_QUESTION|not wired|undocumented/i,
+  it('SIMULATION hits documented DELETE path with cancellationFlag', async () => {
+    const { calls } = captureFetch([{ status: 200, body: CANCELLATION_RESPONSE }]);
+    const result = await adapter.cancelActivity('HB-ACT-9001', 'SIMULATION');
+    expect(result).toEqual({
+      status: 'CANCELLED',
+      cancellationReference: 'CXL-HB-ACT-9001',
+    });
+    expect(calls[0]!.url).toContain(
+      '/activity-api/3.0/bookings/en/HB-ACT-9001?cancellationFlag=SIMULATION',
     );
+    expect(calls[0]!.init.method).toBe('DELETE');
+  });
+
+  it('CANCELLATION 503 → one wire; replay → zero', async () => {
+    let deletes = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        deletes += 1;
+        return {
+          ok: false,
+          status: 503,
+          statusText: 'Service Unavailable',
+          json: async () => ({}),
+        };
+      }),
+    );
+    await expect(
+      adapter.cancelActivity('HB-ACT-9001', 'CANCELLATION', {
+        idempotencyKey: 'act-cxl-1',
+      }),
+    ).rejects.toThrow(/503|unknown|reconcil/i);
+    await expect(
+      adapter.cancelActivity('HB-ACT-9001', 'CANCELLATION', {
+        idempotencyKey: 'act-cxl-1',
+      }),
+    ).rejects.toThrow(/503|unknown|reconcil/i);
+    expect(deletes).toBe(1);
   });
 });
 

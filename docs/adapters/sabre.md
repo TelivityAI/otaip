@@ -56,9 +56,9 @@ Validated at construction time with Zod.
 ## Usage
 
 ```typescript
-import { SabreAdapter } from '@otaip/connect';
+import { createAdapter } from '@otaip/connect';
 
-const adapter = new SabreAdapter({
+const adapter = createAdapter('sabre', {
   environment: 'cert',
   clientId: process.env.SABRE_CLIENT_ID,
   clientSecret: process.env.SABRE_CLIENT_SECRET,

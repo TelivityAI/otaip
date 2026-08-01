@@ -8,12 +8,20 @@
 
 import { isLiveModeFromEnv, LiveSafetyError, type MoneyPathExecutorConfig } from '@otaip/core';
 import type { ConnectAdapter } from '../types.js';
+import { BaseAdapter } from '../base-adapter.js';
 import { AmadeusAdapter } from './amadeus/index.js';
 import { NavitaireAdapter } from './navitaire/index.js';
 import { SabreAdapter } from './sabre/index.js';
 import { TripProAdapter } from './trippro/index.js';
 import { HaipConnectBridge } from './haip/connect-bridge.js';
 import { guardAdapter, type GuardedConnectAdapter } from '../guarded-adapter.js';
+
+function markGuardedForLive(adapter: ConnectAdapter, liveMode: boolean): void {
+  if (adapter instanceof BaseAdapter) {
+    adapter.markMoneyPathGuarded();
+    adapter.setLiveMode(liveMode);
+  }
+}
 
 export interface CreateAdapterOptions extends MoneyPathExecutorConfig {
   /**
@@ -54,6 +62,8 @@ export function createAdapter(
   const execConfig: Omit<CreateAdapterOptions, 'unguarded'> = { ...(options ?? {}) };
   delete (execConfig as { unguarded?: boolean }).unguarded;
   const raw = factory(config, { ...execConfig, liveMode });
+  // Always mark factory-built adapters — GuardedConnectAdapter calls into them.
+  markGuardedForLive(raw, liveMode);
   if (options?.unguarded) return raw;
   if (SELF_GUARDED.has(supplierId)) return raw;
   return guardAdapter(raw, { ...execConfig, liveMode });

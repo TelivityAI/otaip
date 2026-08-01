@@ -17,9 +17,10 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
-import { AmadeusAdapter } from '../packages/connect/src/suppliers/amadeus/index.ts';
+import { createAdapter } from '../packages/connect/src/suppliers/index.ts';
 import type {
   CabinClass,
+  ConnectAdapter,
   FlightOffer,
   PassengerDetail,
 } from '../packages/connect/src/types.ts';
@@ -32,12 +33,16 @@ config({ path: resolve(__dirname, '../.env') });
 
 const client = new Anthropic({ apiKey: process.env['ANTHROPIC_API_KEY'] });
 
-const adapter = new AmadeusAdapter({
-  environment: (process.env['AMADEUS_ENVIRONMENT'] ?? 'test') as 'test' | 'production',
-  clientId: process.env['AMADEUS_CLIENT_ID'] ?? '',
-  clientSecret: process.env['AMADEUS_CLIENT_SECRET'] ?? '',
-  defaultCurrency: process.env['AMADEUS_CURRENCY'] ?? 'USD',
-});
+const adapter: ConnectAdapter = createAdapter(
+  'amadeus',
+  {
+    environment: (process.env['AMADEUS_ENVIRONMENT'] ?? 'test') as 'test' | 'production',
+    clientId: process.env['AMADEUS_CLIENT_ID'] ?? '',
+    clientSecret: process.env['AMADEUS_CLIENT_SECRET'] ?? '',
+    defaultCurrency: process.env['AMADEUS_CURRENCY'] ?? 'USD',
+  },
+  { liveMode: false },
+);
 
 // Cache search results so the agent can reference offers by ID
 let lastSearchResults: FlightOffer[] = [];

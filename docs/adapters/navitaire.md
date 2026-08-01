@@ -70,9 +70,9 @@ Validated at construction time with Zod.
 ## Usage
 
 ```typescript
-import { NavitaireAdapter } from '@otaip/connect';
+import { createAdapter } from '@otaip/connect';
 
-const adapter = new NavitaireAdapter({
+const adapter = createAdapter('navitaire', {
   environment: 'test',
   baseUrl: 'https://dotrezapi.test.1n.navitaire.com',
   credentials: {

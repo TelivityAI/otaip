@@ -8,6 +8,8 @@ import {
   RateLimiter,
   CircuitBreaker,
   CircuitOpenError,
+  isLiveModeFromEnv,
+  LiveSafetyError,
   type RetryConfig as CoreRetryConfig,
   type RateLimiterConfig,
   type CircuitBreakerConfig,
@@ -66,6 +68,10 @@ export abstract class BaseAdapter {
   private readonly rateLimiter: RateLimiter | null;
   private readonly circuitBreaker: CircuitBreaker;
   private readonly disableUnsafeAutoRetry: boolean;
+  /** Set by createAdapter / guardAdapter — required for live unsafe mutations. */
+  private moneyPathGuarded = false;
+  /** Override for live detection; default isLiveModeFromEnv(). */
+  private liveModeOverride: boolean | undefined;
 
   constructor(
     retryConfig?: Partial<RetryConfig>,
@@ -88,6 +94,33 @@ export abstract class BaseAdapter {
     this.disableUnsafeAutoRetry = resilience?.disableUnsafeAutoRetry ?? true;
   }
 
+  /**
+   * Marks this adapter as constructed via createAdapter / guardAdapter.
+   * Live unsafe mutations refuse without this marker.
+   */
+  markMoneyPathGuarded(): void {
+    this.moneyPathGuarded = true;
+  }
+
+  /** Override live detection for this instance (from createAdapter options). */
+  setLiveMode(liveMode: boolean): void {
+    this.liveModeOverride = liveMode;
+  }
+
+  private isLiveMode(): boolean {
+    return this.liveModeOverride ?? isLiveModeFromEnv();
+  }
+
+  private assertLiveMoneyPathAllowed(operation: string): void {
+    if (!isUnsafeAdapterOperation(operation)) return;
+    if (!this.isLiveMode()) return;
+    if (this.moneyPathGuarded) return;
+    throw new LiveSafetyError(
+      `Live mode refuses unguarded ${operation} on ${this.supplierId} — ` +
+        'use createAdapter() or guardAdapter() (DoD 1/2)',
+    );
+  }
+
   /** Expose breaker status for health / tests. */
   getCircuitBreakerStatus(): ReturnType<CircuitBreaker['getStatus']> {
     return this.circuitBreaker.getStatus();
@@ -99,6 +132,7 @@ export abstract class BaseAdapter {
   }
 
   protected async withRetry<T>(operation: string, fn: () => Promise<T>): Promise<T> {
+    this.assertLiveMoneyPathAllowed(operation);
     const unsafe = isUnsafeAdapterOperation(operation);
     const maxRetries =
       unsafe && this.disableUnsafeAutoRetry ? 0 : this.retryConfig.maxRetries;

@@ -22,7 +22,7 @@ import type {
   FlightOffer,
 } from './types.js';
 import { MutationExecutor } from './mutation-executor.js';
-import { ConnectError } from './base-adapter.js';
+import { BaseAdapter, ConnectError } from './base-adapter.js';
 
 export interface GuardedConnectAdapterOptions extends MoneyPathExecutorConfig {
   /** Underlying supplier adapter (unguarded). */
@@ -152,5 +152,11 @@ export function guardAdapter(
   adapter: ConnectAdapter,
   config?: Omit<GuardedConnectAdapterOptions, 'adapter'>,
 ): GuardedConnectAdapter {
+  if (adapter instanceof BaseAdapter) {
+    adapter.markMoneyPathGuarded();
+    if (config?.liveMode !== undefined) {
+      adapter.setLiveMode(config.liveMode);
+    }
+  }
   return new GuardedConnectAdapter({ adapter, ...config });
 }

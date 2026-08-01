@@ -159,4 +159,4 @@ internal/
 # General
 .DS_Store
 .AppleDouble
-.LSOverride
+.LSOverride.tmp-mcp-appr-test/

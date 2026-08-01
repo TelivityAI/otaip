@@ -55,20 +55,32 @@ export type { BaseAdapterConfig } from './config.js';
 export { registerSupplier, createAdapter, listSuppliers } from './suppliers/index.js';
 export type { CreateAdapterOptions } from './suppliers/index.js';
 
-// TripPro adapter
+/**
+ * @deprecated Prefer `createAdapter('trippro', config)` for application code.
+ * Raw class is for unit tests; live unsafe mutations require createAdapter/guardAdapter.
+ */
 export { TripProAdapter } from './suppliers/trippro/index.js';
 export type { TripProConfig } from './suppliers/trippro/config.js';
 
-// Sabre adapter
+/**
+ * @deprecated Prefer `createAdapter('sabre', config)` for application code.
+ * Raw class is for unit tests; live unsafe mutations require createAdapter/guardAdapter.
+ */
 export { SabreAdapter } from './suppliers/sabre/index.js';
 export type { SabreConfig } from './suppliers/sabre/config.js';
 
-// Navitaire adapter
+/**
+ * @deprecated Prefer `createAdapter('navitaire', config)` for application code.
+ * Raw class is for unit tests; live unsafe mutations require createAdapter/guardAdapter.
+ */
 export { NavitaireAdapter } from './suppliers/navitaire/index.js';
 export { NavitaireOrderOperations } from './suppliers/navitaire/order-operations.js';
 export type { NavitaireConfig } from './suppliers/navitaire/config.js';
 
-// Amadeus adapter
+/**
+ * @deprecated Prefer `createAdapter('amadeus', config)` for application code.
+ * Raw class is for unit tests; live unsafe mutations require createAdapter/guardAdapter.
+ */
 export { AmadeusAdapter } from './suppliers/amadeus/index.js';
 export type { AmadeusConfig } from './suppliers/amadeus/config.js';
 

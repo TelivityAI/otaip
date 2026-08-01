@@ -28,10 +28,12 @@ pnpm --filter @otaip/connect test
 
 ### 1. Create the adapter
 
-```typescript
-import { SabreAdapter } from '@otaip/connect';
+Prefer `createAdapter` — it wraps money-path mutations (ledger, idempotency, kill switch). Raw `new SabreAdapter(...)` is for unit tests only and is refused for unsafe mutations in live mode.
 
-const adapter = new SabreAdapter({
+```typescript
+import { createAdapter } from '@otaip/connect';
+
+const adapter = createAdapter('sabre', {
   environment: 'cert',           // 'cert' for sandbox, 'prod' for production
   clientId: process.env.SABRE_CLIENT_ID,
   clientSecret: process.env.SABRE_CLIENT_SECRET,
@@ -169,9 +171,9 @@ console.log(`Healthy: ${health.healthy}, Latency: ${health.latencyMs}ms`);
 Same interface, different config.
 
 ```typescript
-import { TripProAdapter } from '@otaip/connect';
+import { createAdapter } from '@otaip/connect';
 
-const adapter = new TripProAdapter({
+const adapter = createAdapter('trippro', {
   soapBaseUrl: 'https://your-trippro-endpoint.com',
   accessToken: process.env.TRIPPRO_ACCESS_TOKEN,
   searchAccessToken: process.env.TRIPPRO_SEARCH_ACCESS_TOKEN,
@@ -203,7 +205,7 @@ You can also create adapters dynamically by supplier ID:
 ```typescript
 import { createAdapter, listSuppliers } from '@otaip/connect';
 
-console.log(listSuppliers()); // ['trippro', 'sabre']
+console.log(listSuppliers()); // includes tripppro, sabre, navitaire, amadeus, haip
 
 const adapter = createAdapter('sabre', {
   environment: 'cert',
@@ -363,7 +365,7 @@ The HAIP adapter connects to a HAIP PMS instance via its Connect API. Unlike the
 ```typescript
 import { HaipAdapter } from '@otaip/connect';
 
-const adapter = new HaipAdapter({
+const adapter = createAdapter('haip', {
   baseUrl: process.env.HAIP_BASE_URL ?? 'http://localhost:3000',
   apiKey: process.env.HAIP_API_KEY ?? '',  // No auth in HAIP v1.0.0
   timeoutMs: 10_000,
@@ -408,7 +410,7 @@ const modified = await adapter.modifyBooking(booking.confirmation.crsConfirmatio
 const cancelled = await adapter.cancelBooking(booking.confirmation.crsConfirmation);
 ```
 
-The HAIP adapter is **not** registered in the flight supplier registry (`createAdapter`). Instantiate it directly. It can be passed to Agent 20.1 (Hotel Search Aggregator) as a `HotelSourceAdapter` since it implements `searchHotels()` and `isAvailable()`.
+HAIP is registered as `createAdapter('haip', config)` (self-guarded money path). It can be passed to Agent 20.1 (Hotel Search Aggregator) as a `HotelSourceAdapter` since it implements `searchHotels()` and `isAvailable()`.
 
 ---
 

@@ -53,9 +53,9 @@ Validated at construction time with Zod. Trailing slashes on `baseUrl` are strip
 ## Usage
 
 ```typescript
-import { HaipAdapter } from '@otaip/connect';
+import { createAdapter } from '@otaip/connect';
 
-const adapter = new HaipAdapter({
+const adapter = createAdapter('haip', {
   baseUrl: 'http://localhost:3000',
   apiKey: '',
   timeoutMs: 10000,

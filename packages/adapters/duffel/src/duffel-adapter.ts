@@ -293,9 +293,22 @@ export interface BookRequest {
 /** Paths that create/cancel money-path side effects — never auto-retried. */
 function isUnsafeDuffelPath(method: string, path: string): boolean {
   if (method !== 'POST' && method !== 'DELETE' && method !== 'PATCH') return false;
+  // Confirm cancel is irreversible; create quote may retry
+  if (path.includes('/air/order_cancellations/') && path.endsWith('/actions/confirm')) {
+    return true;
+  }
+  if (path === '/air/order_cancellations') return false;
   if (path === '/air/orders' || path.startsWith('/air/orders/')) return true;
   if (path === '/cars/bookings' || path.includes('/cars/bookings/')) return true;
   return false;
+}
+
+export interface FlightCancelResponse {
+  status: 'cancelled';
+  orderId: string;
+  cancellationId: string;
+  refundAmount?: string;
+  refundCurrency?: string;
 }
 
 export interface BookTicketNumber {
@@ -810,13 +823,75 @@ export class DuffelAdapter implements DistributionAdapter {
   }
 
   /**
-   * Flight cancel is not available on the Duffel public order API used here.
-   * Do not invent cancel behavior — fail closed (DoD 7).
+   * Cancel a flight order via Duffel Order Cancellations API:
+   *   POST /air/order_cancellations (quote — retryable)
+   *   POST /air/order_cancellations/{id}/actions/confirm (hard cancel — MoneyPath + once)
+   * Docs: https://duffel.com/docs/api/order-cancellations
    */
-  async cancelFlightBooking(_orderId: string): Promise<never> {
-    throw new MoneyPathError(
-      'Duffel flight cancel is not supported on this adapter — refuse rather than alias',
-    );
+  async cancelFlightBooking(
+    orderId: string,
+    options?: { idempotencyKey?: string; signal?: AbortSignal },
+  ): Promise<FlightCancelResponse> {
+    const key = options?.idempotencyKey?.trim();
+    if (this.liveMode && !key) {
+      throw new MoneyPathError(
+        'DuffelAdapter.cancelFlightBooking requires idempotencyKey in live mode (DoD 1/2)',
+      );
+    }
+    const idempotencyKey = key ?? `duffel-air-cancel:${orderId}`;
+    const signal = options?.signal;
+
+    const quote = (await this.request(
+      'POST',
+      '/air/order_cancellations',
+      { data: { order_id: orderId } },
+      signal ? { signal } : {},
+    )) as {
+      data?: {
+        id?: string;
+        refund_amount?: string;
+        refund_currency?: string;
+      };
+    };
+    const cancellationId = quote.data?.id;
+    if (!cancellationId) {
+      throw new MoneyPathError(
+        'Duffel order cancellation quote returned no id — cannot confirm cancel',
+      );
+    }
+
+    return this.moneyPath.executeUnsafeOrThrow({
+      operation: 'cancelFlightBooking',
+      idempotencyKey,
+      request: { orderId, cancellationId },
+      supplierId: 'duffel',
+      fn: async () => {
+        const confirmed = (await this.request(
+          'POST',
+          `/air/order_cancellations/${encodeURIComponent(cancellationId)}/actions/confirm`,
+          undefined,
+          signal ? { signal } : {},
+        )) as {
+          data?: {
+            id?: string;
+            refund_amount?: string;
+            refund_currency?: string;
+          };
+        };
+        const result: FlightCancelResponse = {
+          status: 'cancelled',
+          orderId,
+          cancellationId: confirmed.data?.id ?? cancellationId,
+        };
+        if (confirmed.data?.refund_amount !== undefined) {
+          result.refundAmount = confirmed.data.refund_amount;
+        }
+        if (confirmed.data?.refund_currency !== undefined) {
+          result.refundCurrency = confirmed.data.refund_currency;
+        }
+        return result;
+      },
+    });
   }
 
   private async request(
