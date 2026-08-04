@@ -1,35 +1,42 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api/client';
-import type { AdapterDescriptor, AgentRollup, HealthReport, PlatformStats } from '../api/types';
+import type { AdapterDescriptor, AgentGraph, AgentRollup, HealthReport, PlatformStats } from '../api/types';
 import StatCard from '../components/StatCard';
 import AgentTable from '../components/AgentTable';
+import AgentMap from '../components/AgentMap';
 import AdapterCard from '../components/AdapterCard';
 import HealthSidebar from '../components/HealthSidebar';
 
+type AgentView = 'table' | 'map';
+
 export default function Dashboard() {
   const [agents, setAgents] = useState<AgentRollup | null>(null);
+  const [graph, setGraph] = useState<AgentGraph | null>(null);
   const [adapters, setAdapters] = useState<AdapterDescriptor[] | null>(null);
   const [stats, setStats] = useState<PlatformStats | null>(null);
   const [health, setHealth] = useState<HealthReport | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [agentView, setAgentView] = useState<AgentView>('table');
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
       setLoading(true);
       try {
-        const [a, ad, s, h] = await Promise.all([
+        const [a, ad, s, h, g] = await Promise.all([
           api.agents(),
           api.adapters(),
           api.stats(),
           api.health(),
+          api.agentGraph().catch(() => null),
         ]);
         if (cancelled) return;
         setAgents(a);
         setAdapters(ad.adapters);
         setStats(s);
         setHealth(h);
+        setGraph(g);
         setError(null);
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load dashboard');
@@ -91,13 +98,48 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_18rem]">
         <div className="space-y-8">
-          {agents ? (
-            <AgentTable agents={agents.agents} />
-          ) : (
-            <div className="rounded-lg border border-slate-200 bg-white p-8 text-sm text-slate-500">
-              {loading ? 'Loading agents…' : 'No agent data.'}
+          <div className="space-y-3">
+            <div className="inline-flex rounded-md border border-slate-200 bg-white p-0.5 text-xs shadow-sm">
+              <button
+                type="button"
+                onClick={() => setAgentView('table')}
+                className={[
+                  'rounded px-3 py-1.5 font-medium transition',
+                  agentView === 'table' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:text-slate-900',
+                ].join(' ')}
+              >
+                Table
+              </button>
+              <button
+                type="button"
+                onClick={() => setAgentView('map')}
+                className={[
+                  'rounded px-3 py-1.5 font-medium transition',
+                  agentView === 'map' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:text-slate-900',
+                ].join(' ')}
+              >
+                Map
+              </button>
             </div>
-          )}
+
+            {agentView === 'table' ? (
+              agents ? (
+                <AgentTable agents={agents.agents} />
+              ) : (
+                <div className="rounded-lg border border-slate-200 bg-white p-8 text-sm text-slate-500">
+                  {loading ? 'Loading agents…' : 'No agent data.'}
+                </div>
+              )
+            ) : graph ? (
+              <AgentMap graph={graph} />
+            ) : (
+              <div className="rounded-lg border border-slate-200 bg-white p-8 text-sm text-slate-500">
+                {loading
+                  ? 'Loading agent map…'
+                  : 'Agent map unavailable. Run `pnpm gen:manifest` to generate agents.graph.json.'}
+              </div>
+            )}
+          </div>
 
           <section>
             <header className="mb-3 flex items-baseline justify-between">

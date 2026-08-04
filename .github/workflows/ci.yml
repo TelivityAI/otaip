@@ -46,9 +46,10 @@ jobs:
       - name: Verify built bundles load
         run: pnpm verify:dist
 
-      # The committed agent manifest must match what the generator produces
-      # from discovery + contracts. Fails loud if a contributor changed an
-      # agent or contract without regenerating `agents.manifest.json`.
+      # The committed agent manifest, navigation graph, and agent-map HTML
+      # must match what the generator produces from discovery + contracts.
+      # Fails loud if a contributor changed an agent or contract without
+      # regenerating via `pnpm gen:manifest`.
       - name: Verify agent manifest is up to date
         run: pnpm gen:manifest --check
 

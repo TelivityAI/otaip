@@ -5,6 +5,7 @@
 
 import type {
   AgentRollup,
+  AgentGraph,
   AdapterDescriptor,
   ApiError,
   HealthReport,
@@ -48,6 +49,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 export const api = {
   // Platform — read-only telemetry
   agents: () => request<AgentRollup>('/api/platform/agents'),
+  agentGraph: () => request<AgentGraph>('/api/platform/agent-graph'),
   adapters: () => request<{ adapters: AdapterDescriptor[] }>('/api/platform/adapters'),
   health: () => request<HealthReport>('/api/platform/health'),
   stats: () => request<PlatformStats>('/api/platform/stats'),

@@ -18,6 +18,17 @@ export function registerPlatformRoutes(
     return reply.send(platform.agents());
   });
 
+  app.get('/api/platform/agent-graph', { config: { rateLimit: HIGH_RATE_LIMIT } }, async (_req, reply) => {
+    const graph = platform.agentGraph();
+    if (!graph) {
+      return reply.status(404).send({
+        error: 'agent_graph_missing',
+        hint: 'Run `pnpm gen:manifest` to generate agents.graph.json.',
+      });
+    }
+    return reply.send(graph);
+  });
+
   app.get('/api/platform/adapters', { config: { rateLimit: HIGH_RATE_LIMIT } }, async (_req, reply) => {
     return reply.send({ adapters: platform.adapters() });
   });

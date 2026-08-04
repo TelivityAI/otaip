@@ -1,0 +1,926 @@
+{
+  "generated_by": "scripts/generate-manifest.ts",
+  "total_nodes": 77,
+  "total_edges": 27,
+  "nodes": [
+    {
+      "id": "0.1",
+      "name": "Airport/City Code Resolver",
+      "stage": "reference",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": true,
+      "source_path": "packages/agents/reference/src/airport-code-resolver/index.ts"
+    },
+    {
+      "id": "0.2",
+      "name": "Airline Code & Alliance Mapper",
+      "stage": "reference",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": true,
+      "source_path": "packages/agents/reference/src/airline-code-mapper/index.ts"
+    },
+    {
+      "id": "0.3",
+      "name": "Fare Basis Code Decoder",
+      "stage": "reference",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": true,
+      "source_path": "packages/agents/reference/src/fare-basis-decoder/index.ts"
+    },
+    {
+      "id": "0.4",
+      "name": "Class of Service Mapper",
+      "stage": "reference",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/reference/src/class-of-service-mapper/index.ts"
+    },
+    {
+      "id": "0.5",
+      "name": "Equipment Type Resolver",
+      "stage": "reference",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/reference/src/equipment-type-resolver/index.ts"
+    },
+    {
+      "id": "0.6",
+      "name": "Currency & Tax Code Resolver",
+      "stage": "reference",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/reference/src/currency-tax-resolver/index.ts"
+    },
+    {
+      "id": "0.7",
+      "name": "Country Regulatory Resolver",
+      "stage": "reference",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/reference/src/country-regulatory-resolver/index.ts"
+    },
+    {
+      "id": "1.1",
+      "name": "Availability Search",
+      "stage": "search",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": true,
+      "source_path": "packages/agents/search/src/availability-search/index.ts"
+    },
+    {
+      "id": "1.2",
+      "name": "Schedule Lookup",
+      "stage": "search",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/search/src/schedule-lookup/index.ts"
+    },
+    {
+      "id": "1.3",
+      "name": "Connection Builder",
+      "stage": "search",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/search/src/connection-builder/index.ts"
+    },
+    {
+      "id": "1.4",
+      "name": "Fare Shopping",
+      "stage": "search",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/search/src/fare-shopping/index.ts"
+    },
+    {
+      "id": "1.5",
+      "name": "Ancillary Shopping",
+      "stage": "search",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/search/src/ancillary-shopping/index.ts"
+    },
+    {
+      "id": "1.6",
+      "name": "Multi-Source Aggregator",
+      "stage": "search",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/search/src/multi-source-aggregator/index.ts"
+    },
+    {
+      "id": "1.7",
+      "name": "Hotel & Car Search",
+      "stage": "search",
+      "version": "0.2.0",
+      "contract_status": "active",
+      "has_contract": true,
+      "source_path": "packages/agents/search/src/hotel-car-search/index.ts"
+    },
+    {
+      "id": "1.8",
+      "name": "AI Travel Advisor",
+      "stage": "search",
+      "version": "0.2.0",
+      "contract_status": "active",
+      "has_contract": true,
+      "source_path": "packages/agents/search/src/ai-travel-advisor/index.ts"
+    },
+    {
+      "id": "1.9",
+      "name": "Offer Evaluator",
+      "stage": "core",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/core/src/agents/shopping/offer-evaluator/index.ts"
+    },
+    {
+      "id": "2.1",
+      "name": "Fare Rule Agent",
+      "stage": "pricing",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": true,
+      "source_path": "packages/agents/pricing/src/fare-rule-agent/index.ts"
+    },
+    {
+      "id": "2.2",
+      "name": "Fare Construction",
+      "stage": "pricing",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/pricing/src/fare-construction/index.ts"
+    },
+    {
+      "id": "2.3",
+      "name": "Tax Calculation",
+      "stage": "pricing",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/pricing/src/tax-calculation/index.ts"
+    },
+    {
+      "id": "2.4",
+      "name": "Offer Builder",
+      "stage": "pricing",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": true,
+      "source_path": "packages/agents/pricing/src/offer-builder/index.ts"
+    },
+    {
+      "id": "2.5",
+      "name": "Corporate Policy Validation",
+      "stage": "pricing",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/pricing/src/corporate-policy-validation/index.ts"
+    },
+    {
+      "id": "2.6",
+      "name": "Dynamic Pricing",
+      "stage": "pricing",
+      "version": "0.0.0",
+      "contract_status": "stub",
+      "has_contract": false,
+      "source_path": "packages/agents/pricing/src/dynamic-pricing/index.ts"
+    },
+    {
+      "id": "2.7",
+      "name": "Revenue Management",
+      "stage": "pricing",
+      "version": "0.0.0",
+      "contract_status": "stub",
+      "has_contract": false,
+      "source_path": "packages/agents/pricing/src/revenue-management/index.ts"
+    },
+    {
+      "id": "3.1",
+      "name": "GDS/NDC Router",
+      "stage": "booking",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": true,
+      "source_path": "packages/agents/booking/src/gds-ndc-router/index.ts"
+    },
+    {
+      "id": "3.2",
+      "name": "PNR Builder",
+      "stage": "booking",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": true,
+      "source_path": "packages/agents/booking/src/pnr-builder/index.ts"
+    },
+    {
+      "id": "3.3",
+      "name": "PNR Validation",
+      "stage": "booking",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/booking/src/pnr-validation/index.ts"
+    },
+    {
+      "id": "3.4",
+      "name": "Queue Management",
+      "stage": "booking",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/booking/src/queue-management/index.ts"
+    },
+    {
+      "id": "3.5",
+      "name": "API Abstraction",
+      "stage": "booking",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/booking/src/api-abstraction/index.ts"
+    },
+    {
+      "id": "3.6",
+      "name": "Order Management",
+      "stage": "booking",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/booking/src/order-management/index.ts"
+    },
+    {
+      "id": "3.7",
+      "name": "Payment Processing",
+      "stage": "booking",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/booking/src/payment-processing/index.ts"
+    },
+    {
+      "id": "3.8",
+      "name": "PNR Retrieval",
+      "stage": "booking",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": true,
+      "source_path": "packages/agents/booking/src/pnr-retrieval/index.ts"
+    },
+    {
+      "id": "4.1",
+      "name": "Ticket Issuance",
+      "stage": "ticketing",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": true,
+      "source_path": "packages/agents/ticketing/src/ticket-issuance/index.ts"
+    },
+    {
+      "id": "4.2",
+      "name": "EMD Management",
+      "stage": "ticketing",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/ticketing/src/emd-management/index.ts"
+    },
+    {
+      "id": "4.3",
+      "name": "Void Agent",
+      "stage": "ticketing",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/ticketing/src/void-agent/index.ts"
+    },
+    {
+      "id": "4.4",
+      "name": "Itinerary Delivery",
+      "stage": "ticketing",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/ticketing/src/itinerary-delivery/index.ts"
+    },
+    {
+      "id": "4.5",
+      "name": "Document Verification",
+      "stage": "ticketing",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/ticketing/src/document-verification/index.ts"
+    },
+    {
+      "id": "5.1",
+      "name": "Change Management",
+      "stage": "exchange",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/exchange/src/change-management/index.ts"
+    },
+    {
+      "id": "5.2",
+      "name": "Exchange/Reissue",
+      "stage": "exchange",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/exchange/src/exchange-reissue/index.ts"
+    },
+    {
+      "id": "5.3",
+      "name": "Involuntary Rebook",
+      "stage": "exchange",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/exchange/src/involuntary-rebook/index.ts"
+    },
+    {
+      "id": "5.4",
+      "name": "Disruption Response",
+      "stage": "exchange",
+      "version": "0.0.0",
+      "contract_status": "stub",
+      "has_contract": false,
+      "source_path": "packages/agents/exchange/src/disruption-response/index.ts"
+    },
+    {
+      "id": "5.5",
+      "name": "Self-Service Rebooking",
+      "stage": "exchange",
+      "version": "0.2.0",
+      "contract_status": "active",
+      "has_contract": true,
+      "source_path": "packages/agents/exchange/src/self-service-rebooking/index.ts"
+    },
+    {
+      "id": "5.6",
+      "name": "Waitlist Management",
+      "stage": "exchange",
+      "version": "0.2.0",
+      "contract_status": "active",
+      "has_contract": true,
+      "source_path": "packages/agents/exchange/src/waitlist-management/index.ts"
+    },
+    {
+      "id": "6.1",
+      "name": "Refund Processing",
+      "stage": "settlement",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/settlement/src/refund-processing/index.ts"
+    },
+    {
+      "id": "6.2",
+      "name": "ADM Prevention",
+      "stage": "settlement",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/settlement/src/adm-prevention/index.ts"
+    },
+    {
+      "id": "6.3",
+      "name": "ADM/ACM Processing",
+      "stage": "settlement",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/settlement/src/adm-acm-processing/index.ts"
+    },
+    {
+      "id": "6.4",
+      "name": "Customer Communication",
+      "stage": "settlement",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/settlement/src/customer-communication/index.ts"
+    },
+    {
+      "id": "6.5",
+      "name": "Feedback & Complaint",
+      "stage": "settlement",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/settlement/src/feedback-complaint/index.ts"
+    },
+    {
+      "id": "6.6",
+      "name": "Loyalty Mileage",
+      "stage": "settlement",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/settlement/src/loyalty-mileage/index.ts"
+    },
+    {
+      "id": "7.1",
+      "name": "BSP Reconciliation",
+      "stage": "reconciliation",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/reconciliation/src/bsp-reconciliation/index.ts"
+    },
+    {
+      "id": "7.2",
+      "name": "ARC Reconciliation",
+      "stage": "reconciliation",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/reconciliation/src/arc-reconciliation/index.ts"
+    },
+    {
+      "id": "7.3",
+      "name": "Commission Management",
+      "stage": "reconciliation",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/reconciliation/src/commission-management/index.ts"
+    },
+    {
+      "id": "7.4",
+      "name": "Interline Settlement",
+      "stage": "reconciliation",
+      "version": "0.0.0",
+      "contract_status": "stub",
+      "has_contract": false,
+      "source_path": "packages/agents/reconciliation/src/interline-settlement/index.ts"
+    },
+    {
+      "id": "7.5",
+      "name": "Financial Reporting",
+      "stage": "reconciliation",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/reconciliation/src/financial-reporting/index.ts"
+    },
+    {
+      "id": "7.6",
+      "name": "Revenue Accounting",
+      "stage": "reconciliation",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/reconciliation/src/revenue-accounting/index.ts"
+    },
+    {
+      "id": "8.1",
+      "name": "Traveler Profile",
+      "stage": "tmc",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents-tmc/src/traveler-profile/index.ts"
+    },
+    {
+      "id": "8.2",
+      "name": "Corporate Account",
+      "stage": "tmc",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents-tmc/src/corporate-account/index.ts"
+    },
+    {
+      "id": "8.3",
+      "name": "Mid-Office Automation",
+      "stage": "tmc",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents-tmc/src/mid-office/index.ts"
+    },
+    {
+      "id": "8.4",
+      "name": "Reporting & Analytics",
+      "stage": "tmc",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents-tmc/src/reporting/index.ts"
+    },
+    {
+      "id": "8.5",
+      "name": "Duty of Care",
+      "stage": "tmc",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents-tmc/src/duty-of-care/index.ts"
+    },
+    {
+      "id": "9.1",
+      "name": "Orchestrator",
+      "stage": "platform",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents-platform/src/orchestrator/index.ts"
+    },
+    {
+      "id": "9.2",
+      "name": "Knowledge Retrieval",
+      "stage": "platform",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents-platform/src/knowledge/index.ts"
+    },
+    {
+      "id": "9.3",
+      "name": "Monitoring & Alerting",
+      "stage": "platform",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents-platform/src/monitoring/index.ts"
+    },
+    {
+      "id": "9.4",
+      "name": "Audit & Compliance",
+      "stage": "platform",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents-platform/src/audit/index.ts"
+    },
+    {
+      "id": "9.5",
+      "name": "Plugin Manager",
+      "stage": "platform",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents-platform/src/plugin-manager/index.ts"
+    },
+    {
+      "id": "9.6",
+      "name": "Performance Audit",
+      "stage": "platform",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": true,
+      "source_path": "packages/agents-platform/src/performance-audit/index.ts"
+    },
+    {
+      "id": "9.7",
+      "name": "Routing Audit",
+      "stage": "platform",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": true,
+      "source_path": "packages/agents-platform/src/routing-audit/index.ts"
+    },
+    {
+      "id": "9.8",
+      "name": "Recommendation",
+      "stage": "platform",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": true,
+      "source_path": "packages/agents-platform/src/recommendation/index.ts"
+    },
+    {
+      "id": "9.9",
+      "name": "Alert",
+      "stage": "platform",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": true,
+      "source_path": "packages/agents-platform/src/alert/index.ts"
+    },
+    {
+      "id": "20.1",
+      "name": "Hotel Search Aggregator",
+      "stage": "lodging",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/lodging/src/hotel-search/index.ts"
+    },
+    {
+      "id": "20.2",
+      "name": "Property Deduplication",
+      "stage": "lodging",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/lodging/src/property-dedup/index.ts"
+    },
+    {
+      "id": "20.3",
+      "name": "Hotel Content Normalization",
+      "stage": "lodging",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/lodging/src/content-normalization/index.ts"
+    },
+    {
+      "id": "20.4",
+      "name": "Hotel Rate Comparison",
+      "stage": "lodging",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/lodging/src/rate-comparison/index.ts"
+    },
+    {
+      "id": "20.5",
+      "name": "Hotel Booking",
+      "stage": "lodging",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/lodging/src/hotel-booking/index.ts"
+    },
+    {
+      "id": "20.6",
+      "name": "Hotel Modification & Cancellation",
+      "stage": "lodging",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/lodging/src/hotel-modification/index.ts"
+    },
+    {
+      "id": "20.7",
+      "name": "Confirmation Verification",
+      "stage": "lodging",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/lodging/src/confirmation-verification/index.ts"
+    },
+    {
+      "id": "20.8",
+      "name": "Activity Search",
+      "stage": "lodging",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/lodging/src/activity-search/index.ts"
+    },
+    {
+      "id": "20.9",
+      "name": "Transfer Search",
+      "stage": "lodging",
+      "version": "0.1.0",
+      "contract_status": "active",
+      "has_contract": false,
+      "source_path": "packages/agents/lodging/src/transfer-search/index.ts"
+    }
+  ],
+  "edges": [
+    {
+      "source": "1.1",
+      "target": "1.4",
+      "kind": "workflow",
+      "label": "search_to_price"
+    },
+    {
+      "source": "1.4",
+      "target": "2.1",
+      "kind": "workflow",
+      "label": "search_to_price"
+    },
+    {
+      "source": "2.1",
+      "target": "2.2",
+      "kind": "workflow",
+      "label": "search_to_price"
+    },
+    {
+      "source": "2.2",
+      "target": "2.3",
+      "kind": "workflow",
+      "label": "search_to_price"
+    },
+    {
+      "source": "3.3",
+      "target": "3.1",
+      "kind": "workflow",
+      "label": "book_to_ticket"
+    },
+    {
+      "source": "3.1",
+      "target": "3.2",
+      "kind": "workflow",
+      "label": "book_to_ticket"
+    },
+    {
+      "source": "3.2",
+      "target": "4.1",
+      "kind": "workflow",
+      "label": "book_to_ticket"
+    },
+    {
+      "source": "1.1",
+      "target": "1.4",
+      "kind": "workflow",
+      "label": "full_booking"
+    },
+    {
+      "source": "1.4",
+      "target": "2.1",
+      "kind": "workflow",
+      "label": "full_booking"
+    },
+    {
+      "source": "2.1",
+      "target": "2.2",
+      "kind": "workflow",
+      "label": "full_booking"
+    },
+    {
+      "source": "2.2",
+      "target": "2.3",
+      "kind": "workflow",
+      "label": "full_booking"
+    },
+    {
+      "source": "2.3",
+      "target": "3.3",
+      "kind": "workflow",
+      "label": "full_booking"
+    },
+    {
+      "source": "3.3",
+      "target": "3.1",
+      "kind": "workflow",
+      "label": "full_booking"
+    },
+    {
+      "source": "3.1",
+      "target": "3.2",
+      "kind": "workflow",
+      "label": "full_booking"
+    },
+    {
+      "source": "3.2",
+      "target": "4.1",
+      "kind": "workflow",
+      "label": "full_booking"
+    },
+    {
+      "source": "5.1",
+      "target": "5.2",
+      "kind": "workflow",
+      "label": "exchange_flow"
+    },
+    {
+      "source": "6.1",
+      "target": "6.2",
+      "kind": "workflow",
+      "label": "refund_flow"
+    },
+    {
+      "source": "1.1",
+      "target": "0.1",
+      "kind": "package",
+      "label": "@otaip/agents-search → @otaip/agents-reference"
+    },
+    {
+      "source": "2.1",
+      "target": "0.1",
+      "kind": "package",
+      "label": "@otaip/agents-pricing → @otaip/agents-reference"
+    },
+    {
+      "source": "3.1",
+      "target": "0.1",
+      "kind": "package",
+      "label": "@otaip/agents-booking → @otaip/agents-reference"
+    },
+    {
+      "source": "3.1",
+      "target": "1.1",
+      "kind": "package",
+      "label": "@otaip/agents-booking → @otaip/agents-search"
+    },
+    {
+      "source": "3.1",
+      "target": "2.1",
+      "kind": "package",
+      "label": "@otaip/agents-booking → @otaip/agents-pricing"
+    },
+    {
+      "source": "4.1",
+      "target": "3.1",
+      "kind": "package",
+      "label": "@otaip/agents-ticketing → @otaip/agents-booking"
+    },
+    {
+      "source": "5.1",
+      "target": "1.1",
+      "kind": "package",
+      "label": "@otaip/agents-exchange → @otaip/agents-search"
+    },
+    {
+      "source": "5.1",
+      "target": "4.1",
+      "kind": "package",
+      "label": "@otaip/agents-exchange → @otaip/agents-ticketing"
+    },
+    {
+      "source": "6.1",
+      "target": "4.1",
+      "kind": "package",
+      "label": "@otaip/agents-settlement → @otaip/agents-ticketing"
+    },
+    {
+      "source": "7.1",
+      "target": "0.1",
+      "kind": "package",
+      "label": "@otaip/agents-reconciliation → @otaip/agents-reference"
+    }
+  ],
+  "package_deps": [
+    {
+      "from_package": "@otaip/agents-search",
+      "to_package": "@otaip/agents-reference",
+      "from_stage": "search",
+      "to_stage": "reference"
+    },
+    {
+      "from_package": "@otaip/agents-pricing",
+      "to_package": "@otaip/agents-reference",
+      "from_stage": "pricing",
+      "to_stage": "reference"
+    },
+    {
+      "from_package": "@otaip/agents-booking",
+      "to_package": "@otaip/agents-reference",
+      "from_stage": "booking",
+      "to_stage": "reference"
+    },
+    {
+      "from_package": "@otaip/agents-booking",
+      "to_package": "@otaip/agents-search",
+      "from_stage": "booking",
+      "to_stage": "search"
+    },
+    {
+      "from_package": "@otaip/agents-booking",
+      "to_package": "@otaip/agents-pricing",
+      "from_stage": "booking",
+      "to_stage": "pricing"
+    },
+    {
+      "from_package": "@otaip/agents-ticketing",
+      "to_package": "@otaip/agents-booking",
+      "from_stage": "ticketing",
+      "to_stage": "booking"
+    },
+    {
+      "from_package": "@otaip/agents-exchange",
+      "to_package": "@otaip/agents-search",
+      "from_stage": "exchange",
+      "to_stage": "search"
+    },
+    {
+      "from_package": "@otaip/agents-exchange",
+      "to_package": "@otaip/agents-ticketing",
+      "from_stage": "exchange",
+      "to_stage": "ticketing"
+    },
+    {
+      "from_package": "@otaip/agents-settlement",
+      "to_package": "@otaip/agents-ticketing",
+      "from_stage": "settlement",
+      "to_stage": "ticketing"
+    },
+    {
+      "from_package": "@otaip/agents-reconciliation",
+      "to_package": "@otaip/agents-reference",
+      "from_stage": "reconciliation",
+      "to_stage": "reference"
+    }
+  ]
+}

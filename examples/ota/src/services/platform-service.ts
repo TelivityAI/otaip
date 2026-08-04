@@ -6,7 +6,7 @@
  * mutated through this service; all data is in-memory or filesystem-only.
  */
 
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { discoverAgents, type DiscoveredAgent } from '@otaip/core';
@@ -20,6 +20,40 @@ export interface AgentRollup {
   /** Counts keyed by stage. */
   domain_groups: Record<string, { total: number; active: number; stub: number }>;
   totals: { total: number; active: number; stub: number };
+}
+
+export interface AgentGraphNode {
+  id: string;
+  name: string;
+  stage: string;
+  version: string;
+  contract_status: 'active' | 'stub';
+  has_contract: boolean;
+  source_path: string;
+}
+
+export interface AgentGraphEdge {
+  source: string;
+  target: string;
+  kind: 'workflow' | 'package';
+  label: string;
+}
+
+export interface PackageDep {
+  from_package: string;
+  to_package: string;
+  from_stage: string;
+  to_stage: string;
+}
+
+/** Navigation graph committed as `agents.graph.json` (regen via `pnpm gen:manifest`). */
+export interface AgentGraph {
+  generated_by: string;
+  total_nodes: number;
+  total_edges: number;
+  nodes: AgentGraphNode[];
+  edges: AgentGraphEdge[];
+  package_deps: PackageDep[];
 }
 
 export interface AdapterDescriptor {
@@ -80,14 +114,36 @@ function envIsSet(name: string): boolean {
 // whole tracks it.
 // ---------------------------------------------------------------------------
 
+const HERE = dirname(fileURLToPath(import.meta.url));
+
+/** Walk up from examples/ota/src/services to the workspace root. */
+function repoRoot(): string {
+  let cur = HERE;
+  for (let i = 0; i < 8; i++) {
+    if (existsSync(join(cur, 'pnpm-workspace.yaml'))) return cur;
+    const parent = dirname(cur);
+    if (parent === cur) break;
+    cur = parent;
+  }
+  return join(HERE, '..', '..', '..', '..');
+}
+
 const OTAIP_VERSION = (() => {
   try {
-    const here = dirname(fileURLToPath(import.meta.url));
-    const pkgPath = join(here, '..', '..', 'package.json');
+    const pkgPath = join(HERE, '..', '..', 'package.json');
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as { version?: string };
     return pkg.version ?? 'unknown';
   } catch {
     return 'unknown';
+  }
+})();
+
+const AGENT_GRAPH: AgentGraph | null = (() => {
+  try {
+    const path = join(repoRoot(), 'agents.graph.json');
+    return JSON.parse(readFileSync(path, 'utf8')) as AgentGraph;
+  } catch {
+    return null;
   }
 })();
 
@@ -127,6 +183,15 @@ export class PlatformService {
       domain_groups,
       totals: { total: agents.length, active: activeTotal, stub: stubTotal },
     };
+  }
+
+  /**
+   * Agent navigation graph (workflow + package edges). Returns null when
+   * `agents.graph.json` is missing — callers should treat that as "run
+   * pnpm gen:manifest".
+   */
+  agentGraph(): AgentGraph | null {
+    return AGENT_GRAPH;
   }
 
   adapters(): AdapterDescriptor[] {
