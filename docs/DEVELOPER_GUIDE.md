@@ -262,6 +262,29 @@ const agent = new HotelSearchAgent({
 
 ---
 
+## Agent navigation map
+
+OTAIP ships a first-party **agent map** for browsing the ~77 discovered agents by stage, with edges from Orchestrator workflows and agent-package workspace deps.
+
+| Artifact | Role |
+|---|---|
+| `agents.manifest.json` | Authoritative agent roster |
+| `agents.graph.json` | Nodes + workflow/package edges for navigation |
+| `docs/agent-map.html` | Standalone browsable map (no build step) |
+| Platform UI → Map | Same graph via `GET /api/platform/agent-graph` |
+
+Regenerate all three (plus the HTML) with:
+
+```bash
+pnpm gen:manifest
+```
+
+CI runs `pnpm gen:manifest --check` so stale artifacts fail the build.
+
+This is **not** a travel-domain knowledge graph and is unrelated to Graphify / RAG. Do not treat map edges as fare, tax, or lodging domain logic — they only describe how agents are wired in this repo.
+
+---
+
 ## Testing
 
 ```bash
@@ -299,6 +322,7 @@ pnpm lint
 | `pnpm test` | Run all tests |
 | `pnpm typecheck` | TypeScript strict check |
 | `pnpm lint` | ESLint + Prettier |
+| `pnpm gen:manifest` | Regenerate agent manifest, graph, and `docs/agent-map.html` |
 | `pnpm run data:download` | Download reference datasets |
 
 Requirements: Node 20+, pnpm 9+.

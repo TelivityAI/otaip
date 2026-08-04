@@ -19,6 +19,39 @@ export interface AgentRollup {
   totals: { total: number; active: number; stub: number };
 }
 
+export interface AgentGraphNode {
+  id: string;
+  name: string;
+  stage: string;
+  version: string;
+  contract_status: 'active' | 'stub';
+  has_contract: boolean;
+  source_path: string;
+}
+
+export interface AgentGraphEdge {
+  source: string;
+  target: string;
+  kind: 'workflow' | 'package';
+  label: string;
+}
+
+export interface PackageDep {
+  from_package: string;
+  to_package: string;
+  from_stage: string;
+  to_stage: string;
+}
+
+export interface AgentGraph {
+  generated_by: string;
+  total_nodes: number;
+  total_edges: number;
+  nodes: AgentGraphNode[];
+  edges: AgentGraphEdge[];
+  package_deps: PackageDep[];
+}
+
 export interface AdapterDescriptor {
   id: string;
   name: string;

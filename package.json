@@ -25,6 +25,7 @@
     "data:download": "tsx scripts/download-airport-data.ts",
     "count:agents": "tsx scripts/count-agents.ts",
     "gen:manifest": "tsx scripts/generate-manifest.ts",
+    "gen:agent-map": "tsx scripts/generate-agent-map-html.ts",
     "verify:dist": "tsx scripts/verify-dist.ts",
     "verify": "pnpm -r run build && pnpm verify:dist",
     "ligare": "pnpm --filter @otaip/example-ligare demo",

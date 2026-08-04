@@ -57,6 +57,30 @@ describe('GET /api/platform/agents', () => {
   });
 });
 
+describe('GET /api/platform/agent-graph', () => {
+  it('returns the committed agent navigation graph', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/platform/agent-graph' });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as {
+      nodes: Array<{ id: string; stage: string; has_contract: boolean }>;
+      edges: Array<{ source: string; target: string; kind: string; label: string }>;
+      package_deps: Array<{ from_stage: string; to_stage: string }>;
+      total_nodes: number;
+      total_edges: number;
+    };
+    expect(body.nodes.length).toBe(body.total_nodes);
+    expect(body.edges.length).toBe(body.total_edges);
+    expect(body.nodes.length).toBeGreaterThan(0);
+    expect(body.edges.some((e) => e.kind === 'workflow')).toBe(true);
+    expect(body.package_deps.length).toBeGreaterThan(0);
+    const ids = new Set(body.nodes.map((n) => n.id));
+    for (const e of body.edges) {
+      expect(ids.has(e.source)).toBe(true);
+      expect(ids.has(e.target)).toBe(true);
+    }
+  });
+});
+
 describe('GET /api/platform/adapters', () => {
   it('lists every documented adapter with env-derived configured flags', async () => {
     const res = await app.inject({ method: 'GET', url: '/api/platform/adapters' });

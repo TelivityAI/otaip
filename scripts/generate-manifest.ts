@@ -1,6 +1,7 @@
 #!/usr/bin/env tsx
 /**
- * Generate `agents.manifest.json` — the single authoritative roster.
+ * Generate `agents.manifest.json` — the single authoritative roster —
+ * and `agents.graph.json` — a navigation graph of agents + workflow edges.
  *
  * OTAIP historically had four overlapping notions of "which agents exist":
  *   - `discoverAgents()` (filesystem walk, all 75)
@@ -17,13 +18,17 @@
  * have contracts and some don't, and now that's machine-readable instead of
  * inferred.
  *
+ * `agents.graph.json` is derived from the same roster plus Orchestrator
+ * workflow pipelines and agent-package workspace deps. It is for visual
+ * navigation only — not a travel-domain knowledge graph.
+ *
  * Requires a prior build (contracts import `@otaip/core`, which resolves to
  * its built `dist`). CI runs this after `pnpm -r run build` and fails if the
  * committed manifest is stale (see the freshness check in CI).
  *
  * Usage:
- *   pnpm gen:manifest            # write agents.manifest.json
- *   pnpm gen:manifest --check    # exit 1 if the file would change (CI)
+ *   pnpm gen:manifest            # write agents.manifest.json + agents.graph.json + docs/agent-map.html
+ *   pnpm gen:manifest --check    # exit 1 if any generated file would change (CI)
  */
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
@@ -42,8 +47,12 @@ import {
   type DiscoveredAgent,
   discoverAgents,
 } from '../packages/core/src/discovery/agent-discovery.js';
+import { buildAgentGraph } from './agent-graph.js';
+import { renderAgentMapHtml } from './generate-agent-map-html.js';
 
 const MANIFEST_PATH = 'agents.manifest.json';
+const GRAPH_PATH = 'agents.graph.json';
+const MAP_HTML_PATH = 'docs/agent-map.html';
 
 interface ManifestAgent {
   readonly id: string;
@@ -153,28 +162,58 @@ async function buildManifest(): Promise<Manifest> {
   };
 }
 
+function checkOrWrite(path: string, contents: string, check: boolean): boolean {
+  if (check) {
+    const current = existsSync(path) ? readFileSync(path, 'utf8') : '';
+    return current === contents;
+  }
+  writeFileSync(path, contents);
+  return true;
+}
+
 async function main(): Promise<void> {
   const repo = repoRoot();
-  const outPath = join(repo, MANIFEST_PATH);
+  const check = process.argv.includes('--check');
   const manifest = await buildManifest();
-  const json = JSON.stringify(manifest, null, 2) + '\n';
+  const graph = buildAgentGraph(manifest.agents);
 
-  if (process.argv.includes('--check')) {
-    const current = existsSync(outPath) ? readFileSync(outPath, 'utf8') : '';
-    if (current !== json) {
+  const manifestJson = JSON.stringify(manifest, null, 2) + '\n';
+  const graphJson = JSON.stringify(graph, null, 2) + '\n';
+  const mapHtml = renderAgentMapHtml(graph);
+
+  const manifestPath = join(repo, MANIFEST_PATH);
+  const graphPath = join(repo, GRAPH_PATH);
+  const mapPath = join(repo, MAP_HTML_PATH);
+
+  const okManifest = checkOrWrite(manifestPath, manifestJson, check);
+  const okGraph = checkOrWrite(graphPath, graphJson, check);
+  const okMap = checkOrWrite(mapPath, mapHtml, check);
+
+  if (check) {
+    const stale: string[] = [];
+    if (!okManifest) stale.push(MANIFEST_PATH);
+    if (!okGraph) stale.push(GRAPH_PATH);
+    if (!okMap) stale.push(MAP_HTML_PATH);
+    if (stale.length > 0) {
       console.error(
-        `${MANIFEST_PATH} is stale. Run \`pnpm gen:manifest\` and commit the result.`,
+        `${stale.join(', ')} stale. Run \`pnpm gen:manifest\` and commit the result.`,
       );
       process.exit(1);
     }
-    console.log(`${MANIFEST_PATH} is up to date (${manifest.total} agents, ${manifest.with_contract} contracted).`);
+    console.log(
+      `${MANIFEST_PATH}, ${GRAPH_PATH}, and ${MAP_HTML_PATH} are up to date ` +
+        `(${manifest.total} agents, ${manifest.with_contract} contracted, ${graph.total_edges} edges).`,
+    );
     return;
   }
 
-  writeFileSync(outPath, json);
   console.log(
     `Wrote ${MANIFEST_PATH}: ${manifest.total} agents, ${manifest.with_contract} with contracts.`,
   );
+  console.log(
+    `Wrote ${GRAPH_PATH}: ${graph.total_nodes} nodes, ${graph.total_edges} edges.`,
+  );
+  console.log(`Wrote ${MAP_HTML_PATH}.`);
 }
 
 main().catch((err) => {

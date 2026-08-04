@@ -6,6 +6,7 @@
 
 export { OrchestratorAgent } from './orchestrator/index.js';
 export { PipelineBuilder } from './orchestrator/index.js';
+export { WORKFLOW_PIPELINES } from './orchestrator/index.js';
 export type {
   OrchestratorInput,
   OrchestratorOutput,
