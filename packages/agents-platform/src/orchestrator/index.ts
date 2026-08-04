@@ -11,7 +11,6 @@ import type {
   OrchestratorOutput,
   WorkflowStep,
   StepExecutor,
-  WorkflowName,
   PipelineDefinition,
   PipelineEntry,
   PipelineStep,
