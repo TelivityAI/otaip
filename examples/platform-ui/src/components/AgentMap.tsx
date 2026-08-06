@@ -233,7 +233,7 @@ export default function AgentMap({ graph }: AgentMapProps) {
                 key={i}
                 d={p.d}
                 fill="none"
-                stroke={p.kind === 'workflow' ? '#06b6d4' : '#64748b'}
+                stroke={p.kind === 'workflow' ? '#06bdb4' : '#444863'}
                 strokeWidth={p.hl ? 2.25 : p.kind === 'workflow' ? 1.5 : 1}
                 strokeDasharray={p.kind === 'package' ? '4 3' : undefined}
                 opacity={p.hl ? 1 : p.kind === 'workflow' ? 0.55 : 0.35}
@@ -262,8 +262,8 @@ export default function AgentMap({ graph }: AgentMapProps) {
                         onClick={() => setSelected(a.id)}
                         className={[
                           'rounded-md border bg-white px-2 py-1.5 text-left transition',
-                          a.contract_status === 'active' ? 'border-l-[3px] border-l-cyan-500' : 'border-l-[3px] border-l-slate-400',
-                          isSelected || onPath ? 'border-cyan-400 shadow-[0_0_0_1px_#22d3ee]' : 'border-slate-200',
+                          a.contract_status === 'active' ? 'border-l-[3px] border-l-[#06bdb4]' : 'border-l-[3px] border-l-[#444863]',
+                          isSelected || onPath ? 'border-[#06bdb4] shadow-[0_0_0_1px_#06bdb4]' : 'border-slate-200',
                           dim ? 'opacity-30' : '',
                         ].join(' ')}
                       >

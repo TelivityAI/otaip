@@ -3,43 +3,60 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Otaip Agent Map · Telivity</title>
-  <meta name="description" content="Telivity Otaip — mission-control map of travel AI agents from search to settlement." />
+  <title>Agent Map · Telivity</title>
+  <meta name="description" content="Telivity Otaip agent map — typed travel AI agents from search to settlement." />
+  <link rel="icon" href="assets/telivity/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="assets/telivity/favicon.ico" sizes="any" />
+  <meta property="og:image" content="assets/telivity/og-image.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg-0: #020617;
-      --bg-1: #070d1c;
-      --panel: rgba(15, 23, 42, 0.66);
-      --panel-solid: #0f172a;
-      --hairline: rgba(148, 163, 184, 0.10);
-      --hairline-strong: rgba(148, 163, 184, 0.18);
-      --cyan-200: #a5f3fc;
-      --cyan-300: #67e8f9;
-      --cyan-400: #22d3ee;
-      --cyan-500: #06b6d4;
-      --cyan-glow: rgba(34, 211, 238, 0.16);
-      --cyan-dim: rgba(34, 211, 238, 0.08);
-      --pkg: #64748b;
-      --pkg-hi: #94a3b8;
-      --ink-1: #f1f5f9;
-      --ink-2: #cbd5e1;
-      --ink-3: #94a3b8;
-      --ink-4: #64748b;
-      --card-bg: linear-gradient(180deg, #101b31 0%, #0c1424 100%);
-      --card-border: rgba(148, 163, 184, 0.14);
-      --card-bg-hot: linear-gradient(180deg, #14233f 0%, #0e1930 100%);
+      /* Telivity brand — scraped from telivity.app CSS */
+      --teal: #06bdb4;
+      --teal-dark: #00a692;
+      --teal-light: #2cd1b9;
+      --navy: #23273d;
+      --navy-deep: #1a1d30;
+      --slate: #444863;
+      --mid: #bbbbc4;
+      --yellow: #eec517;
+      --orange: #f2641b;
+      --purple: #a890ff;
+      --fog: #f0f0f6;
+      --bg-0: var(--navy-deep);
+      --bg-1: var(--navy);
+      --panel: rgba(35, 39, 61, 0.88);
+      --panel-solid: var(--navy);
+      --hairline: rgba(68, 72, 99, 0.55);
+      --hairline-strong: rgba(187, 187, 196, 0.18);
+      --cyan-200: #9aefe8;
+      --cyan-300: var(--teal-light);
+      --cyan-400: var(--teal);
+      --cyan-500: var(--teal-dark);
+      --cyan-glow: rgba(6, 189, 180, 0.18);
+      --cyan-dim: rgba(6, 189, 180, 0.12);
+      --pkg: var(--slate);
+      --pkg-hi: var(--mid);
+      --ink-1: var(--fog);
+      --ink-2: #e2e2ea;
+      --ink-3: var(--mid);
+      --ink-4: #8b8fa3;
+      --card-bg: linear-gradient(180deg, #2a2f4a 0%, #23273d 100%);
+      --card-border: rgba(68, 72, 99, 0.75);
+      --card-bg-hot: linear-gradient(180deg, #32385a 0%, #282d46 100%);
+      --font: "Montserrat", system-ui, sans-serif;
+      --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
     }
     * { box-sizing: border-box; }
     html, body { margin: 0; min-height: 100%; }
     body {
-      font-family: "IBM Plex Sans", system-ui, sans-serif;
+      font-family: var(--font);
       color: var(--ink-1);
       background:
-        radial-gradient(1100px 520px at 12% -10%, rgba(6, 182, 212, 0.10), transparent 60%),
-        radial-gradient(900px 600px at 105% 110%, rgba(29, 78, 216, 0.07), transparent 55%),
+        radial-gradient(1100px 520px at 8% -8%, rgba(6, 189, 180, 0.14), transparent 58%),
+        radial-gradient(900px 560px at 100% 100%, rgba(238, 197, 23, 0.06), transparent 55%),
         var(--bg-0);
       -webkit-font-smoothing: antialiased;
     }
@@ -58,26 +75,45 @@
     @media (max-width: 900px) {
       header.hero { grid-template-columns: 1fr; }
     }
-    .eyebrow {
-      margin: 0 0 0.75rem;
-      font-family: "IBM Plex Mono", ui-monospace, monospace;
-      font-size: 0.68rem;
-      font-weight: 500;
-      letter-spacing: 0.16em;
-      text-transform: uppercase;
-      color: var(--cyan-400);
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.55rem;
+      margin: 0 0 0.85rem;
+      color: var(--fog);
+      text-decoration: none;
     }
-    .eyebrow a { color: inherit; }
+    .brand:hover { text-decoration: none; opacity: 0.92; }
+    .brand-mark {
+      width: 1.75rem;
+      height: 1.75rem;
+      filter: invert(1);
+      display: block;
+    }
+    .brand-name {
+      font-family: var(--font);
+      font-weight: 700;
+      font-size: 1.35rem;
+      letter-spacing: -0.02em;
+      line-height: 1;
+    }
     h1 {
       margin: 0;
-      font-family: "Space Grotesk", system-ui, sans-serif;
+      font-family: var(--font);
       font-weight: 700;
-      font-size: clamp(2.1rem, 4.2vw, 3.25rem);
-      letter-spacing: -0.035em;
-      line-height: 1.05;
-      max-width: 18ch;
+      font-size: clamp(1.85rem, 3.4vw, 2.6rem);
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      max-width: 22ch;
+      color: var(--fog);
     }
-    h1 span { color: var(--cyan-400); }
+    h1 span {
+      background: linear-gradient(90deg, var(--teal) 0%, var(--teal-light) 55%, var(--yellow) 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
     .lede {
       margin: 0.75rem 0 0;
       color: var(--ink-3);
@@ -89,7 +125,7 @@
       display: grid;
       grid-template-columns: repeat(2, auto);
       gap: 0.55rem 1.25rem;
-      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-family: var(--mono);
       font-size: 0.68rem;
       letter-spacing: 0.08em;
       text-transform: uppercase;
@@ -101,7 +137,7 @@
       color: var(--ink-1);
       font-size: 1.05rem;
       letter-spacing: -0.02em;
-      font-family: "Space Grotesk", system-ui, sans-serif;
+      font-family: var(--font);
       font-weight: 600;
       text-transform: none;
     }
@@ -116,28 +152,28 @@
       align-items: center;
       padding: 0.7rem 0;
       margin-bottom: 0.85rem;
-      background: rgba(2, 6, 23, 0.72);
+      background: rgba(26, 29, 48, 0.82);
       backdrop-filter: blur(14px);
       -webkit-backdrop-filter: blur(14px);
       border-bottom: 1px solid var(--hairline-strong);
     }
     .toolbar input, .toolbar select {
       border: 1px solid rgba(148, 163, 184, 0.18);
-      background: rgba(2, 6, 23, 0.85);
+      background: rgba(26, 29, 48, 0.92);
       color: var(--ink-1);
       border-radius: 8px;
       padding: 0.45rem 0.65rem;
       font: inherit;
       font-size: 0.82rem;
     }
-    .toolbar input { min-width: 11rem; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 0.75rem; }
+    .toolbar input { min-width: 11rem; font-family: var(--mono); font-size: 0.75rem; }
     .toolbar input::placeholder { color: var(--ink-4); }
     .toolbar input:focus, .toolbar select:focus {
       outline: none;
       border-color: var(--cyan-500);
       box-shadow: 0 0 0 1px rgba(6, 182, 212, 0.35);
     }
-    .toolbar select option { background: #0f172a; }
+    .toolbar select option { background: var(--navy); }
     .pills {
       display: flex;
       flex-wrap: wrap;
@@ -150,13 +186,13 @@
       color: var(--ink-3);
       border-radius: 999px;
       padding: 0.32rem 0.7rem;
-      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-family: var(--mono);
       font-size: 0.68rem;
       letter-spacing: 0.02em;
       cursor: pointer;
       transition: border-color .15s, color .15s, background .15s;
     }
-    .pill:hover { border-color: rgba(34, 211, 238, 0.4); color: var(--ink-2); }
+    .pill:hover { border-color: rgba(6, 189, 180, 0.4); color: var(--ink-2); }
     .pill.active {
       border-color: var(--cyan-400);
       color: var(--cyan-300);
@@ -167,7 +203,7 @@
       flex-wrap: wrap;
       gap: 0.75rem;
       margin-left: auto;
-      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-family: var(--mono);
       font-size: 0.62rem;
       letter-spacing: 0.06em;
       text-transform: uppercase;
@@ -182,8 +218,8 @@
       margin-right: 0.3rem;
       vertical-align: -1px;
     }
-    .legend .l-active::before { background: var(--cyan-500); box-shadow: 0 0 8px rgba(6,182,212,.45); }
-    .legend .l-stub::before { background: #475569; border: 1px dashed #94a3b8; }
+    .legend .l-active::before { background: var(--cyan-500); box-shadow: 0 0 8px rgba(6,189,180,.45); }
+    .legend .l-stub::before { background: var(--slate); border: 1px dashed var(--mid); }
     .legend .l-wf::before { background: var(--cyan-400); }
     .legend .l-pkg::before { background: transparent; border: 1px dashed var(--pkg-hi); }
 
@@ -204,8 +240,8 @@
       border-radius: 16px;
       min-height: 30rem;
       background:
-        linear-gradient(rgba(148,163,184,0.045) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(148,163,184,0.045) 1px, transparent 1px),
+        linear-gradient(rgba(68,72,99,0.35) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(68,72,99,0.35) 1px, transparent 1px),
         var(--bg-1);
       background-size: 32px 32px, 32px 32px, auto;
       -webkit-mask-image: radial-gradient(120% 100% at 50% 0%, #000 60%, rgba(0,0,0,0.7));
@@ -224,7 +260,7 @@
       left: 1.1rem;
       bottom: 4.6rem;
       z-index: 4;
-      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-family: var(--mono);
       font-size: 0.58rem;
       letter-spacing: 0.14em;
       text-transform: uppercase;
@@ -296,7 +332,7 @@
       display: flex;
       align-items: center;
       gap: 0.4rem;
-      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-family: var(--mono);
       font-size: 0.62rem;
       font-weight: 500;
       letter-spacing: 0.12em;
@@ -311,7 +347,7 @@
       height: 2px;
       margin-left: 0.15rem;
       background: var(--cyan-400);
-      box-shadow: 0 0 8px rgba(34,211,238,.6);
+      box-shadow: 0 0 8px rgba(6,189,180,.6);
     }
     .stage .count {
       display: inline-flex;
@@ -320,7 +356,7 @@
       min-width: 1.2rem;
       padding: 0.05rem 0.3rem;
       border-radius: 999px;
-      background: rgba(34, 211, 238, 0.08);
+      background: rgba(6, 189, 180, 0.08);
       color: var(--cyan-400);
       font-size: 0.58rem;
       letter-spacing: 0;
@@ -353,7 +389,7 @@
       background: transparent;
     }
     .node .id {
-      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-family: var(--mono);
       font-size: 0.66rem;
       font-weight: 500;
       color: var(--ink-4);
@@ -365,26 +401,26 @@
       font-weight: 500;
       color: var(--ink-2);
     }
-    .node.active::before { background: var(--cyan-500); box-shadow: 0 0 8px rgba(6,182,212,.5); }
+    .node.active::before { background: var(--cyan-500); box-shadow: 0 0 8px rgba(6,189,180,.5); }
     .node.stub { border-style: dashed; opacity: 0.62; }
-    .node.stub::before { background: #475569; }
+    .node.stub::before { background: var(--slate); }
     .node.stub .name { color: var(--ink-3); }
     .node:hover {
-      border-color: rgba(34, 211, 238, 0.5);
+      border-color: rgba(6, 189, 180, 0.5);
       background: var(--card-bg-hot);
       transform: translateX(2px);
     }
     .node.on-path {
-      border-color: rgba(34, 211, 238, 0.65);
+      border-color: rgba(6, 189, 180, 0.65);
       background: var(--card-bg-hot);
-      box-shadow: inset 0 0 14px rgba(34, 211, 238, 0.06);
+      box-shadow: inset 0 0 14px rgba(6, 189, 180, 0.06);
     }
     .node.on-path::before { background: var(--cyan-300); }
     .node.on-path .id { color: var(--cyan-300); }
     .node.selected {
       border-color: var(--cyan-400);
       background: var(--card-bg-hot);
-      box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.55), 0 0 28px rgba(34, 211, 238, 0.18);
+      box-shadow: 0 0 0 1px rgba(6, 189, 180, 0.55), 0 0 28px rgba(6, 189, 180, 0.18);
     }
     .node.dim { opacity: 0.22; filter: saturate(0.4); }
     @keyframes rise {
@@ -415,7 +451,7 @@
     }
     .detail .id-chip {
       display: inline-block;
-      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-family: var(--mono);
       font-size: 0.68rem;
       color: var(--cyan-300);
       letter-spacing: 0.04em;
@@ -423,7 +459,7 @@
     }
     .detail h3 {
       margin: 0 0 0.55rem;
-      font-family: "Space Grotesk", system-ui, sans-serif;
+      font-family: var(--font);
       font-size: 1.1rem;
       font-weight: 600;
       letter-spacing: -0.02em;
@@ -432,7 +468,7 @@
       display: inline-flex;
       align-items: center;
       gap: 0.35rem;
-      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-family: var(--mono);
       font-size: 0.62rem;
       letter-spacing: 0.08em;
       text-transform: uppercase;
@@ -444,9 +480,9 @@
       height: 0.45rem;
       border-radius: 50%;
       background: var(--cyan-500);
-      box-shadow: 0 0 8px rgba(6,182,212,.6);
+      box-shadow: 0 0 8px rgba(6,189,180,.6);
     }
-    .badge.stub i { background: #475569; box-shadow: none; }
+    .badge.stub i { background: var(--slate); box-shadow: none; }
     .detail dl {
       margin: 0;
       display: grid;
@@ -459,13 +495,13 @@
     .detail dt { color: var(--ink-4); }
     .detail dd { margin: 0; color: var(--ink-2); word-break: break-word; }
     .detail code {
-      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-family: var(--mono);
       font-size: 0.68rem;
       color: var(--cyan-300);
     }
     .detail .block-label {
       margin: 1rem 0 0.4rem;
-      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-family: var(--mono);
       font-size: 0.62rem;
       letter-spacing: 0.1em;
       text-transform: uppercase;
@@ -481,7 +517,7 @@
       gap: 0.25rem;
     }
     .detail .conn-list li {
-      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-family: var(--mono);
       font-size: 0.72rem;
       color: var(--ink-3);
     }
@@ -499,11 +535,18 @@
       margin-top: 1.25rem;
       padding-top: 0.85rem;
       border-top: 1px solid var(--hairline);
-      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-family: var(--mono);
       font-size: 0.68rem;
       color: var(--ink-4);
       letter-spacing: 0.02em;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.35rem;
     }
+    .brand-foot { margin: 0; gap: 0.35rem; color: var(--mid); font-size: 0.68rem; font-weight: 600; }
+    .brand-foot .brand-mark { width: 0.95rem; height: 0.95rem; }
+    .brand-foot span { font-family: var(--font); letter-spacing: -0.01em; }
 
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
@@ -517,9 +560,12 @@
   <div class="shell">
     <header class="hero">
       <div>
-        <p class="eyebrow"><a href="https://telivity.app">Telivity</a> · Otaip — open source</p>
-        <h1>Agent map for the <span>whole travel transaction</span>.</h1>
-        <p class="lede">77 typed agents. Search to settlement. Solid cyan arcs are Orchestrator workflows; dashed traces are package dependencies.</p>
+        <a class="brand" href="https://telivity.app" aria-label="Telivity">
+          <img class="brand-mark" src="assets/telivity/logo-1color.svg" width="28" height="28" alt="" />
+          <span class="brand-name">Telivity</span>
+        </a>
+        <h1>Agent map</h1>
+        <p class="lede">77 typed agents — search to settlement. Solid teal arcs are Orchestrator workflows; dashed traces are package dependencies.</p>
       </div>
       <div class="stats" aria-label="Graph stats">
         <div><strong>77</strong>Agents</div>
@@ -562,10 +608,10 @@
         <svg class="edges" id="edges" aria-hidden="true">
           <defs>
             <marker id="arrow-wf" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-              <path d="M0 0.5 L7.5 4 L0 7.5 Z" fill="#67e8f9"/>
+              <path d="M0 0.5 L7.5 4 L0 7.5 Z" fill="#2cd1b9"/>
             </marker>
             <marker id="arrow-pkg" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-              <path d="M0 0.5 L7.5 4 L0 7.5 Z" fill="#64748b"/>
+              <path d="M0 0.5 L7.5 4 L0 7.5 Z" fill="#bbbbc4"/>
             </marker>
           </defs>
         </svg>
@@ -946,7 +992,11 @@
     </div>
 
     <footer class="note">
-      <a href="https://telivity.app">Telivity</a> — AI travel infrastructure · Otaip open core ·
+      <a class="brand brand-foot" href="https://telivity.app">
+        <img class="brand-mark" src="assets/telivity/logo-1color.svg" width="16" height="16" alt="" />
+        <span>Telivity</span>
+      </a>
+      · AI travel infrastructure · Otaip open core ·
       77 agents · 27 edges · generated from <code>agents.graph.json</code> · <code>pnpm gen:agent-map</code>
     </footer>
   </div>
