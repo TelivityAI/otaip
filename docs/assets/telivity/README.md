@@ -1,16 +1,18 @@
 # Telivity brand assets
 
-Copied from [telivity.app](https://telivity.app) for the Otaip agent map and docs.
+Canonical marks from the Telivity/HAIP site (`public/` on staging — e.g. [staging.haipcloud.com](https://staging.haipcloud.com/favicon.svg)), vendored here for `docs/agent-map.html`.
 
 | File | Source | Notes |
 |------|--------|--------|
-| `logo-1color.svg` | `/telivity-logo-1color.svg` | Slate `#444863` mark; invert on dark backgrounds (site uses `class="invert"`). |
-| `logo-on-dark.svg` | derived | Same paths with fill `#f0f0f6` for dark UI without CSS filter. |
-| `favicon.ico` | `/favicon.ico` | Canonical mark: navy `#23273d` field, teal `#06bdb4` rounded frame + **T**. |
-| `favicon.svg` | derived from ICO | Same T-mark (not the wordmark logo). |
-| `og-image.png` | `/og-image.png` | 1200×630 social preview. |
+| `favicon.svg` | `/favicon.svg` | Primary favicon — same artwork as `brand/mark.svg` |
+| `favicon-32.png` | `/favicon-32.png` | 32×32 PNG |
+| `favicon-64.png` | `/favicon-64.png` | 64×64 PNG |
+| `apple-touch-icon.png` | `/apple-touch-icon.png` | 180×180 |
+| `brand/mark.svg` | `/brand/mark.svg` | Brand mark (identical to favicon.svg) |
+| `logo-1color.svg` | telivity.app `/telivity-logo-1color.svg` | Wordmark (slate `#444863`) — not the favicon |
+| `og-image.png` | telivity.app `/og-image.png` | 1200×630 |
 
-## Brand tokens (from site CSS)
+## Brand tokens (site CSS)
 
 | Token | Hex |
 |-------|-----|
@@ -18,11 +20,9 @@ Copied from [telivity.app](https://telivity.app) for the Otaip agent map and doc
 | Teal dark | `#00a692` |
 | Teal light | `#2cd1b9` |
 | Navy | `#23273d` |
-| Navy deep | `#1a1d30` |
 | Slate | `#444863` |
 | Mid grey | `#bbbbc4` |
 | Fog | `#f0f0f6` |
 | Yellow | `#eec517` |
 | Orange | `#f2641b` |
-| Purple | `#a890ff` / `#5838c0` |
 | Font | Montserrat 300/400/600/700 |

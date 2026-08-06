@@ -246,8 +246,10 @@ ${rows}
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Agent connections · Telivity Otaip</title>
   <meta name="description" content="How Otaip agents connect — workflows and package dependencies." />
-  <link rel="icon" href="assets/telivity/favicon.ico" sizes="any" />
   <link rel="icon" href="assets/telivity/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="assets/telivity/favicon-32.png" type="image/png" sizes="32x32" />
+  <link rel="icon" href="assets/telivity/favicon-64.png" type="image/png" sizes="64x64" />
+  <link rel="apple-touch-icon" href="assets/telivity/apple-touch-icon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&display=swap" rel="stylesheet" />
@@ -717,7 +719,7 @@ ${rows}
 <body>
   <header class="bar" id="bar">
     <a class="bar-brand" href="https://telivity.app" aria-label="Telivity">
-      <img src="assets/telivity/favicon.svg" width="22" height="22" alt="" />
+      <img src="assets/telivity/brand/mark.svg" width="22" height="22" alt="" />
       <span>Telivity</span>
     </a>
     <span class="bar-title">Agent connections</span>
@@ -766,7 +768,7 @@ ${stageTiles}
     </section>
 
     <footer class="note">
-      <img src="assets/telivity/favicon.svg" width="14" height="14" alt="" />
+      <img src="assets/telivity/brand/mark.svg" width="14" height="14" alt="" />
       <span>Telivity Otaip</span>
       <span>·</span>
       <span>${graph.total_nodes} agents · ${graph.total_edges} edges · from <code>agents.graph.json</code></span>
