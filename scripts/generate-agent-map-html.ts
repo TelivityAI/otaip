@@ -15,6 +15,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { loadAgentDocs } from './agent-docs.js';
 import type { AgentGraph, AgentGraphNode } from './agent-graph.js';
 
 const GRAPH_PATH = 'agents.graph.json';
@@ -250,7 +251,11 @@ ${rows}
     })
     .join('\n');
 
-  const payload = JSON.stringify(graph);
+  const docs = loadAgentDocs(
+    repoRoot(),
+    graph.nodes.map((n) => ({ id: n.id, source_path: n.source_path })),
+  );
+  const payload = JSON.stringify({ graph, docs });
   const stageNamesJson = JSON.stringify(STAGE_DISPLAY);
 
   return `<!DOCTYPE html>
@@ -1062,6 +1067,60 @@ ${rows}
     }
     .mini-pill:hover { background: rgba(6, 189, 180, 0.14); border-color: var(--teal); }
     .p-dim { margin: 0; font-size: 0.8rem; font-weight: 300; color: var(--ink-4); }
+    .p-summary {
+      margin: 0.35rem 0 0;
+      font-size: 0.92rem;
+      font-weight: 400;
+      line-height: 1.45;
+      color: var(--ink-2);
+      letter-spacing: -0.01em;
+    }
+    .p-purpose {
+      margin: 0.55rem 0 0;
+      font-size: 0.84rem;
+      font-weight: 300;
+      line-height: 1.5;
+      color: var(--ink-3);
+    }
+    .p-io {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      font-size: 0.78rem;
+      line-height: 1.4;
+      color: var(--ink-2);
+    }
+    .p-io li {
+      padding-left: 0.85rem;
+      position: relative;
+    }
+    .p-io li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0.55em;
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--teal);
+      opacity: 0.7;
+    }
+    .p-usage {
+      margin: 0;
+      padding: 0.75rem 0.85rem;
+      border-radius: 12px;
+      background: rgba(35, 39, 61, 0.04);
+      border: 1px solid var(--hairline);
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      line-height: 1.45;
+      color: var(--navy);
+      white-space: pre-wrap;
+      overflow-x: auto;
+    }
     .conn-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 0.4rem; }
     .conn-list li { font-family: var(--mono); font-size: 0.74rem; color: var(--ink-3); }
     .conn-list .dir { color: var(--teal); }
@@ -1213,7 +1272,9 @@ ${tilesHtml}
 
   <script id="graph-data" type="application/json">${payload.replace(/</g, '\\u003c')}</script>
   <script>
-    const graph = JSON.parse(document.getElementById('graph-data').textContent);
+    const payload = JSON.parse(document.getElementById('graph-data').textContent);
+    const graph = payload.graph;
+    const agentDocs = payload.docs || {};
     const STAGE_NAMES = ${stageNamesJson};
     const nodesById = {};
     for (const n of graph.nodes) nodesById[n.id] = n;
@@ -1443,10 +1504,18 @@ ${tilesHtml}
     const panelContent = document.getElementById('panel-content');
     let panelOpen = false;
 
+    function bulletsHtml(block) {
+      if (!block) return '';
+      const lines = String(block).split('\\n').map(function (l) { return l.trim(); }).filter(Boolean);
+      if (!lines.length) return '';
+      return '<ul class="p-io">' + lines.map(function (l) { return '<li>' + escape(l) + '</li>'; }).join('') + '</ul>';
+    }
+
     function openPanel(id) {
       const n = nodesById[id];
       if (!n) return;
       selectedAgent = id;
+      const doc = agentDocs[id] || {};
       const wfs = workflowsFor(id);
       const wfUp = [], wfDown = [], depOut = [], depIn = [];
       for (const e of graph.edges) {
@@ -1462,27 +1531,44 @@ ${tilesHtml}
       html += '<div class="p-id">' + escape(n.id) + '</div>';
       html += '<h3>' + escape(n.name) + '</h3>';
       html += '<div class="badge' + (n.contract_status === 'stub' ? ' stub' : '') + '"><i></i>' + escape(n.contract_status) + '</div>';
+
+      const summary = doc.summary || '';
+      const purpose = doc.purpose && doc.purpose !== summary ? doc.purpose : '';
+      if (summary) html += '<p class="p-summary">' + escape(summary) + '</p>';
+      if (purpose) html += '<p class="p-purpose">' + escape(purpose) + '</p>';
+
       html += '<dl>';
       html += '<dt>Stage</dt><dd>' + escape(STAGE_NAMES[n.stage] || n.stage) + '</dd>';
       html += '<dt>Version</dt><dd>' + escape(n.version) + '</dd>';
+      if (doc.className) html += '<dt>Class</dt><dd><code>' + escape(doc.className) + '</code></dd>';
       html += '<dt>Contract</dt><dd>' + (n.has_contract ? 'Yes' : 'No') + '</dd>';
+      if (doc.status) html += '<dt>Status</dt><dd>' + escape(doc.status) + '</dd>';
       html += '<dt>Source</dt><dd><code>' + escape(n.source_path) + '</code></dd>';
       html += '</dl>';
 
-      html += '<div class="p-label">Workflows</div>';
+      if (doc.input) {
+        html += '<div class="p-label">Input</div>';
+        html += bulletsHtml(doc.input);
+      }
+      if (doc.output) {
+        html += '<div class="p-label">Output</div>';
+        html += bulletsHtml(doc.output);
+      }
+      if (doc.usage) {
+        html += '<div class="p-label">How to use</div>';
+        html += '<pre class="p-usage">' + escape(doc.usage) + '</pre>';
+      }
+
       if (wfs.length) {
-        html += '<div class="mini-pills">';
+        html += '<div class="p-label">Workflows</div><div class="mini-pills">';
         for (const w of wfs) {
           html += '<button type="button" class="mini-pill" data-wf-jump="' + escape(w) + '">' + escape(w) + '</button>';
         }
         html += '</div>';
-      } else {
-        html += '<p class="p-dim">Not part of a built-in workflow.</p>';
       }
 
-      html += '<div class="p-label">Pipeline connections</div>';
       if (wfUp.length || wfDown.length) {
-        html += '<ul class="conn-list">';
+        html += '<div class="p-label">Pipeline connections</div><ul class="conn-list">';
         for (const e of wfUp) {
           html += '<li><span class="dir">&larr;</span> <button type="button" data-jump="' + escape(e.source) + '">' + escape(e.source) + '</button> <span class="c-kind">' + escape(e.label) + '</span></li>';
         }
@@ -1490,28 +1576,22 @@ ${tilesHtml}
           html += '<li><span class="dir">&rarr;</span> <button type="button" data-jump="' + escape(e.target) + '">' + escape(e.target) + '</button> <span class="c-kind">' + escape(e.label) + '</span></li>';
         }
         html += '</ul>';
-      } else {
-        html += '<p class="p-dim">No pipeline edges.</p>';
       }
 
-      html += '<div class="p-label">Depends on</div>';
       if (depOut.length) {
+        html += '<div class="p-label">Depends on</div>';
         for (const e of depOut) {
           const t = nodesById[e.target];
           html += '<div class="dep-row"><button type="button" class="dep-pill" data-jump="' + escape(e.target) + '"><span class="dep-arrow">&#8674;</span> ' + escape(e.target) + (t ? ' · ' + escape(t.name) : '') + '</button><span class="dep-label">' + escape(e.label) + '</span></div>';
         }
-      } else {
-        html += '<p class="p-dim">No package dependencies.</p>';
       }
 
-      html += '<div class="p-label">Required by</div>';
       if (depIn.length) {
+        html += '<div class="p-label">Required by</div>';
         for (const e of depIn) {
           const s = nodesById[e.source];
           html += '<div class="dep-row"><button type="button" class="dep-pill" data-jump="' + escape(e.source) + '"><span class="dep-arrow">&#8672;</span> ' + escape(e.source) + (s ? ' · ' + escape(s.name) : '') + '</button><span class="dep-label">' + escape(e.label) + '</span></div>';
         }
-      } else {
-        html += '<p class="p-dim">Nothing depends on this package.</p>';
       }
 
       panelContent.innerHTML = html;
