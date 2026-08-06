@@ -3,609 +3,954 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>OTAIP Agent Map</title>
+  <title>Otaip Agent Map · Telivity</title>
+  <meta name="description" content="Telivity Otaip — mission-control map of travel AI agents from search to settlement." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg: #f7f4ef;
-      --ink: #1c1917;
-      --muted: #78716c;
-      --line: #d6d3d1;
-      --panel: #fffcf7;
-      --active: #0f766e;
-      --stub: #a8a29e;
-      --workflow: #c2410c;
-      --pkg: #a8a29e;
-      --hl: #0d9488;
+      --bg-0: #020617;
+      --bg-1: #070d1c;
+      --panel: rgba(15, 23, 42, 0.66);
+      --panel-solid: #0f172a;
+      --hairline: rgba(148, 163, 184, 0.10);
+      --hairline-strong: rgba(148, 163, 184, 0.18);
+      --cyan-200: #a5f3fc;
+      --cyan-300: #67e8f9;
+      --cyan-400: #22d3ee;
+      --cyan-500: #06b6d4;
+      --cyan-glow: rgba(34, 211, 238, 0.16);
+      --cyan-dim: rgba(34, 211, 238, 0.08);
+      --pkg: #64748b;
+      --pkg-hi: #94a3b8;
+      --ink-1: #f1f5f9;
+      --ink-2: #cbd5e1;
+      --ink-3: #94a3b8;
+      --ink-4: #64748b;
+      --card-bg: linear-gradient(180deg, #101b31 0%, #0c1424 100%);
+      --card-border: rgba(148, 163, 184, 0.14);
+      --card-bg-hot: linear-gradient(180deg, #14233f 0%, #0e1930 100%);
     }
     * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
     body {
-      margin: 0;
-      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
-      color: var(--ink);
+      font-family: "IBM Plex Sans", system-ui, sans-serif;
+      color: var(--ink-1);
       background:
-        radial-gradient(1200px 600px at 10% -10%, #dde8e4 0%, transparent 55%),
-        radial-gradient(900px 500px at 100% 0%, #f0e6d8 0%, transparent 50%),
-        var(--bg);
-      min-height: 100vh;
+        radial-gradient(1100px 520px at 12% -10%, rgba(6, 182, 212, 0.10), transparent 60%),
+        radial-gradient(900px 600px at 105% 110%, rgba(29, 78, 216, 0.07), transparent 55%),
+        var(--bg-0);
+      -webkit-font-smoothing: antialiased;
     }
-    header {
-      padding: 1.5rem 1.75rem 0.75rem;
-      max-width: 1400px;
-      margin: 0 auto;
+    a { color: var(--cyan-400); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .shell { max-width: 1440px; margin: 0 auto; padding: 0 1.5rem 2rem; }
+
+    header.hero {
+      padding: 1.75rem 0 1rem;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 1rem 2rem;
+      align-items: end;
     }
-    header h1 {
+    @media (max-width: 900px) {
+      header.hero { grid-template-columns: 1fr; }
+    }
+    .eyebrow {
+      margin: 0 0 0.75rem;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.68rem;
+      font-weight: 500;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--cyan-400);
+    }
+    .eyebrow a { color: inherit; }
+    h1 {
       margin: 0;
-      font-family: "IBM Plex Serif", Georgia, serif;
-      font-weight: 600;
-      font-size: 1.75rem;
-      letter-spacing: -0.02em;
+      font-family: "Space Grotesk", system-ui, sans-serif;
+      font-weight: 700;
+      font-size: clamp(2.1rem, 4.2vw, 3.25rem);
+      letter-spacing: -0.035em;
+      line-height: 1.05;
+      max-width: 18ch;
     }
-    header p {
-      margin: 0.4rem 0 0;
-      color: var(--muted);
+    h1 span { color: var(--cyan-400); }
+    .lede {
+      margin: 0.75rem 0 0;
+      color: var(--ink-3);
       font-size: 0.95rem;
-      max-width: 52rem;
+      max-width: 38rem;
+      line-height: 1.5;
     }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, auto);
+      gap: 0.55rem 1.25rem;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.68rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ink-4);
+      text-align: right;
+    }
+    .stats strong {
+      display: block;
+      color: var(--ink-1);
+      font-size: 1.05rem;
+      letter-spacing: -0.02em;
+      font-family: "Space Grotesk", system-ui, sans-serif;
+      font-weight: 600;
+      text-transform: none;
+    }
+
     .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
       display: flex;
       flex-wrap: wrap;
-      gap: 0.5rem;
+      gap: 0.55rem;
       align-items: center;
-      padding: 0.75rem 1.75rem 1rem;
-      max-width: 1400px;
-      margin: 0 auto;
+      padding: 0.7rem 0;
+      margin-bottom: 0.85rem;
+      background: rgba(2, 6, 23, 0.72);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--hairline-strong);
     }
     .toolbar input, .toolbar select {
-      border: 1px solid var(--line);
-      background: var(--panel);
-      border-radius: 6px;
-      padding: 0.4rem 0.6rem;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      background: rgba(2, 6, 23, 0.85);
+      color: var(--ink-1);
+      border-radius: 8px;
+      padding: 0.45rem 0.65rem;
       font: inherit;
-      font-size: 0.875rem;
+      font-size: 0.82rem;
     }
-    .toolbar input { min-width: 12rem; }
+    .toolbar input { min-width: 11rem; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 0.75rem; }
+    .toolbar input::placeholder { color: var(--ink-4); }
+    .toolbar input:focus, .toolbar select:focus {
+      outline: none;
+      border-color: var(--cyan-500);
+      box-shadow: 0 0 0 1px rgba(6, 182, 212, 0.35);
+    }
+    .toolbar select option { background: #0f172a; }
+    .pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      align-items: center;
+    }
+    .pill {
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      background: transparent;
+      color: var(--ink-3);
+      border-radius: 999px;
+      padding: 0.32rem 0.7rem;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.68rem;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      transition: border-color .15s, color .15s, background .15s;
+    }
+    .pill:hover { border-color: rgba(34, 211, 238, 0.4); color: var(--ink-2); }
+    .pill.active {
+      border-color: var(--cyan-400);
+      color: var(--cyan-300);
+      background: var(--cyan-dim);
+    }
     .legend {
       display: flex;
       flex-wrap: wrap;
-      gap: 0.85rem;
+      gap: 0.75rem;
       margin-left: auto;
-      font-size: 0.75rem;
-      color: var(--muted);
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.62rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--ink-4);
     }
     .legend span::before {
       content: "";
       display: inline-block;
-      width: 0.65rem;
-      height: 0.65rem;
+      width: 0.7rem;
+      height: 0.7rem;
       border-radius: 2px;
       margin-right: 0.3rem;
       vertical-align: -1px;
     }
-    .legend .l-active::before { background: var(--active); }
-    .legend .l-stub::before { background: var(--stub); }
-    .legend .l-wf::before { background: var(--workflow); }
-    .legend .l-pkg::before { background: var(--pkg); }
+    .legend .l-active::before { background: var(--cyan-500); box-shadow: 0 0 8px rgba(6,182,212,.45); }
+    .legend .l-stub::before { background: #475569; border: 1px dashed #94a3b8; }
+    .legend .l-wf::before { background: var(--cyan-400); }
+    .legend .l-pkg::before { background: transparent; border: 1px dashed var(--pkg-hi); }
+
     .layout {
       display: grid;
-      grid-template-columns: 1fr minmax(14rem, 18rem);
-      gap: 1rem;
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 0 1.75rem 2rem;
+      grid-template-columns: 1fr minmax(16rem, 18.5rem);
+      gap: 1.25rem;
     }
-    @media (max-width: 900px) {
+    @media (max-width: 960px) {
       .layout { grid-template-columns: 1fr; }
     }
+
     .board-wrap {
       position: relative;
       overflow-x: auto;
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      background: var(--panel);
-      min-height: 28rem;
+      overflow-y: hidden;
+      border: 1px solid var(--hairline-strong);
+      border-radius: 16px;
+      min-height: 30rem;
+      background:
+        linear-gradient(rgba(148,163,184,0.045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(148,163,184,0.045) 1px, transparent 1px),
+        var(--bg-1);
+      background-size: 32px 32px, 32px 32px, auto;
+      -webkit-mask-image: radial-gradient(120% 100% at 50% 0%, #000 60%, rgba(0,0,0,0.7));
+              mask-image: radial-gradient(120% 100% at 50% 0%, #000 60%, rgba(0,0,0,0.7));
     }
     .board {
-      display: flex;
-      gap: 0.75rem;
-      padding: 1rem;
-      min-width: max-content;
       position: relative;
       z-index: 1;
-    }
-    .stage {
-      width: 11.5rem;
-      flex: 0 0 auto;
-    }
-    .stage h2 {
-      margin: 0 0 0.5rem;
-      font-size: 0.7rem;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--muted);
-      font-weight: 600;
-    }
-    .stage .count {
-      font-weight: 500;
-      opacity: 0.7;
-    }
-    .nodes { display: flex; flex-direction: column; gap: 0.35rem; }
-    .node {
-      text-align: left;
-      border: 1px solid var(--line);
-      background: #fff;
-      border-radius: 6px;
-      padding: 0.4rem 0.5rem;
-      cursor: pointer;
       display: flex;
-      flex-direction: column;
-      gap: 0.1rem;
-      transition: border-color 0.15s, box-shadow 0.15s, opacity 0.15s;
+      gap: 1.1rem;
+      padding: 1.1rem 1.1rem 7.5rem;
+      min-width: max-content;
     }
-    .node .id {
+    .bus-label {
+      position: absolute;
+      left: 1.1rem;
+      bottom: 4.6rem;
+      z-index: 4;
       font-family: "IBM Plex Mono", ui-monospace, monospace;
-      font-size: 0.7rem;
-      color: var(--muted);
+      font-size: 0.58rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--ink-4);
+      pointer-events: none;
     }
-    .node .name {
-      font-size: 0.78rem;
-      line-height: 1.25;
-      color: var(--ink);
+    .bus-rule {
+      position: absolute;
+      left: 1.1rem;
+      right: 1.1rem;
+      bottom: 5.4rem;
+      height: 1px;
+      background: var(--hairline);
+      z-index: 2;
+      pointer-events: none;
     }
-    .node.active { border-left: 3px solid var(--active); }
-    .node.stub { border-left: 3px solid var(--stub); opacity: 0.85; }
-    .node.selected, .node:hover {
-      border-color: var(--hl);
-      box-shadow: 0 0 0 1px var(--hl);
-    }
-    .node.on-path { border-color: var(--workflow); box-shadow: 0 0 0 1px var(--workflow); }
-    .node.dim { opacity: 0.28; }
+
     svg.edges {
       position: absolute;
       inset: 0;
       width: 100%;
       height: 100%;
+      z-index: 3;
       pointer-events: none;
-      z-index: 0;
       overflow: visible;
     }
-    svg.edges path.workflow { fill: none; stroke: var(--workflow); stroke-width: 1.5; opacity: 0.55; }
-    svg.edges path.package { fill: none; stroke: var(--pkg); stroke-width: 1; stroke-dasharray: 4 3; opacity: 0.35; }
-    svg.edges path.hl { opacity: 1; stroke-width: 2.25; }
-    .detail {
-      border: 1px solid var(--line);
+    svg.edges .hit { fill: none; stroke: transparent; stroke-width: 14; pointer-events: stroke; cursor: pointer; }
+    svg.edges .glow { fill: none; stroke: var(--cyan-400); stroke-width: 12; opacity: 0.14; stroke-linecap: round; }
+    svg.edges .core-wf {
+      fill: none;
+      stroke: var(--cyan-400);
+      stroke-width: 2.75;
+      opacity: 0.95;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    svg.edges .ants {
+      fill: none;
+      stroke: var(--cyan-200);
+      stroke-width: 1.75;
+      stroke-linecap: round;
+      stroke-dasharray: 2 8;
+      animation: march 0.85s linear infinite;
+      opacity: 0;
+    }
+    svg.edges g.live .core-wf { stroke-width: 3.5; opacity: 1; stroke: var(--cyan-300); }
+    svg.edges g.live .glow { stroke-width: 16; opacity: 0.22; }
+    svg.edges g.live .ants { opacity: 1; }
+    svg.edges g.dim .core-wf, svg.edges g.dim .glow, svg.edges g.dim .ants { opacity: 0.08; }
+    svg.edges g.dim .core-wf { marker-end: none; }
+    svg.edges g.hot .core-wf { stroke-width: 4; opacity: 1; stroke: var(--cyan-200); }
+    svg.edges g.hot .glow { opacity: 0.28; stroke-width: 18; }
+    svg.edges .core-pkg {
+      fill: none;
+      stroke: var(--pkg-hi);
+      stroke-width: 2;
+      opacity: 0.55;
+      stroke-dasharray: 4 6;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    svg.edges g.pkg-dim .core-pkg { opacity: 0.1; marker-end: none; }
+    svg.edges g.pkg-hot .core-pkg { stroke: var(--pkg-hi); opacity: 0.9; }
+    @keyframes march { to { stroke-dashoffset: -10; } }
+
+    .stage { width: 11.75rem; flex: 0 0 auto; }
+    .stage h2 {
+      margin: 0 0 0.55rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.62rem;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--ink-4);
+    }
+    .stage.live-stage h2 .stage-label { color: var(--cyan-300); }
+    .stage.live-stage h2::after {
+      content: "";
+      display: inline-block;
+      width: 0.45rem;
+      height: 2px;
+      margin-left: 0.15rem;
+      background: var(--cyan-400);
+      box-shadow: 0 0 8px rgba(34,211,238,.6);
+    }
+    .stage .count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 1.2rem;
+      padding: 0.05rem 0.3rem;
+      border-radius: 999px;
+      background: rgba(34, 211, 238, 0.08);
+      color: var(--cyan-400);
+      font-size: 0.58rem;
+      letter-spacing: 0;
+    }
+    .nodes { display: flex; flex-direction: column; gap: 0.4rem; }
+
+    .node {
+      position: relative;
+      text-align: left;
+      border: 1px solid var(--card-border);
+      background: var(--card-bg);
       border-radius: 10px;
+      padding: 0.5rem 0.6rem 0.5rem 0.7rem;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 0.12rem;
+      color: inherit;
+      animation: rise 320ms cubic-bezier(.2,.7,.2,1) both;
+      transition: border-color .16s ease, box-shadow .16s ease, opacity .18s ease, transform .16s ease, background .16s ease;
+    }
+    .node::before {
+      content: "";
+      position: absolute;
+      left: -1px;
+      top: 8px;
+      bottom: 8px;
+      width: 2px;
+      border-radius: 2px;
+      background: transparent;
+    }
+    .node .id {
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.66rem;
+      font-weight: 500;
+      color: var(--ink-4);
+      letter-spacing: 0.04em;
+    }
+    .node .name {
+      font-size: 0.78rem;
+      line-height: 1.3;
+      font-weight: 500;
+      color: var(--ink-2);
+    }
+    .node.active::before { background: var(--cyan-500); box-shadow: 0 0 8px rgba(6,182,212,.5); }
+    .node.stub { border-style: dashed; opacity: 0.62; }
+    .node.stub::before { background: #475569; }
+    .node.stub .name { color: var(--ink-3); }
+    .node:hover {
+      border-color: rgba(34, 211, 238, 0.5);
+      background: var(--card-bg-hot);
+      transform: translateX(2px);
+    }
+    .node.on-path {
+      border-color: rgba(34, 211, 238, 0.65);
+      background: var(--card-bg-hot);
+      box-shadow: inset 0 0 14px rgba(34, 211, 238, 0.06);
+    }
+    .node.on-path::before { background: var(--cyan-300); }
+    .node.on-path .id { color: var(--cyan-300); }
+    .node.selected {
+      border-color: var(--cyan-400);
+      background: var(--card-bg-hot);
+      box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.55), 0 0 28px rgba(34, 211, 238, 0.18);
+    }
+    .node.dim { opacity: 0.22; filter: saturate(0.4); }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .detail {
+      border: 1px solid var(--hairline-strong);
+      border-radius: 16px;
       background: var(--panel);
-      padding: 1rem;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      padding: 1.1rem;
       align-self: start;
       position: sticky;
-      top: 1rem;
+      top: 4.5rem;
+      min-height: 16rem;
     }
-    .detail h3 { margin: 0 0 0.5rem; font-size: 1rem; }
-    .detail dl { margin: 0; display: grid; grid-template-columns: 5.5rem 1fr; gap: 0.35rem 0.5rem; font-size: 0.8rem; }
-    .detail dt { color: var(--muted); }
-    .detail dd { margin: 0; word-break: break-word; }
-    .detail .empty { color: var(--muted); font-size: 0.85rem; }
-    .detail ul { margin: 0.5rem 0 0; padding-left: 1.1rem; font-size: 0.8rem; }
-    .note {
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 0 1.75rem 2rem;
-      font-size: 0.75rem;
-      color: var(--muted);
+    .detail .empty {
+      margin: 0;
+      padding: 1.5rem 0.5rem;
+      text-align: center;
+      color: var(--ink-4);
+      font-size: 0.85rem;
+      border: 1px dashed var(--hairline-strong);
+      border-radius: 12px;
+    }
+    .detail .id-chip {
+      display: inline-block;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.68rem;
+      color: var(--cyan-300);
+      letter-spacing: 0.04em;
+      margin-bottom: 0.35rem;
+    }
+    .detail h3 {
+      margin: 0 0 0.55rem;
+      font-family: "Space Grotesk", system-ui, sans-serif;
+      font-size: 1.1rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.62rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+      margin-bottom: 0.85rem;
+    }
+    .badge i {
+      width: 0.45rem;
+      height: 0.45rem;
+      border-radius: 50%;
+      background: var(--cyan-500);
+      box-shadow: 0 0 8px rgba(6,182,212,.6);
+    }
+    .badge.stub i { background: #475569; box-shadow: none; }
+    .detail dl {
+      margin: 0;
+      display: grid;
+      grid-template-columns: 5.2rem 1fr;
+      gap: 0.4rem 0.55rem;
+      font-size: 0.78rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--hairline);
+    }
+    .detail dt { color: var(--ink-4); }
+    .detail dd { margin: 0; color: var(--ink-2); word-break: break-word; }
+    .detail code {
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.68rem;
+      color: var(--cyan-300);
+    }
+    .detail .block-label {
+      margin: 1rem 0 0.4rem;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.62rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink-4);
+    }
+    .detail .mini-pills { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+    .detail .conn-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    .detail .conn-list li {
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.72rem;
+      color: var(--ink-3);
+    }
+    .detail .conn-list button {
+      background: none;
+      border: none;
+      color: var(--cyan-300);
+      font: inherit;
+      cursor: pointer;
+      padding: 0;
+    }
+    .detail .conn-list button:hover { text-decoration: underline; }
+
+    footer.note {
+      margin-top: 1.25rem;
+      padding-top: 0.85rem;
+      border-top: 1px solid var(--hairline);
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.68rem;
+      color: var(--ink-4);
+      letter-spacing: 0.02em;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation: none !important;
+        transition: none !important;
+      }
     }
   </style>
 </head>
 <body>
-  <header>
-    <h1>OTAIP Agent Map</h1>
-    <p>
-      Stage columns for every discovered agent. Solid arcs are Orchestrator
-      workflow steps; dashed arcs are package workspace dependencies (stage hubs).
-      This is navigation only — not a travel-domain knowledge graph.
-    </p>
-  </header>
-  <div class="toolbar">
-    <input id="search" type="search" placeholder="Search id or name…" />
-    <select id="stage">
-      <option value="all">All stages</option>
-    </select>
-    <select id="status">
-      <option value="all">All status</option>
-      <option value="active">Active</option>
-      <option value="stub">Stub</option>
-    </select>
-    <select id="workflow">
-      <option value="all">All workflows</option>
-    </select>
-    <div class="legend">
-      <span class="l-active">Active</span>
-      <span class="l-stub">Stub</span>
-      <span class="l-wf">Workflow</span>
-      <span class="l-pkg">Package dep</span>
+  <div class="shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow"><a href="https://telivity.app">Telivity</a> · Otaip — open source</p>
+        <h1>Agent map for the <span>whole travel transaction</span>.</h1>
+        <p class="lede">77 typed agents. Search to settlement. Solid cyan arcs are Orchestrator workflows; dashed traces are package dependencies.</p>
+      </div>
+      <div class="stats" aria-label="Graph stats">
+        <div><strong>77</strong>Agents</div>
+        <div><strong>12</strong>Stages</div>
+        <div><strong>5</strong>Workflows</div>
+        <div><strong>27</strong>Edges</div>
+      </div>
+    </header>
+
+    <div class="toolbar">
+      <input id="search" type="search" placeholder="Search id or name…" />
+      <select id="stage">
+        <option value="all">All stages</option>
+      </select>
+      <select id="status">
+        <option value="all">All status</option>
+        <option value="active">Active</option>
+        <option value="stub">Stub</option>
+      </select>
+      <div class="pills" id="workflow-pills" role="group" aria-label="Workflows">
+        <button type="button" class="pill" data-workflow="all">All</button>
+        <button type="button" class="pill" data-workflow="book_to_ticket">book_to_ticket</button>
+        <button type="button" class="pill" data-workflow="exchange_flow">exchange_flow</button>
+        <button type="button" class="pill" data-workflow="full_booking">full_booking</button>
+        <button type="button" class="pill" data-workflow="refund_flow">refund_flow</button>
+        <button type="button" class="pill" data-workflow="search_to_price">search_to_price</button>
+      </div>
+      <div class="legend">
+        <span class="l-active">Active</span>
+        <span class="l-stub">Stub</span>
+        <span class="l-wf">Workflow</span>
+        <span class="l-pkg">Package</span>
+      </div>
     </div>
-  </div>
-  <div class="layout">
-    <div class="board-wrap" id="board-wrap">
-      <svg class="edges" id="edges" aria-hidden="true"></svg>
-      <div class="board" id="board">
+
+    <div class="layout">
+      <div class="board-wrap" id="board-wrap">
+        <div class="bus-rule" aria-hidden="true"></div>
+        <div class="bus-label" aria-hidden="true">Package dependencies</div>
+        <svg class="edges" id="edges" aria-hidden="true">
+          <defs>
+            <marker id="arrow-wf" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0 0.5 L7.5 4 L0 7.5 Z" fill="#67e8f9"/>
+            </marker>
+            <marker id="arrow-pkg" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0 0.5 L7.5 4 L0 7.5 Z" fill="#64748b"/>
+            </marker>
+          </defs>
+        </svg>
+        <div class="board" id="board">
       <section class="stage" data-stage="reference">
-        <h2>reference <span class="count">7</span></h2>
+        <h2><span class="stage-label">reference</span> <span class="count">7</span></h2>
         <div class="nodes">
-        <button type="button" class="node active contracted" data-id="0.1" title="Airport/City Code Resolver">
+        <button type="button" class="node active" data-id="0.1" data-stage="reference" style="animation-delay:0ms" title="Airport/City Code Resolver">
           <span class="id">0.1</span>
           <span class="name">Airport/City Code Resolver</span>
         </button>
-        <button type="button" class="node active contracted" data-id="0.2" title="Airline Code &amp; Alliance Mapper">
+        <button type="button" class="node active" data-id="0.2" data-stage="reference" style="animation-delay:18ms" title="Airline Code &amp; Alliance Mapper">
           <span class="id">0.2</span>
           <span class="name">Airline Code &amp; Alliance Mapper</span>
         </button>
-        <button type="button" class="node active contracted" data-id="0.3" title="Fare Basis Code Decoder">
+        <button type="button" class="node active" data-id="0.3" data-stage="reference" style="animation-delay:36ms" title="Fare Basis Code Decoder">
           <span class="id">0.3</span>
           <span class="name">Fare Basis Code Decoder</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="0.4" title="Class of Service Mapper">
+        <button type="button" class="node active" data-id="0.4" data-stage="reference" style="animation-delay:54ms" title="Class of Service Mapper">
           <span class="id">0.4</span>
           <span class="name">Class of Service Mapper</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="0.5" title="Equipment Type Resolver">
+        <button type="button" class="node active" data-id="0.5" data-stage="reference" style="animation-delay:72ms" title="Equipment Type Resolver">
           <span class="id">0.5</span>
           <span class="name">Equipment Type Resolver</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="0.6" title="Currency &amp; Tax Code Resolver">
+        <button type="button" class="node active" data-id="0.6" data-stage="reference" style="animation-delay:90ms" title="Currency &amp; Tax Code Resolver">
           <span class="id">0.6</span>
           <span class="name">Currency &amp; Tax Code Resolver</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="0.7" title="Country Regulatory Resolver">
+        <button type="button" class="node active" data-id="0.7" data-stage="reference" style="animation-delay:108ms" title="Country Regulatory Resolver">
           <span class="id">0.7</span>
           <span class="name">Country Regulatory Resolver</span>
         </button>
         </div>
       </section>
       <section class="stage" data-stage="search">
-        <h2>search <span class="count">8</span></h2>
+        <h2><span class="stage-label">search</span> <span class="count">8</span></h2>
         <div class="nodes">
-        <button type="button" class="node active contracted" data-id="1.1" title="Availability Search">
+        <button type="button" class="node active" data-id="1.1" data-stage="search" style="animation-delay:45ms" title="Availability Search">
           <span class="id">1.1</span>
           <span class="name">Availability Search</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="1.2" title="Schedule Lookup">
+        <button type="button" class="node active" data-id="1.2" data-stage="search" style="animation-delay:63ms" title="Schedule Lookup">
           <span class="id">1.2</span>
           <span class="name">Schedule Lookup</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="1.3" title="Connection Builder">
+        <button type="button" class="node active" data-id="1.3" data-stage="search" style="animation-delay:81ms" title="Connection Builder">
           <span class="id">1.3</span>
           <span class="name">Connection Builder</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="1.4" title="Fare Shopping">
+        <button type="button" class="node active" data-id="1.4" data-stage="search" style="animation-delay:99ms" title="Fare Shopping">
           <span class="id">1.4</span>
           <span class="name">Fare Shopping</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="1.5" title="Ancillary Shopping">
+        <button type="button" class="node active" data-id="1.5" data-stage="search" style="animation-delay:117ms" title="Ancillary Shopping">
           <span class="id">1.5</span>
           <span class="name">Ancillary Shopping</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="1.6" title="Multi-Source Aggregator">
+        <button type="button" class="node active" data-id="1.6" data-stage="search" style="animation-delay:135ms" title="Multi-Source Aggregator">
           <span class="id">1.6</span>
           <span class="name">Multi-Source Aggregator</span>
         </button>
-        <button type="button" class="node active contracted" data-id="1.7" title="Hotel &amp; Car Search">
+        <button type="button" class="node active" data-id="1.7" data-stage="search" style="animation-delay:153ms" title="Hotel &amp; Car Search">
           <span class="id">1.7</span>
           <span class="name">Hotel &amp; Car Search</span>
         </button>
-        <button type="button" class="node active contracted" data-id="1.8" title="AI Travel Advisor">
+        <button type="button" class="node active" data-id="1.8" data-stage="search" style="animation-delay:171ms" title="AI Travel Advisor">
           <span class="id">1.8</span>
           <span class="name">AI Travel Advisor</span>
         </button>
         </div>
       </section>
       <section class="stage" data-stage="pricing">
-        <h2>pricing <span class="count">7</span></h2>
+        <h2><span class="stage-label">pricing</span> <span class="count">7</span></h2>
         <div class="nodes">
-        <button type="button" class="node active contracted" data-id="2.1" title="Fare Rule Agent">
+        <button type="button" class="node active" data-id="2.1" data-stage="pricing" style="animation-delay:90ms" title="Fare Rule Agent">
           <span class="id">2.1</span>
           <span class="name">Fare Rule Agent</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="2.2" title="Fare Construction">
+        <button type="button" class="node active" data-id="2.2" data-stage="pricing" style="animation-delay:108ms" title="Fare Construction">
           <span class="id">2.2</span>
           <span class="name">Fare Construction</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="2.3" title="Tax Calculation">
+        <button type="button" class="node active" data-id="2.3" data-stage="pricing" style="animation-delay:126ms" title="Tax Calculation">
           <span class="id">2.3</span>
           <span class="name">Tax Calculation</span>
         </button>
-        <button type="button" class="node active contracted" data-id="2.4" title="Offer Builder">
+        <button type="button" class="node active" data-id="2.4" data-stage="pricing" style="animation-delay:144ms" title="Offer Builder">
           <span class="id">2.4</span>
           <span class="name">Offer Builder</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="2.5" title="Corporate Policy Validation">
+        <button type="button" class="node active" data-id="2.5" data-stage="pricing" style="animation-delay:162ms" title="Corporate Policy Validation">
           <span class="id">2.5</span>
           <span class="name">Corporate Policy Validation</span>
         </button>
-        <button type="button" class="node stub no-contract" data-id="2.6" title="Dynamic Pricing">
+        <button type="button" class="node stub" data-id="2.6" data-stage="pricing" style="animation-delay:180ms" title="Dynamic Pricing">
           <span class="id">2.6</span>
           <span class="name">Dynamic Pricing</span>
         </button>
-        <button type="button" class="node stub no-contract" data-id="2.7" title="Revenue Management">
+        <button type="button" class="node stub" data-id="2.7" data-stage="pricing" style="animation-delay:198ms" title="Revenue Management">
           <span class="id">2.7</span>
           <span class="name">Revenue Management</span>
         </button>
         </div>
       </section>
       <section class="stage" data-stage="booking">
-        <h2>booking <span class="count">8</span></h2>
+        <h2><span class="stage-label">booking</span> <span class="count">8</span></h2>
         <div class="nodes">
-        <button type="button" class="node active contracted" data-id="3.1" title="GDS/NDC Router">
+        <button type="button" class="node active" data-id="3.1" data-stage="booking" style="animation-delay:135ms" title="GDS/NDC Router">
           <span class="id">3.1</span>
           <span class="name">GDS/NDC Router</span>
         </button>
-        <button type="button" class="node active contracted" data-id="3.2" title="PNR Builder">
+        <button type="button" class="node active" data-id="3.2" data-stage="booking" style="animation-delay:153ms" title="PNR Builder">
           <span class="id">3.2</span>
           <span class="name">PNR Builder</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="3.3" title="PNR Validation">
+        <button type="button" class="node active" data-id="3.3" data-stage="booking" style="animation-delay:171ms" title="PNR Validation">
           <span class="id">3.3</span>
           <span class="name">PNR Validation</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="3.4" title="Queue Management">
+        <button type="button" class="node active" data-id="3.4" data-stage="booking" style="animation-delay:189ms" title="Queue Management">
           <span class="id">3.4</span>
           <span class="name">Queue Management</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="3.5" title="API Abstraction">
+        <button type="button" class="node active" data-id="3.5" data-stage="booking" style="animation-delay:207ms" title="API Abstraction">
           <span class="id">3.5</span>
           <span class="name">API Abstraction</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="3.6" title="Order Management">
+        <button type="button" class="node active" data-id="3.6" data-stage="booking" style="animation-delay:225ms" title="Order Management">
           <span class="id">3.6</span>
           <span class="name">Order Management</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="3.7" title="Payment Processing">
+        <button type="button" class="node active" data-id="3.7" data-stage="booking" style="animation-delay:243ms" title="Payment Processing">
           <span class="id">3.7</span>
           <span class="name">Payment Processing</span>
         </button>
-        <button type="button" class="node active contracted" data-id="3.8" title="PNR Retrieval">
+        <button type="button" class="node active" data-id="3.8" data-stage="booking" style="animation-delay:261ms" title="PNR Retrieval">
           <span class="id">3.8</span>
           <span class="name">PNR Retrieval</span>
         </button>
         </div>
       </section>
       <section class="stage" data-stage="ticketing">
-        <h2>ticketing <span class="count">5</span></h2>
+        <h2><span class="stage-label">ticketing</span> <span class="count">5</span></h2>
         <div class="nodes">
-        <button type="button" class="node active contracted" data-id="4.1" title="Ticket Issuance">
+        <button type="button" class="node active" data-id="4.1" data-stage="ticketing" style="animation-delay:180ms" title="Ticket Issuance">
           <span class="id">4.1</span>
           <span class="name">Ticket Issuance</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="4.2" title="EMD Management">
+        <button type="button" class="node active" data-id="4.2" data-stage="ticketing" style="animation-delay:198ms" title="EMD Management">
           <span class="id">4.2</span>
           <span class="name">EMD Management</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="4.3" title="Void Agent">
+        <button type="button" class="node active" data-id="4.3" data-stage="ticketing" style="animation-delay:216ms" title="Void Agent">
           <span class="id">4.3</span>
           <span class="name">Void Agent</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="4.4" title="Itinerary Delivery">
+        <button type="button" class="node active" data-id="4.4" data-stage="ticketing" style="animation-delay:234ms" title="Itinerary Delivery">
           <span class="id">4.4</span>
           <span class="name">Itinerary Delivery</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="4.5" title="Document Verification">
+        <button type="button" class="node active" data-id="4.5" data-stage="ticketing" style="animation-delay:252ms" title="Document Verification">
           <span class="id">4.5</span>
           <span class="name">Document Verification</span>
         </button>
         </div>
       </section>
       <section class="stage" data-stage="exchange">
-        <h2>exchange <span class="count">6</span></h2>
+        <h2><span class="stage-label">exchange</span> <span class="count">6</span></h2>
         <div class="nodes">
-        <button type="button" class="node active no-contract" data-id="5.1" title="Change Management">
+        <button type="button" class="node active" data-id="5.1" data-stage="exchange" style="animation-delay:225ms" title="Change Management">
           <span class="id">5.1</span>
           <span class="name">Change Management</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="5.2" title="Exchange/Reissue">
+        <button type="button" class="node active" data-id="5.2" data-stage="exchange" style="animation-delay:243ms" title="Exchange/Reissue">
           <span class="id">5.2</span>
           <span class="name">Exchange/Reissue</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="5.3" title="Involuntary Rebook">
+        <button type="button" class="node active" data-id="5.3" data-stage="exchange" style="animation-delay:261ms" title="Involuntary Rebook">
           <span class="id">5.3</span>
           <span class="name">Involuntary Rebook</span>
         </button>
-        <button type="button" class="node stub no-contract" data-id="5.4" title="Disruption Response">
+        <button type="button" class="node stub" data-id="5.4" data-stage="exchange" style="animation-delay:279ms" title="Disruption Response">
           <span class="id">5.4</span>
           <span class="name">Disruption Response</span>
         </button>
-        <button type="button" class="node active contracted" data-id="5.5" title="Self-Service Rebooking">
+        <button type="button" class="node active" data-id="5.5" data-stage="exchange" style="animation-delay:297ms" title="Self-Service Rebooking">
           <span class="id">5.5</span>
           <span class="name">Self-Service Rebooking</span>
         </button>
-        <button type="button" class="node active contracted" data-id="5.6" title="Waitlist Management">
+        <button type="button" class="node active" data-id="5.6" data-stage="exchange" style="animation-delay:315ms" title="Waitlist Management">
           <span class="id">5.6</span>
           <span class="name">Waitlist Management</span>
         </button>
         </div>
       </section>
       <section class="stage" data-stage="settlement">
-        <h2>settlement <span class="count">6</span></h2>
+        <h2><span class="stage-label">settlement</span> <span class="count">6</span></h2>
         <div class="nodes">
-        <button type="button" class="node active no-contract" data-id="6.1" title="Refund Processing">
+        <button type="button" class="node active" data-id="6.1" data-stage="settlement" style="animation-delay:270ms" title="Refund Processing">
           <span class="id">6.1</span>
           <span class="name">Refund Processing</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="6.2" title="ADM Prevention">
+        <button type="button" class="node active" data-id="6.2" data-stage="settlement" style="animation-delay:288ms" title="ADM Prevention">
           <span class="id">6.2</span>
           <span class="name">ADM Prevention</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="6.3" title="ADM/ACM Processing">
+        <button type="button" class="node active" data-id="6.3" data-stage="settlement" style="animation-delay:306ms" title="ADM/ACM Processing">
           <span class="id">6.3</span>
           <span class="name">ADM/ACM Processing</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="6.4" title="Customer Communication">
+        <button type="button" class="node active" data-id="6.4" data-stage="settlement" style="animation-delay:324ms" title="Customer Communication">
           <span class="id">6.4</span>
           <span class="name">Customer Communication</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="6.5" title="Feedback &amp; Complaint">
+        <button type="button" class="node active" data-id="6.5" data-stage="settlement" style="animation-delay:342ms" title="Feedback &amp; Complaint">
           <span class="id">6.5</span>
           <span class="name">Feedback &amp; Complaint</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="6.6" title="Loyalty Mileage">
+        <button type="button" class="node active" data-id="6.6" data-stage="settlement" style="animation-delay:360ms" title="Loyalty Mileage">
           <span class="id">6.6</span>
           <span class="name">Loyalty Mileage</span>
         </button>
         </div>
       </section>
       <section class="stage" data-stage="reconciliation">
-        <h2>reconciliation <span class="count">6</span></h2>
+        <h2><span class="stage-label">reconciliation</span> <span class="count">6</span></h2>
         <div class="nodes">
-        <button type="button" class="node active no-contract" data-id="7.1" title="BSP Reconciliation">
+        <button type="button" class="node active" data-id="7.1" data-stage="reconciliation" style="animation-delay:315ms" title="BSP Reconciliation">
           <span class="id">7.1</span>
           <span class="name">BSP Reconciliation</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="7.2" title="ARC Reconciliation">
+        <button type="button" class="node active" data-id="7.2" data-stage="reconciliation" style="animation-delay:333ms" title="ARC Reconciliation">
           <span class="id">7.2</span>
           <span class="name">ARC Reconciliation</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="7.3" title="Commission Management">
+        <button type="button" class="node active" data-id="7.3" data-stage="reconciliation" style="animation-delay:351ms" title="Commission Management">
           <span class="id">7.3</span>
           <span class="name">Commission Management</span>
         </button>
-        <button type="button" class="node stub no-contract" data-id="7.4" title="Interline Settlement">
+        <button type="button" class="node stub" data-id="7.4" data-stage="reconciliation" style="animation-delay:369ms" title="Interline Settlement">
           <span class="id">7.4</span>
           <span class="name">Interline Settlement</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="7.5" title="Financial Reporting">
+        <button type="button" class="node active" data-id="7.5" data-stage="reconciliation" style="animation-delay:387ms" title="Financial Reporting">
           <span class="id">7.5</span>
           <span class="name">Financial Reporting</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="7.6" title="Revenue Accounting">
+        <button type="button" class="node active" data-id="7.6" data-stage="reconciliation" style="animation-delay:405ms" title="Revenue Accounting">
           <span class="id">7.6</span>
           <span class="name">Revenue Accounting</span>
         </button>
         </div>
       </section>
       <section class="stage" data-stage="tmc">
-        <h2>tmc <span class="count">5</span></h2>
+        <h2><span class="stage-label">tmc</span> <span class="count">5</span></h2>
         <div class="nodes">
-        <button type="button" class="node active no-contract" data-id="8.1" title="Traveler Profile">
+        <button type="button" class="node active" data-id="8.1" data-stage="tmc" style="animation-delay:360ms" title="Traveler Profile">
           <span class="id">8.1</span>
           <span class="name">Traveler Profile</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="8.2" title="Corporate Account">
+        <button type="button" class="node active" data-id="8.2" data-stage="tmc" style="animation-delay:378ms" title="Corporate Account">
           <span class="id">8.2</span>
           <span class="name">Corporate Account</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="8.3" title="Mid-Office Automation">
+        <button type="button" class="node active" data-id="8.3" data-stage="tmc" style="animation-delay:396ms" title="Mid-Office Automation">
           <span class="id">8.3</span>
           <span class="name">Mid-Office Automation</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="8.4" title="Reporting &amp; Analytics">
+        <button type="button" class="node active" data-id="8.4" data-stage="tmc" style="animation-delay:414ms" title="Reporting &amp; Analytics">
           <span class="id">8.4</span>
           <span class="name">Reporting &amp; Analytics</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="8.5" title="Duty of Care">
+        <button type="button" class="node active" data-id="8.5" data-stage="tmc" style="animation-delay:432ms" title="Duty of Care">
           <span class="id">8.5</span>
           <span class="name">Duty of Care</span>
         </button>
         </div>
       </section>
       <section class="stage" data-stage="platform">
-        <h2>platform <span class="count">9</span></h2>
+        <h2><span class="stage-label">platform</span> <span class="count">9</span></h2>
         <div class="nodes">
-        <button type="button" class="node active no-contract" data-id="9.1" title="Orchestrator">
+        <button type="button" class="node active" data-id="9.1" data-stage="platform" style="animation-delay:405ms" title="Orchestrator">
           <span class="id">9.1</span>
           <span class="name">Orchestrator</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="9.2" title="Knowledge Retrieval">
+        <button type="button" class="node active" data-id="9.2" data-stage="platform" style="animation-delay:423ms" title="Knowledge Retrieval">
           <span class="id">9.2</span>
           <span class="name">Knowledge Retrieval</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="9.3" title="Monitoring &amp; Alerting">
+        <button type="button" class="node active" data-id="9.3" data-stage="platform" style="animation-delay:441ms" title="Monitoring &amp; Alerting">
           <span class="id">9.3</span>
           <span class="name">Monitoring &amp; Alerting</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="9.4" title="Audit &amp; Compliance">
+        <button type="button" class="node active" data-id="9.4" data-stage="platform" style="animation-delay:459ms" title="Audit &amp; Compliance">
           <span class="id">9.4</span>
           <span class="name">Audit &amp; Compliance</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="9.5" title="Plugin Manager">
+        <button type="button" class="node active" data-id="9.5" data-stage="platform" style="animation-delay:477ms" title="Plugin Manager">
           <span class="id">9.5</span>
           <span class="name">Plugin Manager</span>
         </button>
-        <button type="button" class="node active contracted" data-id="9.6" title="Performance Audit">
+        <button type="button" class="node active" data-id="9.6" data-stage="platform" style="animation-delay:495ms" title="Performance Audit">
           <span class="id">9.6</span>
           <span class="name">Performance Audit</span>
         </button>
-        <button type="button" class="node active contracted" data-id="9.7" title="Routing Audit">
+        <button type="button" class="node active" data-id="9.7" data-stage="platform" style="animation-delay:513ms" title="Routing Audit">
           <span class="id">9.7</span>
           <span class="name">Routing Audit</span>
         </button>
-        <button type="button" class="node active contracted" data-id="9.8" title="Recommendation">
+        <button type="button" class="node active" data-id="9.8" data-stage="platform" style="animation-delay:531ms" title="Recommendation">
           <span class="id">9.8</span>
           <span class="name">Recommendation</span>
         </button>
-        <button type="button" class="node active contracted" data-id="9.9" title="Alert">
+        <button type="button" class="node active" data-id="9.9" data-stage="platform" style="animation-delay:549ms" title="Alert">
           <span class="id">9.9</span>
           <span class="name">Alert</span>
         </button>
         </div>
       </section>
       <section class="stage" data-stage="core">
-        <h2>core <span class="count">1</span></h2>
+        <h2><span class="stage-label">core</span> <span class="count">1</span></h2>
         <div class="nodes">
-        <button type="button" class="node active no-contract" data-id="1.9" title="Offer Evaluator">
+        <button type="button" class="node active" data-id="1.9" data-stage="core" style="animation-delay:450ms" title="Offer Evaluator">
           <span class="id">1.9</span>
           <span class="name">Offer Evaluator</span>
         </button>
         </div>
       </section>
       <section class="stage" data-stage="lodging">
-        <h2>lodging <span class="count">9</span></h2>
+        <h2><span class="stage-label">lodging</span> <span class="count">9</span></h2>
         <div class="nodes">
-        <button type="button" class="node active no-contract" data-id="20.1" title="Hotel Search Aggregator">
+        <button type="button" class="node active" data-id="20.1" data-stage="lodging" style="animation-delay:495ms" title="Hotel Search Aggregator">
           <span class="id">20.1</span>
           <span class="name">Hotel Search Aggregator</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="20.2" title="Property Deduplication">
+        <button type="button" class="node active" data-id="20.2" data-stage="lodging" style="animation-delay:513ms" title="Property Deduplication">
           <span class="id">20.2</span>
           <span class="name">Property Deduplication</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="20.3" title="Hotel Content Normalization">
+        <button type="button" class="node active" data-id="20.3" data-stage="lodging" style="animation-delay:531ms" title="Hotel Content Normalization">
           <span class="id">20.3</span>
           <span class="name">Hotel Content Normalization</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="20.4" title="Hotel Rate Comparison">
+        <button type="button" class="node active" data-id="20.4" data-stage="lodging" style="animation-delay:549ms" title="Hotel Rate Comparison">
           <span class="id">20.4</span>
           <span class="name">Hotel Rate Comparison</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="20.5" title="Hotel Booking">
+        <button type="button" class="node active" data-id="20.5" data-stage="lodging" style="animation-delay:567ms" title="Hotel Booking">
           <span class="id">20.5</span>
           <span class="name">Hotel Booking</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="20.6" title="Hotel Modification &amp; Cancellation">
+        <button type="button" class="node active" data-id="20.6" data-stage="lodging" style="animation-delay:585ms" title="Hotel Modification &amp; Cancellation">
           <span class="id">20.6</span>
           <span class="name">Hotel Modification &amp; Cancellation</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="20.7" title="Confirmation Verification">
+        <button type="button" class="node active" data-id="20.7" data-stage="lodging" style="animation-delay:603ms" title="Confirmation Verification">
           <span class="id">20.7</span>
           <span class="name">Confirmation Verification</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="20.8" title="Activity Search">
+        <button type="button" class="node active" data-id="20.8" data-stage="lodging" style="animation-delay:621ms" title="Activity Search">
           <span class="id">20.8</span>
           <span class="name">Activity Search</span>
         </button>
-        <button type="button" class="node active no-contract" data-id="20.9" title="Transfer Search">
+        <button type="button" class="node active" data-id="20.9" data-stage="lodging" style="animation-delay:639ms" title="Transfer Search">
           <span class="id">20.9</span>
           <span class="name">Transfer Search</span>
         </button>
         </div>
       </section>
+        </div>
       </div>
+      <aside class="detail" id="detail">
+        <p class="empty">Select an agent — or pick a workflow.</p>
+      </aside>
     </div>
-    <aside class="detail" id="detail">
-      <p class="empty">Select an agent to see details and connected workflows.</p>
-    </aside>
+
+    <footer class="note">
+      <a href="https://telivity.app">Telivity</a> — AI travel infrastructure · Otaip open core ·
+      77 agents · 27 edges · generated from <code>agents.graph.json</code> · <code>pnpm gen:agent-map</code>
+    </footer>
   </div>
-  <p class="note">
-    Generated by <code>pnpm gen:manifest</code> from <code>agents.graph.json</code>
-    (77 agents, 27 edges). Do not hand-edit.
-  </p>
+
   <script id="graph-data" type="application/json">{"generated_by":"scripts/generate-manifest.ts","total_nodes":77,"total_edges":27,"nodes":[{"id":"0.1","name":"Airport/City Code Resolver","stage":"reference","version":"0.1.0","contract_status":"active","has_contract":true,"source_path":"packages/agents/reference/src/airport-code-resolver/index.ts"},{"id":"0.2","name":"Airline Code & Alliance Mapper","stage":"reference","version":"0.1.0","contract_status":"active","has_contract":true,"source_path":"packages/agents/reference/src/airline-code-mapper/index.ts"},{"id":"0.3","name":"Fare Basis Code Decoder","stage":"reference","version":"0.1.0","contract_status":"active","has_contract":true,"source_path":"packages/agents/reference/src/fare-basis-decoder/index.ts"},{"id":"0.4","name":"Class of Service Mapper","stage":"reference","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/reference/src/class-of-service-mapper/index.ts"},{"id":"0.5","name":"Equipment Type Resolver","stage":"reference","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/reference/src/equipment-type-resolver/index.ts"},{"id":"0.6","name":"Currency & Tax Code Resolver","stage":"reference","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/reference/src/currency-tax-resolver/index.ts"},{"id":"0.7","name":"Country Regulatory Resolver","stage":"reference","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/reference/src/country-regulatory-resolver/index.ts"},{"id":"1.1","name":"Availability Search","stage":"search","version":"0.1.0","contract_status":"active","has_contract":true,"source_path":"packages/agents/search/src/availability-search/index.ts"},{"id":"1.2","name":"Schedule Lookup","stage":"search","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/search/src/schedule-lookup/index.ts"},{"id":"1.3","name":"Connection Builder","stage":"search","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/search/src/connection-builder/index.ts"},{"id":"1.4","name":"Fare Shopping","stage":"search","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/search/src/fare-shopping/index.ts"},{"id":"1.5","name":"Ancillary Shopping","stage":"search","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/search/src/ancillary-shopping/index.ts"},{"id":"1.6","name":"Multi-Source Aggregator","stage":"search","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/search/src/multi-source-aggregator/index.ts"},{"id":"1.7","name":"Hotel & Car Search","stage":"search","version":"0.2.0","contract_status":"active","has_contract":true,"source_path":"packages/agents/search/src/hotel-car-search/index.ts"},{"id":"1.8","name":"AI Travel Advisor","stage":"search","version":"0.2.0","contract_status":"active","has_contract":true,"source_path":"packages/agents/search/src/ai-travel-advisor/index.ts"},{"id":"1.9","name":"Offer Evaluator","stage":"core","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/core/src/agents/shopping/offer-evaluator/index.ts"},{"id":"2.1","name":"Fare Rule Agent","stage":"pricing","version":"0.1.0","contract_status":"active","has_contract":true,"source_path":"packages/agents/pricing/src/fare-rule-agent/index.ts"},{"id":"2.2","name":"Fare Construction","stage":"pricing","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/pricing/src/fare-construction/index.ts"},{"id":"2.3","name":"Tax Calculation","stage":"pricing","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/pricing/src/tax-calculation/index.ts"},{"id":"2.4","name":"Offer Builder","stage":"pricing","version":"0.1.0","contract_status":"active","has_contract":true,"source_path":"packages/agents/pricing/src/offer-builder/index.ts"},{"id":"2.5","name":"Corporate Policy Validation","stage":"pricing","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/pricing/src/corporate-policy-validation/index.ts"},{"id":"2.6","name":"Dynamic Pricing","stage":"pricing","version":"0.0.0","contract_status":"stub","has_contract":false,"source_path":"packages/agents/pricing/src/dynamic-pricing/index.ts"},{"id":"2.7","name":"Revenue Management","stage":"pricing","version":"0.0.0","contract_status":"stub","has_contract":false,"source_path":"packages/agents/pricing/src/revenue-management/index.ts"},{"id":"3.1","name":"GDS/NDC Router","stage":"booking","version":"0.1.0","contract_status":"active","has_contract":true,"source_path":"packages/agents/booking/src/gds-ndc-router/index.ts"},{"id":"3.2","name":"PNR Builder","stage":"booking","version":"0.1.0","contract_status":"active","has_contract":true,"source_path":"packages/agents/booking/src/pnr-builder/index.ts"},{"id":"3.3","name":"PNR Validation","stage":"booking","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/booking/src/pnr-validation/index.ts"},{"id":"3.4","name":"Queue Management","stage":"booking","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/booking/src/queue-management/index.ts"},{"id":"3.5","name":"API Abstraction","stage":"booking","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/booking/src/api-abstraction/index.ts"},{"id":"3.6","name":"Order Management","stage":"booking","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/booking/src/order-management/index.ts"},{"id":"3.7","name":"Payment Processing","stage":"booking","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/booking/src/payment-processing/index.ts"},{"id":"3.8","name":"PNR Retrieval","stage":"booking","version":"0.1.0","contract_status":"active","has_contract":true,"source_path":"packages/agents/booking/src/pnr-retrieval/index.ts"},{"id":"4.1","name":"Ticket Issuance","stage":"ticketing","version":"0.1.0","contract_status":"active","has_contract":true,"source_path":"packages/agents/ticketing/src/ticket-issuance/index.ts"},{"id":"4.2","name":"EMD Management","stage":"ticketing","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/ticketing/src/emd-management/index.ts"},{"id":"4.3","name":"Void Agent","stage":"ticketing","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/ticketing/src/void-agent/index.ts"},{"id":"4.4","name":"Itinerary Delivery","stage":"ticketing","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/ticketing/src/itinerary-delivery/index.ts"},{"id":"4.5","name":"Document Verification","stage":"ticketing","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/ticketing/src/document-verification/index.ts"},{"id":"5.1","name":"Change Management","stage":"exchange","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/exchange/src/change-management/index.ts"},{"id":"5.2","name":"Exchange/Reissue","stage":"exchange","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/exchange/src/exchange-reissue/index.ts"},{"id":"5.3","name":"Involuntary Rebook","stage":"exchange","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/exchange/src/involuntary-rebook/index.ts"},{"id":"5.4","name":"Disruption Response","stage":"exchange","version":"0.0.0","contract_status":"stub","has_contract":false,"source_path":"packages/agents/exchange/src/disruption-response/index.ts"},{"id":"5.5","name":"Self-Service Rebooking","stage":"exchange","version":"0.2.0","contract_status":"active","has_contract":true,"source_path":"packages/agents/exchange/src/self-service-rebooking/index.ts"},{"id":"5.6","name":"Waitlist Management","stage":"exchange","version":"0.2.0","contract_status":"active","has_contract":true,"source_path":"packages/agents/exchange/src/waitlist-management/index.ts"},{"id":"6.1","name":"Refund Processing","stage":"settlement","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/settlement/src/refund-processing/index.ts"},{"id":"6.2","name":"ADM Prevention","stage":"settlement","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/settlement/src/adm-prevention/index.ts"},{"id":"6.3","name":"ADM/ACM Processing","stage":"settlement","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/settlement/src/adm-acm-processing/index.ts"},{"id":"6.4","name":"Customer Communication","stage":"settlement","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/settlement/src/customer-communication/index.ts"},{"id":"6.5","name":"Feedback & Complaint","stage":"settlement","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/settlement/src/feedback-complaint/index.ts"},{"id":"6.6","name":"Loyalty Mileage","stage":"settlement","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/settlement/src/loyalty-mileage/index.ts"},{"id":"7.1","name":"BSP Reconciliation","stage":"reconciliation","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/reconciliation/src/bsp-reconciliation/index.ts"},{"id":"7.2","name":"ARC Reconciliation","stage":"reconciliation","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/reconciliation/src/arc-reconciliation/index.ts"},{"id":"7.3","name":"Commission Management","stage":"reconciliation","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/reconciliation/src/commission-management/index.ts"},{"id":"7.4","name":"Interline Settlement","stage":"reconciliation","version":"0.0.0","contract_status":"stub","has_contract":false,"source_path":"packages/agents/reconciliation/src/interline-settlement/index.ts"},{"id":"7.5","name":"Financial Reporting","stage":"reconciliation","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/reconciliation/src/financial-reporting/index.ts"},{"id":"7.6","name":"Revenue Accounting","stage":"reconciliation","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/reconciliation/src/revenue-accounting/index.ts"},{"id":"8.1","name":"Traveler Profile","stage":"tmc","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents-tmc/src/traveler-profile/index.ts"},{"id":"8.2","name":"Corporate Account","stage":"tmc","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents-tmc/src/corporate-account/index.ts"},{"id":"8.3","name":"Mid-Office Automation","stage":"tmc","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents-tmc/src/mid-office/index.ts"},{"id":"8.4","name":"Reporting & Analytics","stage":"tmc","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents-tmc/src/reporting/index.ts"},{"id":"8.5","name":"Duty of Care","stage":"tmc","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents-tmc/src/duty-of-care/index.ts"},{"id":"9.1","name":"Orchestrator","stage":"platform","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents-platform/src/orchestrator/index.ts"},{"id":"9.2","name":"Knowledge Retrieval","stage":"platform","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents-platform/src/knowledge/index.ts"},{"id":"9.3","name":"Monitoring & Alerting","stage":"platform","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents-platform/src/monitoring/index.ts"},{"id":"9.4","name":"Audit & Compliance","stage":"platform","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents-platform/src/audit/index.ts"},{"id":"9.5","name":"Plugin Manager","stage":"platform","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents-platform/src/plugin-manager/index.ts"},{"id":"9.6","name":"Performance Audit","stage":"platform","version":"0.1.0","contract_status":"active","has_contract":true,"source_path":"packages/agents-platform/src/performance-audit/index.ts"},{"id":"9.7","name":"Routing Audit","stage":"platform","version":"0.1.0","contract_status":"active","has_contract":true,"source_path":"packages/agents-platform/src/routing-audit/index.ts"},{"id":"9.8","name":"Recommendation","stage":"platform","version":"0.1.0","contract_status":"active","has_contract":true,"source_path":"packages/agents-platform/src/recommendation/index.ts"},{"id":"9.9","name":"Alert","stage":"platform","version":"0.1.0","contract_status":"active","has_contract":true,"source_path":"packages/agents-platform/src/alert/index.ts"},{"id":"20.1","name":"Hotel Search Aggregator","stage":"lodging","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/lodging/src/hotel-search/index.ts"},{"id":"20.2","name":"Property Deduplication","stage":"lodging","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/lodging/src/property-dedup/index.ts"},{"id":"20.3","name":"Hotel Content Normalization","stage":"lodging","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/lodging/src/content-normalization/index.ts"},{"id":"20.4","name":"Hotel Rate Comparison","stage":"lodging","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/lodging/src/rate-comparison/index.ts"},{"id":"20.5","name":"Hotel Booking","stage":"lodging","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/lodging/src/hotel-booking/index.ts"},{"id":"20.6","name":"Hotel Modification & Cancellation","stage":"lodging","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/lodging/src/hotel-modification/index.ts"},{"id":"20.7","name":"Confirmation Verification","stage":"lodging","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/lodging/src/confirmation-verification/index.ts"},{"id":"20.8","name":"Activity Search","stage":"lodging","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/lodging/src/activity-search/index.ts"},{"id":"20.9","name":"Transfer Search","stage":"lodging","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/lodging/src/transfer-search/index.ts"}],"edges":[{"source":"1.1","target":"1.4","kind":"workflow","label":"search_to_price"},{"source":"1.4","target":"2.1","kind":"workflow","label":"search_to_price"},{"source":"2.1","target":"2.2","kind":"workflow","label":"search_to_price"},{"source":"2.2","target":"2.3","kind":"workflow","label":"search_to_price"},{"source":"3.3","target":"3.1","kind":"workflow","label":"book_to_ticket"},{"source":"3.1","target":"3.2","kind":"workflow","label":"book_to_ticket"},{"source":"3.2","target":"4.1","kind":"workflow","label":"book_to_ticket"},{"source":"1.1","target":"1.4","kind":"workflow","label":"full_booking"},{"source":"1.4","target":"2.1","kind":"workflow","label":"full_booking"},{"source":"2.1","target":"2.2","kind":"workflow","label":"full_booking"},{"source":"2.2","target":"2.3","kind":"workflow","label":"full_booking"},{"source":"2.3","target":"3.3","kind":"workflow","label":"full_booking"},{"source":"3.3","target":"3.1","kind":"workflow","label":"full_booking"},{"source":"3.1","target":"3.2","kind":"workflow","label":"full_booking"},{"source":"3.2","target":"4.1","kind":"workflow","label":"full_booking"},{"source":"5.1","target":"5.2","kind":"workflow","label":"exchange_flow"},{"source":"6.1","target":"6.2","kind":"workflow","label":"refund_flow"},{"source":"1.1","target":"0.1","kind":"package","label":"@otaip/agents-search → @otaip/agents-reference"},{"source":"2.1","target":"0.1","kind":"package","label":"@otaip/agents-pricing → @otaip/agents-reference"},{"source":"3.1","target":"0.1","kind":"package","label":"@otaip/agents-booking → @otaip/agents-reference"},{"source":"3.1","target":"1.1","kind":"package","label":"@otaip/agents-booking → @otaip/agents-search"},{"source":"3.1","target":"2.1","kind":"package","label":"@otaip/agents-booking → @otaip/agents-pricing"},{"source":"4.1","target":"3.1","kind":"package","label":"@otaip/agents-ticketing → @otaip/agents-booking"},{"source":"5.1","target":"1.1","kind":"package","label":"@otaip/agents-exchange → @otaip/agents-search"},{"source":"5.1","target":"4.1","kind":"package","label":"@otaip/agents-exchange → @otaip/agents-ticketing"},{"source":"6.1","target":"4.1","kind":"package","label":"@otaip/agents-settlement → @otaip/agents-ticketing"},{"source":"7.1","target":"0.1","kind":"package","label":"@otaip/agents-reconciliation → @otaip/agents-reference"}],"package_deps":[{"from_package":"@otaip/agents-search","to_package":"@otaip/agents-reference","from_stage":"search","to_stage":"reference"},{"from_package":"@otaip/agents-pricing","to_package":"@otaip/agents-reference","from_stage":"pricing","to_stage":"reference"},{"from_package":"@otaip/agents-booking","to_package":"@otaip/agents-reference","from_stage":"booking","to_stage":"reference"},{"from_package":"@otaip/agents-booking","to_package":"@otaip/agents-search","from_stage":"booking","to_stage":"search"},{"from_package":"@otaip/agents-booking","to_package":"@otaip/agents-pricing","from_stage":"booking","to_stage":"pricing"},{"from_package":"@otaip/agents-ticketing","to_package":"@otaip/agents-booking","from_stage":"ticketing","to_stage":"booking"},{"from_package":"@otaip/agents-exchange","to_package":"@otaip/agents-search","from_stage":"exchange","to_stage":"search"},{"from_package":"@otaip/agents-exchange","to_package":"@otaip/agents-ticketing","from_stage":"exchange","to_stage":"ticketing"},{"from_package":"@otaip/agents-settlement","to_package":"@otaip/agents-ticketing","from_stage":"settlement","to_stage":"ticketing"},{"from_package":"@otaip/agents-reconciliation","to_package":"@otaip/agents-reference","from_stage":"reconciliation","to_stage":"reference"}]}</script>
   <script>
     const graph = JSON.parse(document.getElementById('graph-data').textContent);
@@ -616,7 +961,7 @@
     const searchEl = document.getElementById('search');
     const stageEl = document.getElementById('stage');
     const statusEl = document.getElementById('status');
-    const workflowEl = document.getElementById('workflow');
+    const pills = document.getElementById('workflow-pills');
 
     const nodesById = Object.fromEntries(graph.nodes.map(n => [n.id, n]));
     const workflows = [...new Set(graph.edges.filter(e => e.kind === 'workflow').map(e => e.label))].sort();
@@ -624,20 +969,17 @@
       const o = document.createElement('option');
       o.value = s; o.textContent = s; stageEl.appendChild(o);
     }
-    for (const w of workflows) {
-      const o = document.createElement('option');
-      o.value = w; o.textContent = w; workflowEl.appendChild(o);
-    }
 
     let selected = null;
+    let workflow = workflows.includes('full_booking') ? 'full_booking' : (workflows[0] || 'all');
+    let hotEdge = null;
 
-    function workflowsFor(id) {
-      const set = new Set();
-      for (const e of graph.edges) {
-        if (e.kind === 'workflow' && (e.source === id || e.target === id)) set.add(e.label);
+    function setActivePill() {
+      for (const btn of pills.querySelectorAll('.pill')) {
+        btn.classList.toggle('active', btn.dataset.workflow === workflow);
       }
-      return [...set].sort();
     }
+    setActivePill();
 
     function pathIdsForWorkflow(name) {
       if (name === 'all') return null;
@@ -650,25 +992,21 @@
       return ids;
     }
 
-    function applyFilters() {
-      const q = searchEl.value.trim().toLowerCase();
-      const stage = stageEl.value;
-      const status = statusEl.value;
-      const wf = workflowEl.value;
-      const pathIds = pathIdsForWorkflow(wf);
-      for (const btn of board.querySelectorAll('.node')) {
-        const n = nodesById[btn.dataset.id];
-        let show = true;
-        if (stage !== 'all' && n.stage !== stage) show = false;
-        if (status !== 'all' && n.contract_status !== status) show = false;
-        if (q && !(n.id.includes(q) || n.name.toLowerCase().includes(q))) show = false;
-        if (pathIds && !pathIds.has(n.id)) show = false;
-        btn.style.display = show ? '' : 'none';
-        btn.classList.toggle('on-path', Boolean(pathIds && pathIds.has(n.id)));
-        btn.classList.toggle('dim', Boolean(selected) && selected !== n.id && !isNeighbor(selected, n.id));
-        btn.classList.toggle('selected', selected === n.id);
+    function workflowsFor(id) {
+      const set = new Set();
+      for (const e of graph.edges) {
+        if (e.kind === 'workflow' && (e.source === id || e.target === id)) set.add(e.label);
       }
-      drawEdges();
+      return [...set].sort();
+    }
+
+    function neighbors(id) {
+      const up = [], down = [];
+      for (const e of graph.edges) {
+        if (e.source === id) down.push({ id: e.target, kind: e.kind, label: e.label });
+        if (e.target === id) up.push({ id: e.source, kind: e.kind, label: e.label });
+      }
+      return { up, down };
     }
 
     function isNeighbor(id, other) {
@@ -677,62 +1015,191 @@
       );
     }
 
-    function showDetail(id) {
-      const n = nodesById[id];
-      if (!n) {
-        detail.innerHTML = '<p class="empty">Select an agent to see details and connected workflows.</p>';
-        return;
-      }
-      const wfs = workflowsFor(id);
-      detail.innerHTML = `
-        <h3>${escape(n.name)}</h3>
-        <dl>
-          <dt>ID</dt><dd><code>${escape(n.id)}</code></dd>
-          <dt>Stage</dt><dd>${escape(n.stage)}</dd>
-          <dt>Version</dt><dd>${escape(n.version)}</dd>
-          <dt>Status</dt><dd>${escape(n.contract_status)}</dd>
-          <dt>Contract</dt><dd>${n.has_contract ? 'yes' : 'no'}</dd>
-          <dt>Source</dt><dd><code>${escape(n.source_path)}</code></dd>
-        </dl>
-        <p style="margin:0.75rem 0 0;font-size:0.75rem;color:var(--muted)">Workflows</p>
-        ${wfs.length ? '<ul>' + wfs.map(w => '<li>' + escape(w) + '</li>').join('') + '</ul>' : '<p class="empty">Not in a built-in workflow.</p>'}
-      `;
-    }
-
     function escape(s) {
       return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
-    function nodeCenter(id) {
+    function applyFilters() {
+      const q = searchEl.value.trim().toLowerCase();
+      const stage = stageEl.value;
+      const status = statusEl.value;
+      const pathIds = pathIdsForWorkflow(workflow);
+      const liveStages = new Set();
+      for (const btn of board.querySelectorAll('.node')) {
+        const n = nodesById[btn.dataset.id];
+        let show = true;
+        if (stage !== 'all' && n.stage !== stage) show = false;
+        if (status !== 'all' && n.contract_status !== status) show = false;
+        if (q && !(n.id.includes(q) || n.name.toLowerCase().includes(q))) show = false;
+        if (pathIds && !pathIds.has(n.id)) show = false;
+        btn.style.display = show ? '' : 'none';
+        const onPath = Boolean(pathIds && pathIds.has(n.id));
+        btn.classList.toggle('on-path', onPath);
+        btn.classList.toggle('dim', Boolean(selected) && selected !== n.id && !isNeighbor(selected, n.id));
+        btn.classList.toggle('selected', selected === n.id);
+        if (onPath) liveStages.add(n.stage);
+      }
+      for (const sec of board.querySelectorAll('.stage')) {
+        sec.classList.toggle('live-stage', liveStages.has(sec.dataset.stage));
+      }
+      drawEdges();
+    }
+
+    function showDetail(id) {
+      const n = nodesById[id];
+      if (!n) {
+        detail.innerHTML = '<p class="empty">Select an agent — or pick a workflow.</p>';
+        return;
+      }
+      const wfs = workflowsFor(id);
+      const { up, down } = neighbors(id);
+      const badgeClass = n.contract_status === 'stub' ? 'badge stub' : 'badge';
+      detail.innerHTML = `
+        <div class="id-chip">${escape(n.id)}</div>
+        <h3>${escape(n.name)}</h3>
+        <div class="${badgeClass}"><i></i>${escape(n.contract_status)}</div>
+        <dl>
+          <dt>Stage</dt><dd>${escape(n.stage)}</dd>
+          <dt>Version</dt><dd>${escape(n.version)}</dd>
+          <dt>Contract</dt><dd>${n.has_contract ? 'yes' : 'no'}</dd>
+          <dt>Source</dt><dd><code>${escape(n.source_path)}</code></dd>
+        </dl>
+        <div class="block-label">Workflows</div>
+        <div class="mini-pills">${
+          wfs.length
+            ? wfs.map(w => '<button type="button" class="pill' + (w === workflow ? ' active' : '') + '" data-set-workflow="' + escape(w) + '">' + escape(w) + '</button>').join('')
+            : '<span style="color:var(--ink-4);font-size:0.8rem">Not in a built-in workflow.</span>'
+        }</div>
+        <div class="block-label">Connections</div>
+        <ul class="conn-list">
+          ${up.map(c => '<li>← <button type="button" data-jump="' + escape(c.id) + '">' + escape(c.id) + '</button> <span>(' + escape(c.kind) + (c.kind === 'workflow' ? ': ' + escape(c.label) : '') + ')</span></li>').join('')}
+          ${down.map(c => '<li>→ <button type="button" data-jump="' + escape(c.id) + '">' + escape(c.id) + '</button> <span>(' + escape(c.kind) + (c.kind === 'workflow' ? ': ' + escape(c.label) : '') + ')</span></li>').join('')}
+          ${up.length + down.length === 0 ? '<li style="color:var(--ink-4)">No graph edges.</li>' : ''}
+        </ul>
+      `;
+    }
+
+    function anchors(id) {
       const el = board.querySelector('.node[data-id="' + CSS.escape(id) + '"]');
       if (!el || el.style.display === 'none') return null;
       const a = el.getBoundingClientRect();
       const b = boardWrap.getBoundingClientRect();
+      const x0 = a.left - b.left + boardWrap.scrollLeft;
+      const y0 = a.top - b.top + boardWrap.scrollTop;
       return {
-        x: a.left - b.left + boardWrap.scrollLeft + a.width / 2,
-        y: a.top - b.top + boardWrap.scrollTop + a.height / 2,
+        l: x0, r: x0 + a.width, t: y0, b: y0 + a.height,
+        cy: y0 + a.height / 2,
+        stage: el.dataset.stage || el.closest('.stage')?.dataset.stage,
       };
     }
 
+    function wfPath(a, b) {
+      if (a.stage === b.stage) {
+        return 'M ' + a.r + ' ' + a.cy + ' C ' + (a.r + 14) + ' ' + a.cy + ', ' + (b.r + 14) + ' ' + b.cy + ', ' + b.r + ' ' + b.cy;
+      }
+      const gap = Math.max(12, b.l - a.r);
+      const dx = Math.max(10, gap * 0.45);
+      return 'M ' + a.r + ' ' + a.cy + ' C ' + (a.r + dx) + ' ' + a.cy + ', ' + (b.l - dx) + ' ' + b.cy + ', ' + b.l + ' ' + b.cy;
+    }
+
+    function pkgPath(a, b, laneY) {
+      const gx1 = a.r + 8;
+      const gx2 = b.l - 8;
+      const r = 6;
+      const down1 = a.cy < laneY;
+      const up2 = b.cy < laneY;
+      const y1a = down1 ? a.cy + r : a.cy - r;
+      const y1b = down1 ? laneY - r : laneY + r;
+      const y2a = up2 ? laneY - r : laneY + r;
+      const y2b = up2 ? b.cy + r : b.cy - r;
+      return [
+        'M ' + a.r + ' ' + a.cy,
+        'H ' + (gx1 - r),
+        'Q ' + gx1 + ' ' + a.cy + ' ' + gx1 + ' ' + y1a,
+        'V ' + y1b,
+        'Q ' + gx1 + ' ' + laneY + ' ' + (gx1 + (gx2 > gx1 ? r : -r)) + ' ' + laneY,
+        'H ' + (gx2 - (gx2 > gx1 ? r : -r)),
+        'Q ' + gx2 + ' ' + laneY + ' ' + gx2 + ' ' + y2a,
+        'V ' + y2b,
+        'Q ' + gx2 + ' ' + b.cy + ' ' + (gx2 - r) + ' ' + b.cy,
+        'H ' + b.l,
+      ].join(' ');
+    }
+
+    function stageIndex(stage) {
+      const secs = [...board.querySelectorAll('.stage')];
+      return secs.findIndex(s => s.dataset.stage === stage);
+    }
+
     function drawEdges() {
-      const wfFilter = workflowEl.value;
-      const w = boardWrap.scrollWidth;
-      const h = Math.max(boardWrap.clientHeight, board.scrollHeight);
+      const w = Math.max(boardWrap.scrollWidth, 1);
+      const h = Math.max(boardWrap.clientHeight, board.scrollHeight, 1);
       edgesSvg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
       edgesSvg.style.width = w + 'px';
       edgesSvg.style.height = h + 'px';
-      const parts = [];
+
+      const defs = edgesSvg.querySelector('defs');
+      const parts = [defs ? defs.outerHTML : ''];
+      const pathIds = pathIdsForWorkflow(workflow);
+
+      const pkgEdges = [];
       for (const e of graph.edges) {
-        if (e.kind === 'workflow' && wfFilter !== 'all' && e.label !== wfFilter) continue;
-        if (e.kind === 'package' && wfFilter !== 'all') continue;
-        const a = nodeCenter(e.source);
-        const b = nodeCenter(e.target);
+        if (e.kind !== 'package') continue;
+        const a = anchors(e.source);
+        const b = anchors(e.target);
         if (!a || !b) continue;
-        const dx = Math.max(40, Math.abs(b.x - a.x) * 0.35);
-        const d = 'M ' + a.x + ' ' + a.y + ' C ' + (a.x + dx) + ' ' + a.y + ', ' + (b.x - dx) + ' ' + b.y + ', ' + b.x + ' ' + b.y;
-        const hl = selected && (e.source === selected || e.target === selected);
-        parts.push('<path class="' + e.kind + (hl ? ' hl' : '') + '" d="' + d + '" />');
+        pkgEdges.push({ e, a, b, ti: stageIndex(b.stage) });
       }
+      pkgEdges.sort((x, y) => x.ti - y.ti);
+      const laneBase = h - 96;
+
+      let pi = 0;
+      for (const item of pkgEdges) {
+        const laneY = laneBase + (pi % 10) * 8;
+        pi++;
+        const d = pkgPath(item.a, item.b, laneY);
+        const key = item.e.source + '|' + item.e.target + '|' + item.e.label;
+        let cls = 'edge-pkg';
+        if (workflow !== 'all') cls += ' pkg-dim';
+        if (selected && (item.e.source === selected || item.e.target === selected)) cls = 'edge-pkg pkg-hot';
+        if (hotEdge === key) cls = 'edge-pkg pkg-hot';
+        parts.push(
+          '<g class="' + cls + '" data-edge="' + key + '">' +
+          '<path class="hit" d="' + d + '" />' +
+          '<path class="core-pkg" d="' + d + '" marker-end="url(#arrow-pkg)" />' +
+          '</g>'
+        );
+      }
+
+      for (const e of graph.edges) {
+        if (e.kind !== 'workflow') continue;
+        if (workflow !== 'all' && e.label !== workflow) continue;
+        const a = anchors(e.source);
+        const b = anchors(e.target);
+        if (!a || !b) continue;
+        const d = wfPath(a, b);
+        const key = e.source + '|' + e.target + '|' + e.label;
+        let cls = 'edge-wf';
+        const live = workflow !== 'all' && e.label === workflow;
+        if (live) cls += ' live';
+        if (selected && !(e.source === selected || e.target === selected) && !live) cls += ' dim';
+        if (selected && (e.source === selected || e.target === selected)) cls += ' hot';
+        if (hotEdge === key) cls += ' hot';
+        const marker = cls.includes('dim') ? '' : ' marker-end="url(#arrow-wf)"';
+        const pulse = live
+          ? '<circle r="2.5" fill="#a5f3fc"><animateMotion dur="2.2s" repeatCount="indefinite" path="' + d + '"/></circle>'
+          : '';
+        parts.push(
+          '<g class="' + cls + '" data-edge="' + key + '" data-label="' + e.label + '">' +
+          '<path class="hit" d="' + d + '" />' +
+          '<path class="glow" d="' + d + '" />' +
+          '<path class="core-wf" d="' + d + '"' + marker + ' />' +
+          '<path class="ants" d="' + d + '" />' +
+          pulse +
+          '</g>'
+        );
+      }
+
       edgesSvg.innerHTML = parts.join('');
     }
 
@@ -743,12 +1210,51 @@
       showDetail(selected);
       applyFilters();
     });
+
+    detail.addEventListener('click', (ev) => {
+      const wfBtn = ev.target.closest('[data-set-workflow]');
+      if (wfBtn) {
+        workflow = wfBtn.dataset.setWorkflow;
+        setActivePill();
+        applyFilters();
+        if (selected) showDetail(selected);
+        return;
+      }
+      const jump = ev.target.closest('[data-jump]');
+      if (jump) {
+        selected = jump.dataset.jump;
+        showDetail(selected);
+        applyFilters();
+        const el = board.querySelector('.node[data-id="' + CSS.escape(selected) + '"]');
+        el?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      }
+    });
+
+    pills.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('.pill');
+      if (!btn) return;
+      workflow = btn.dataset.workflow;
+      setActivePill();
+      applyFilters();
+      if (selected) showDetail(selected);
+    });
+
+    edgesSvg.addEventListener('pointerover', (ev) => {
+      const g = ev.target.closest('g[data-edge]');
+      hotEdge = g ? g.dataset.edge : null;
+      drawEdges();
+    });
+    edgesSvg.addEventListener('pointerout', () => {
+      hotEdge = null;
+      drawEdges();
+    });
+
     searchEl.addEventListener('input', applyFilters);
     stageEl.addEventListener('change', applyFilters);
     statusEl.addEventListener('change', applyFilters);
-    workflowEl.addEventListener('change', applyFilters);
     boardWrap.addEventListener('scroll', drawEdges);
     window.addEventListener('resize', drawEdges);
+
     applyFilters();
   </script>
 </body>
