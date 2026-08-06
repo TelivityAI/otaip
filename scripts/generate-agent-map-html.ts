@@ -1533,9 +1533,19 @@ ${tilesHtml}
       html += '<div class="badge' + (n.contract_status === 'stub' ? ' stub' : '') + '"><i></i>' + escape(n.contract_status) + '</div>';
 
       const summary = doc.summary || '';
-      const purpose = doc.purpose && doc.purpose !== summary ? doc.purpose : '';
+      const purpose = doc.purpose || '';
+      const sameProse = function (a, b) {
+        if (!a || !b) return false;
+        const key = function (s) {
+          return String(s).toLowerCase().replace(/[\s.]+$/g, '').replace(/\s+/g, ' ').trim();
+        };
+        return key(a) === key(b);
+      };
+      // Catalog one-liner and stage purpose are often identical aside from a period — show once.
       if (summary) html += '<p class="p-summary">' + escape(summary) + '</p>';
-      if (purpose) html += '<p class="p-purpose">' + escape(purpose) + '</p>';
+      if (purpose && !sameProse(purpose, summary)) {
+        html += '<p class="p-purpose">' + escape(purpose) + '</p>';
+      }
 
       html += '<dl>';
       html += '<dt>Stage</dt><dd>' + escape(STAGE_NAMES[n.stage] || n.stage) + '</dd>';
