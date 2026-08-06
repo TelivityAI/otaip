@@ -31,9 +31,16 @@
       --ink-4: #9aa0b4;
       --hairline: rgba(35, 39, 61, 0.09);
       --hairline-strong: rgba(35, 39, 61, 0.16);
+      --hairline-mid: rgba(187, 187, 196, 0.38);
       --tile: #ffffff;
-      --shadow-soft: 0 1px 2px rgba(35, 39, 61, 0.04), 0 16px 40px -16px rgba(35, 39, 61, 0.14);
-      --shadow-lift: 0 2px 6px rgba(35, 39, 61, 0.05), 0 28px 56px -20px rgba(35, 39, 61, 0.22);
+      --shadow-soft:
+        0 1px 2px rgba(35, 39, 61, 0.05),
+        0 10px 28px -10px rgba(35, 39, 61, 0.1),
+        0 32px 64px -24px rgba(35, 39, 61, 0.12);
+      --shadow-lift:
+        0 2px 6px rgba(35, 39, 61, 0.06),
+        0 18px 40px -14px rgba(35, 39, 61, 0.16),
+        0 48px 96px -32px rgba(35, 39, 61, 0.18);
       --font: "Montserrat", system-ui, sans-serif;
       --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
       --spring: cubic-bezier(0.34, 1.3, 0.64, 1);
@@ -122,24 +129,38 @@
       place-items: center;
       overflow: hidden;
       text-align: center;
-      padding: 5rem 1.5rem 9rem;
+      padding: 4rem 1.5rem 10rem;
     }
-    .hero-inner { position: relative; z-index: 2; max-width: 54rem; }
-    .hero-mark { width: 54px; height: 54px; margin: 0 auto 1.7rem; display: block; }
+    .hero-inner { position: relative; z-index: 2; max-width: 62rem; }
+    .hero-brand {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.05rem;
+      margin-bottom: 1.5rem;
+    }
+    .hero-mark { width: 76px; height: 76px; display: block; }
+    .hero-wordmark {
+      font-weight: 700;
+      font-size: clamp(1.9rem, 3.2vw, 2.5rem);
+      letter-spacing: -0.03em;
+      line-height: 1;
+      color: var(--navy);
+    }
     .eyebrow {
-      margin: 0 0 1.1rem;
+      margin: 0 0 1.4rem;
       font-size: 0.72rem;
       font-weight: 600;
-      letter-spacing: 0.24em;
+      letter-spacing: 0.26em;
       text-transform: uppercase;
       color: var(--teal-dark);
     }
     h1 {
       margin: 0;
       font-weight: 700;
-      font-size: clamp(2.6rem, 6.4vw, 4.6rem);
-      letter-spacing: -0.04em;
-      line-height: 1.04;
+      font-size: clamp(3.5rem, 8vw, 6.5rem);
+      letter-spacing: -0.045em;
+      line-height: 1.0;
       color: var(--navy);
     }
     h1 .grad {
@@ -149,15 +170,15 @@
       color: transparent;
     }
     .lede {
-      margin: 1.5rem auto 0;
-      max-width: 36rem;
-      font-size: clamp(1.02rem, 1.6vw, 1.2rem);
+      margin: 1.6rem auto 0;
+      max-width: 40rem;
+      font-size: clamp(1.05rem, 1.7vw, 1.3rem);
       font-weight: 300;
-      line-height: 1.65;
+      line-height: 1.6;
       color: var(--ink-2);
     }
     .cta {
-      margin-top: 2.5rem;
+      margin-top: 2.75rem;
       display: flex;
       gap: 0.9rem;
       justify-content: center;
@@ -167,44 +188,62 @@
     .btn {
       display: inline-flex;
       align-items: center;
-      gap: 0.45rem;
-      border-radius: 999px;
+      gap: 0.5rem;
+      border-radius: 13px;
       font-weight: 600;
-      font-size: 0.95rem;
+      font-size: 1rem;
       text-decoration: none;
-      padding: 0.82rem 1.75rem;
-      transition: transform 0.3s var(--spring), box-shadow 0.3s ease, background 0.2s ease, color 0.2s ease;
+      padding: 0.95rem 1.9rem;
+      transition: transform 0.3s var(--spring), box-shadow 0.3s ease, background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
     }
     .btn-primary {
       background: var(--teal);
       color: #fff;
-      box-shadow: 0 12px 26px -10px rgba(6, 189, 180, 0.55);
+      box-shadow: 0 2px 6px rgba(0, 166, 146, 0.35), 0 18px 36px -14px rgba(6, 189, 180, 0.55);
     }
     .btn-primary:hover {
       background: var(--teal-dark);
       transform: translateY(-2px);
-      box-shadow: 0 18px 34px -12px rgba(0, 166, 146, 0.55);
+      box-shadow: 0 4px 10px rgba(0, 166, 146, 0.4), 0 24px 44px -14px rgba(0, 166, 146, 0.55);
     }
-    .btn-ghost { color: var(--teal-dark); padding: 0.82rem 0.7rem; }
-    .btn-ghost:hover { color: var(--navy); }
+    .btn-ghost {
+      color: var(--navy);
+      border: 1px solid var(--hairline-strong);
+      background: rgba(255, 255, 255, 0.55);
+      padding: 0.95rem 1.6rem;
+    }
+    .btn-ghost:hover { border-color: var(--teal); color: var(--teal-dark); background: #fff; }
     .btn-ghost .arr { display: inline-block; transition: transform 0.3s var(--spring); }
     .btn-ghost:hover .arr { transform: translateX(4px); }
 
     .hero-stage { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+    .hero-watermark {
+      position: absolute;
+      left: 50%;
+      top: 44%;
+      transform: translate(-50%, -50%);
+      font-weight: 700;
+      font-size: 26vw;
+      letter-spacing: -0.05em;
+      line-height: 1;
+      color: rgba(35, 39, 61, 0.033);
+      white-space: nowrap;
+      user-select: none;
+    }
     .orb { position: absolute; border-radius: 50%; filter: blur(70px); }
     .orb-a {
-      width: 46vw; height: 46vw; left: -12vw; top: -14vw;
-      background: radial-gradient(circle, rgba(6, 189, 180, 0.2), transparent 65%);
+      width: 52vw; height: 52vw; left: -14vw; top: -16vw;
+      background: radial-gradient(circle, rgba(6, 189, 180, 0.24), transparent 65%);
       animation: drift 24s ease-in-out infinite alternate;
     }
     .orb-b {
-      width: 36vw; height: 36vw; right: -10vw; top: 4vh;
-      background: radial-gradient(circle, rgba(168, 144, 255, 0.13), transparent 65%);
+      width: 38vw; height: 38vw; right: -10vw; top: 2vh;
+      background: radial-gradient(circle, rgba(168, 144, 255, 0.12), transparent 65%);
       animation: drift 28s ease-in-out infinite alternate-reverse;
     }
     .orb-c {
-      width: 30vw; height: 30vw; left: 32vw; bottom: -12vw;
-      background: radial-gradient(circle, rgba(238, 197, 23, 0.1), transparent 65%);
+      width: 34vw; height: 34vw; left: 30vw; bottom: -14vw;
+      background: radial-gradient(circle, rgba(238, 197, 23, 0.13), transparent 65%);
       animation: drift 32s ease-in-out infinite alternate;
     }
     @keyframes drift {
@@ -230,26 +269,26 @@
     }
 
     /* ---------- Sections ---------- */
-    .section { padding: 7rem 0; scroll-margin-top: 3.5rem; }
+    .section { padding: 8rem 0; scroll-margin-top: 3.5rem; }
     .section.alt {
       background: #fff;
       border-top: 1px solid var(--hairline);
       border-bottom: 1px solid var(--hairline);
     }
-    .s-head { max-width: 44rem; margin-bottom: 3.75rem; }
+    .s-head { max-width: 46rem; margin-bottom: 4.25rem; }
     .s-head h2 {
       margin: 0;
-      font-size: clamp(2rem, 3.8vw, 2.9rem);
+      font-size: clamp(2.6rem, 5.4vw, 4.2rem);
       font-weight: 700;
-      letter-spacing: -0.035em;
-      line-height: 1.08;
+      letter-spacing: -0.04em;
+      line-height: 1.02;
       color: var(--navy);
     }
     .s-head .sub {
-      margin: 1.1rem 0 0;
-      font-size: 1.05rem;
+      margin: 1.25rem 0 0;
+      font-size: 1.1rem;
       font-weight: 300;
-      line-height: 1.6;
+      line-height: 1.55;
       color: var(--ink-3);
     }
 
@@ -266,20 +305,20 @@
       position: relative;
       display: grid;
       grid-template-columns: repeat(6, 1fr);
-      gap: 1.5rem;
+      gap: 2.25rem;
     }
     .journey-track::before {
       content: "";
       position: absolute;
-      top: 4px;
+      top: 5px;
       left: 1%;
       right: 1%;
       height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(35, 39, 61, 0.22) 10%, rgba(35, 39, 61, 0.22) 90%, transparent);
+      background: linear-gradient(90deg, transparent, rgba(35, 39, 61, 0.2) 10%, rgba(35, 39, 61, 0.2) 90%, transparent);
     }
     .jstep {
       position: relative;
-      padding: 2rem 0 0;
+      padding: 2.7rem 0 0;
       background: none;
       border: 0;
       font: inherit;
@@ -292,8 +331,8 @@
       position: absolute;
       top: 0;
       left: 0;
-      width: 9px;
-      height: 9px;
+      width: 11px;
+      height: 11px;
       border-radius: 50%;
       background: #fff;
       border: 2px solid var(--teal);
@@ -302,27 +341,33 @@
     .jstep:hover::before,
     .jstep:focus-visible::before {
       background: var(--teal);
-      box-shadow: 0 0 0 6px rgba(6, 189, 180, 0.16);
+      box-shadow: 0 0 0 7px rgba(6, 189, 180, 0.16);
       transform: scale(1.15);
     }
     .jstep .num {
-      font-family: var(--mono);
-      font-size: 0.68rem;
-      letter-spacing: 0.14em;
+      font-weight: 300;
+      font-size: 1.05rem;
+      letter-spacing: 0.2em;
       color: var(--teal-dark);
     }
     .jstep .word {
       display: block;
-      margin: 0.4rem 0 0.4rem;
-      font-size: clamp(1.55rem, 2.5vw, 2.3rem);
+      margin: 0.6rem 0 0.55rem;
+      font-size: clamp(2.1rem, 3.9vw, 3.4rem);
       font-weight: 700;
-      letter-spacing: -0.03em;
-      line-height: 1.05;
+      letter-spacing: -0.04em;
+      line-height: 1.0;
       color: var(--navy);
       transition: color 0.2s ease;
     }
     .jstep:hover .word { color: var(--teal-dark); }
-    .jstep .meta { font-size: 0.8rem; font-weight: 300; color: var(--ink-3); }
+    .jstep .meta {
+      font-size: 0.74rem;
+      font-weight: 400;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ink-4);
+    }
     @media (max-width: 860px) {
       .journey-track {
         grid-template-columns: none;
@@ -351,8 +396,8 @@
       border: 1px solid var(--hairline-strong);
       background: #fff;
       color: var(--ink-1);
-      border-radius: 999px;
-      padding: 0.55rem 1.05rem;
+      border-radius: 12px;
+      padding: 0.62rem 0.95rem;
       font: inherit;
       font-size: 0.85rem;
       transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -387,9 +432,10 @@
     }
 
     .tile {
+      position: relative;
       background: var(--tile);
-      border: 1px solid var(--hairline);
-      border-radius: 22px;
+      border: 1px solid var(--hairline-mid);
+      border-radius: 24px;
       box-shadow: var(--shadow-soft);
       overflow: hidden;
       display: flex;
@@ -399,15 +445,28 @@
     .tile:hover { box-shadow: var(--shadow-lift); transform: translateY(-3px); }
     .tile.open { border-color: rgba(6, 189, 180, 0.45); }
     .tile-head {
+      position: relative;
       display: block;
       width: 100%;
-      padding: 1.45rem 1.55rem 1.35rem;
+      padding: 1.8rem 1.8rem 1.65rem;
       background: none;
       border: 0;
       font: inherit;
       color: inherit;
       text-align: left;
       cursor: pointer;
+    }
+    .tile-wm {
+      position: absolute;
+      right: 1.15rem;
+      bottom: 0.35rem;
+      font-size: 5.6rem;
+      font-weight: 700;
+      letter-spacing: -0.05em;
+      line-height: 1;
+      color: rgba(35, 39, 61, 0.05);
+      pointer-events: none;
+      user-select: none;
     }
     .tile-top { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
     .tile-stage {
@@ -482,33 +541,34 @@
     .tile.open .tile-body { max-height: 26rem; overflow-y: auto; }
     .agent-list {
       list-style: none;
-      margin: 0 0.9rem 0.9rem;
-      padding: 0.6rem 0 0.2rem;
+      margin: 0 1rem 1rem;
+      padding: 0.4rem 0 0.2rem;
       border-top: 1px solid var(--hairline);
       display: flex;
       flex-direction: column;
-      gap: 2px;
     }
+    .agent-list li + li { border-top: 1px solid var(--hairline); }
     .agent-row {
       width: 100%;
+      min-height: 2.9rem;
       display: flex;
       align-items: center;
-      gap: 0.6rem;
-      padding: 0.5rem 0.65rem;
+      gap: 0.65rem;
+      padding: 0.72rem 0.6rem;
       border: 0;
       background: none;
-      border-radius: 10px;
+      border-radius: 8px;
       font: inherit;
       text-align: left;
       color: inherit;
       cursor: pointer;
       transition: background 0.15s ease;
     }
-    .agent-row:hover { background: rgba(6, 189, 180, 0.08); }
+    .agent-row:hover { background: rgba(6, 189, 180, 0.07); }
     .a-dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--teal); }
     .a-dot.stub { background: transparent; border: 1.5px dashed var(--mid); }
-    .a-id { flex: none; min-width: 2.1rem; font-family: var(--mono); font-size: 0.72rem; color: var(--teal-dark); }
-    .a-name { flex: 1; font-size: 0.85rem; font-weight: 500; color: var(--ink-2); line-height: 1.35; }
+    .a-id { flex: none; min-width: 2.1rem; font-family: var(--mono); font-size: 0.74rem; color: var(--teal-dark); }
+    .a-name { flex: 1; font-size: 0.88rem; font-weight: 500; color: var(--ink-2); line-height: 1.35; }
     .a-status {
       flex: none;
       font-family: var(--mono);
@@ -524,13 +584,22 @@
       grid-template-columns: 13rem 1fr;
       gap: 1.5rem;
       align-items: start;
-      padding: 1.9rem 0.75rem;
+      padding: 1.7rem 0.75rem;
       margin: 0 -0.75rem;
       border-top: 1px solid var(--hairline);
       border-radius: 14px;
       transition: background 0.4s ease;
     }
-    .wf-row:first-of-type { border-top: 0; }
+    .wf-row.featured {
+      grid-template-columns: 1fr;
+      gap: 1.3rem;
+      background: #fff;
+      border: 1px solid var(--hairline-mid);
+      border-radius: 24px;
+      box-shadow: var(--shadow-soft);
+      padding: 2.1rem 2.2rem 2.3rem;
+      margin: 0 0 1.6rem;
+    }
     .wf-row.flash { background: rgba(6, 189, 180, 0.08); }
     .wf-name {
       display: block;
@@ -548,7 +617,7 @@
       margin-right: 0.5rem;
       background: var(--mid);
     }
-    .wf-row.featured .wf-name { color: var(--teal-dark); }
+    .wf-row.featured .wf-name { color: var(--teal-dark); font-size: 1.06rem; }
     .wf-row.featured .wf-name::before { background: var(--teal); }
     .wf-count {
       display: block;
@@ -557,15 +626,16 @@
       font-weight: 300;
       color: var(--ink-4);
     }
-    .wf-path { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.15rem; }
+    .wf-path { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.25rem; }
+    .wf-row.featured .wf-path { gap: 0.65rem 0.3rem; }
     .wf-chip {
       display: inline-flex;
       align-items: center;
       gap: 0.45rem;
       border: 1px solid var(--hairline-strong);
       background: #fff;
-      border-radius: 999px;
-      padding: 0.42rem 0.9rem;
+      border-radius: 12px;
+      padding: 0.5rem 0.95rem;
       font: inherit;
       font-size: 0.8rem;
       font-weight: 500;
@@ -573,10 +643,11 @@
       cursor: pointer;
       transition: border-color 0.2s ease, color 0.2s ease, box-shadow 0.25s ease, transform 0.3s var(--spring);
     }
+    .wf-row.featured .wf-chip { padding: 0.58rem 1.05rem; font-size: 0.85rem; }
     .wf-chip:hover {
       border-color: var(--teal);
       color: var(--navy);
-      box-shadow: 0 6px 18px -8px rgba(6, 189, 180, 0.5);
+      box-shadow: 0 8px 20px -8px rgba(6, 189, 180, 0.5);
       transform: translateY(-1px);
     }
     .wf-chip .wf-id { font-family: var(--mono); font-size: 0.68rem; color: var(--teal-dark); }
@@ -706,8 +777,8 @@
       border: 1px solid rgba(6, 189, 180, 0.4);
       background: rgba(6, 189, 180, 0.06);
       color: var(--teal-dark);
-      border-radius: 999px;
-      padding: 0.32rem 0.75rem;
+      border-radius: 10px;
+      padding: 0.34rem 0.75rem;
       font-family: var(--mono);
       font-size: 0.68rem;
       cursor: pointer;
@@ -775,16 +846,20 @@
 
   <header class="hero">
     <div class="hero-stage" aria-hidden="true">
+      <div class="hero-watermark">Otaip</div>
       <div class="orb orb-a"></div>
       <div class="orb orb-b"></div>
       <div class="orb orb-c"></div>
       <div class="horizon"></div>
     </div>
     <div class="hero-inner">
-      <img class="hero-mark" src="assets/telivity/logo-1color.svg" width="54" height="54" alt="Telivity" data-reveal style="--i:0" />
+      <div class="hero-brand" data-reveal style="--i:0">
+        <img class="hero-mark" src="assets/telivity/logo-1color.svg" width="76" height="76" alt="Telivity" />
+        <span class="hero-wordmark">Telivity</span>
+      </div>
       <p class="eyebrow" data-reveal style="--i:1">Otaip · Open Travel AI Platform</p>
       <h1 data-reveal style="--i:2">Search to settlement,<br /><span class="grad">agent by agent.</span></h1>
-      <p class="lede" data-reveal style="--i:3">Telivity&rsquo;s open platform of 77 typed travel agents — one shared contract, carried from the first availability call to final settlement.</p>
+      <p class="lede" data-reveal style="--i:3">77 typed agents. One shared contract. From first search to final settlement.</p>
       <div class="cta" data-reveal style="--i:4">
         <a class="btn btn-primary" href="#agents">Explore the agents</a>
         <a class="btn btn-ghost" href="#journey">See the journey <span class="arr" aria-hidden="true">→</span></a>
@@ -797,7 +872,7 @@
       <div class="s-head" data-reveal>
         <p class="eyebrow">The journey</p>
         <h2>One trip. Six acts.</h2>
-        <p class="sub">Every booking moves through the same arc. Each act is owned by a dedicated stage of agents — pick one to meet them.</p>
+        <p class="sub">Six stages own every booking — pick an act to meet its agents.</p>
       </div>
       <div class="journey-track">
           <button type="button" class="jstep" data-stage-target="search" data-reveal style="--i:1">
@@ -839,7 +914,7 @@
       <div class="s-head" data-reveal>
         <p class="eyebrow">The system</p>
         <h2>77 agents. 12 stages.</h2>
-        <p class="sub">Grouped by the moment they own in the journey. Open a stage to meet its agents — select any agent for the full picture.</p>
+        <p class="sub">Open a stage to meet its agents — select any agent for the full picture.</p>
       </div>
       <div class="controls" data-reveal>
         <input id="search" type="search" placeholder="Search by id or name…" aria-label="Search agents" />
@@ -863,6 +938,7 @@
             <span class="tile-count">7<em>agents</em></span>
             <span class="tile-preview">Airport/City Code Resolver · Airline Code &amp; Alliance Mapper · +5</span>
             <span class="tile-match" aria-live="polite"></span>
+            <span class="tile-wm" aria-hidden="true">01</span>
           </button>
           <div class="tile-body">
             <ul class="agent-list">
@@ -920,6 +996,7 @@
             <span class="tile-count">8<em>agents</em></span>
             <span class="tile-preview">Availability Search · Schedule Lookup · +6</span>
             <span class="tile-match" aria-live="polite"></span>
+            <span class="tile-wm" aria-hidden="true">02</span>
           </button>
           <div class="tile-body">
             <ul class="agent-list">
@@ -983,6 +1060,7 @@
             <span class="tile-count">7<em>agents</em></span>
             <span class="tile-preview">Fare Rule Agent · Fare Construction · +5</span>
             <span class="tile-match" aria-live="polite"></span>
+            <span class="tile-wm" aria-hidden="true">03</span>
           </button>
           <div class="tile-body">
             <ul class="agent-list">
@@ -1040,6 +1118,7 @@
             <span class="tile-count">8<em>agents</em></span>
             <span class="tile-preview">GDS/NDC Router · PNR Builder · +6</span>
             <span class="tile-match" aria-live="polite"></span>
+            <span class="tile-wm" aria-hidden="true">04</span>
           </button>
           <div class="tile-body">
             <ul class="agent-list">
@@ -1103,6 +1182,7 @@
             <span class="tile-count">5<em>agents</em></span>
             <span class="tile-preview">Ticket Issuance · EMD Management · +3</span>
             <span class="tile-match" aria-live="polite"></span>
+            <span class="tile-wm" aria-hidden="true">05</span>
           </button>
           <div class="tile-body">
             <ul class="agent-list">
@@ -1148,6 +1228,7 @@
             <span class="tile-count">6<em>agents</em></span>
             <span class="tile-preview">Change Management · Exchange/Reissue · +4</span>
             <span class="tile-match" aria-live="polite"></span>
+            <span class="tile-wm" aria-hidden="true">06</span>
           </button>
           <div class="tile-body">
             <ul class="agent-list">
@@ -1199,6 +1280,7 @@
             <span class="tile-count">6<em>agents</em></span>
             <span class="tile-preview">Refund Processing · ADM Prevention · +4</span>
             <span class="tile-match" aria-live="polite"></span>
+            <span class="tile-wm" aria-hidden="true">07</span>
           </button>
           <div class="tile-body">
             <ul class="agent-list">
@@ -1250,6 +1332,7 @@
             <span class="tile-count">6<em>agents</em></span>
             <span class="tile-preview">BSP Reconciliation · ARC Reconciliation · +4</span>
             <span class="tile-match" aria-live="polite"></span>
+            <span class="tile-wm" aria-hidden="true">08</span>
           </button>
           <div class="tile-body">
             <ul class="agent-list">
@@ -1301,6 +1384,7 @@
             <span class="tile-count">5<em>agents</em></span>
             <span class="tile-preview">Traveler Profile · Corporate Account · +3</span>
             <span class="tile-match" aria-live="polite"></span>
+            <span class="tile-wm" aria-hidden="true">09</span>
           </button>
           <div class="tile-body">
             <ul class="agent-list">
@@ -1346,6 +1430,7 @@
             <span class="tile-count">9<em>agents</em></span>
             <span class="tile-preview">Orchestrator · Knowledge Retrieval · +7</span>
             <span class="tile-match" aria-live="polite"></span>
+            <span class="tile-wm" aria-hidden="true">10</span>
           </button>
           <div class="tile-body">
             <ul class="agent-list">
@@ -1415,6 +1500,7 @@
             <span class="tile-count">1<em>agent</em></span>
             <span class="tile-preview">Offer Evaluator</span>
             <span class="tile-match" aria-live="polite"></span>
+            <span class="tile-wm" aria-hidden="true">11</span>
           </button>
           <div class="tile-body">
             <ul class="agent-list">
@@ -1436,6 +1522,7 @@
             <span class="tile-count">9<em>agents</em></span>
             <span class="tile-preview">Hotel Search Aggregator · Property Deduplication · +7</span>
             <span class="tile-match" aria-live="polite"></span>
+            <span class="tile-wm" aria-hidden="true">12</span>
           </button>
           <div class="tile-body">
             <ul class="agent-list">
@@ -1505,7 +1592,7 @@
       <div class="s-head" data-reveal>
         <p class="eyebrow">Workflows</p>
         <h2>Composed, not wired.</h2>
-        <p class="sub">The Orchestrator chains agents into booking pipelines. Follow one end to end — every step is an agent you can inspect.</p>
+        <p class="sub">The Orchestrator&rsquo;s pipelines, end to end — every step an agent you can inspect.</p>
       </div>
       <div class="wf-list">
         <div class="wf-row featured" data-wf="full_booking" data-reveal style="--i:0">
