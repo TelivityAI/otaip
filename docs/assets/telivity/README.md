@@ -6,8 +6,8 @@ Copied from [telivity.app](https://telivity.app) for the Otaip agent map and doc
 |------|--------|--------|
 | `logo-1color.svg` | `/telivity-logo-1color.svg` | Slate `#444863` mark; invert on dark backgrounds (site uses `class="invert"`). |
 | `logo-on-dark.svg` | derived | Same paths with fill `#f0f0f6` for dark UI without CSS filter. |
-| `favicon.svg` | `/favicon.svg` | Same artwork as the 1-color logo. |
-| `favicon.ico` | `/favicon.ico` | Multi-size ICO. |
+| `favicon.ico` | `/favicon.ico` | Canonical mark: navy `#23273d` field, teal `#06bdb4` rounded frame + **T**. |
+| `favicon.svg` | derived from ICO | Same T-mark (not the wordmark logo). |
 | `og-image.png` | `/og-image.png` | 1200×630 social preview. |
 
 ## Brand tokens (from site CSS)

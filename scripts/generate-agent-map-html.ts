@@ -246,8 +246,8 @@ ${rows}
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Telivity · Otaip Agent System</title>
   <meta name="description" content="Telivity Otaip agent system — typed travel AI agents from search to settlement." />
-  <link rel="icon" href="assets/telivity/favicon.svg" type="image/svg+xml" />
   <link rel="icon" href="assets/telivity/favicon.ico" sizes="any" />
+  <link rel="icon" href="assets/telivity/favicon.svg" type="image/svg+xml" />
   <meta property="og:image" content="assets/telivity/og-image.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
