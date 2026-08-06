@@ -127,6 +127,19 @@ function formatBulletBlock(raw: string): string {
     .join('\n');
 }
 
+/** Normalize for duplicate detection (catalog vs stage prose often differ by a period). */
+export function proseKey(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[\s.]+$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+export function isSameProse(a: string, b: string): boolean {
+  return Boolean(a) && Boolean(b) && proseKey(a) === proseKey(b);
+}
+
 /** First prose paragraph from a source file's leading block comment. */
 export function summaryFromSourceJsdoc(source: string): string | undefined {
   const m = source.match(/^\/\*\*([\s\S]*?)\*\//);
@@ -203,9 +216,12 @@ export function loadAgentDocs(
       ...(stage?.status ? { status: stage.status } : {}),
     };
 
-    if (stage?.purpose && stage.purpose.length > (doc.summary?.length ?? 0) + 20) {
-      out[id] = { ...doc, purpose: stage.purpose };
-    } else if (stage?.purpose && stage.purpose !== doc.summary) {
+    // Only keep purpose when it adds real information beyond the catalog summary.
+    if (
+      stage?.purpose &&
+      !isSameProse(stage.purpose, doc.summary) &&
+      stage.purpose.length > (doc.summary?.length ?? 0) + 20
+    ) {
       out[id] = { ...doc, purpose: stage.purpose };
     } else {
       out[id] = doc;
