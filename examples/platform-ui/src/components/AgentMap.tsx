@@ -262,7 +262,7 @@ export default function AgentMap({ graph }: AgentMapProps) {
                         onClick={() => setSelected(a.id)}
                         className={[
                           'rounded-md border bg-white px-2 py-1.5 text-left transition',
-                          <a.contract_status === 'active' ? 'border-l-[3px] border-l-cyan-500' : 'border-l-[3px] border-l-slate-400',
+                          a.contract_status === 'active' ? 'border-l-[3px] border-l-cyan-500' : 'border-l-[3px] border-l-slate-400',
                           isSelected || onPath ? 'border-cyan-400 shadow-[0_0_0_1px_#22d3ee]' : 'border-slate-200',
                           dim ? 'opacity-30' : '',
                         ].join(' ')}
