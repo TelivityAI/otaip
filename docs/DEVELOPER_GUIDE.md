@@ -262,15 +262,16 @@ const agent = new HotelSearchAgent({
 
 ---
 
-## Agent navigation map
+## Agent connections page
 
-OTAIP ships a first-party **agent map** for browsing the ~77 discovered agents by stage, with edges from Orchestrator workflows and agent-package workspace deps.
+OTAIP ships a first-party **agent connections** view: pick an Orchestrator workflow, see the agent chain, browse the stage bento, inspect neighbors. Edges come from workflows + agent-package workspace deps.
 
 | Artifact | Role |
 |---|---|
 | `agents.manifest.json` | Authoritative agent roster |
 | `agents.graph.json` | Nodes + workflow/package edges for navigation |
-| `docs/agent-map.html` | Standalone browsable map (no build step) |
+| `docs/agent-map.html` | Standalone connections page (Apple-style bento; not a marketing landing) |
+| `docs/assets/telivity/` | Brand logos/favicon from [telivity.app](https://telivity.app) (navy/teal/Montserrat) |
 | Platform UI → Map | Same graph via `GET /api/platform/agent-graph` |
 
 Regenerate all three (plus the HTML) with:
