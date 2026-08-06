@@ -3,17 +3,21 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Agent connections · Telivity Otaip</title>
-  <meta name="description" content="How Otaip agents connect — workflows and package dependencies." />
+  <title>Telivity Otaip · Agent connections</title>
+  <meta name="description" content="Interactive map of the Telivity Otaip agent system — 77 typed travel agents and the orchestrator pipelines that connect them." />
   <link rel="icon" href="assets/telivity/favicon.svg" type="image/svg+xml" />
   <link rel="icon" href="assets/telivity/favicon-32.png" type="image/png" sizes="32x32" />
   <link rel="icon" href="assets/telivity/favicon-64.png" type="image/png" sizes="64x64" />
   <link rel="apple-touch-icon" href="assets/telivity/apple-touch-icon.png" />
+  <meta property="og:image" content="assets/telivity/og-image.png" />
+  <script>document.documentElement.classList.add('js');</script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <noscript><style>[data-reveal] { opacity: 1 !important; transform: none !important; }</style></noscript>
   <style>
     :root {
+      /* Telivity brand — from telivity.app */
       --teal: #06bdb4;
       --teal-dark: #00a692;
       --teal-light: #2cd1b9;
@@ -21,1237 +25,2049 @@
       --slate: #444863;
       --mid: #bbbbc4;
       --fog: #f0f0f6;
-      --white: #ffffff;
-      --yellow: #eec517;
-      --ink: var(--navy);
-      --muted: #6b7088;
-      --hair: rgba(68, 72, 99, 0.14);
-      --hair-strong: rgba(68, 72, 99, 0.22);
-      --teal-soft: rgba(6, 189, 180, 0.12);
-      --teal-glow: rgba(6, 189, 180, 0.28);
-      --shadow: 0 1px 2px rgba(35,39,61,0.04), 0 8px 24px rgba(35,39,61,0.06);
-      --shadow-lift: 0 2px 4px rgba(35,39,61,0.05), 0 16px 40px rgba(35,39,61,0.10);
+      --ink-1: var(--navy);
+      --ink-2: var(--slate);
+      --ink-3: #7a7e96;
+      --ink-4: #9aa0b4;
+      --hairline: rgba(35, 39, 61, 0.09);
+      --hairline-strong: rgba(35, 39, 61, 0.16);
+      --hairline-mid: rgba(187, 187, 196, 0.38);
+      --shadow-soft:
+        0 1px 2px rgba(35, 39, 61, 0.05),
+        0 10px 28px -10px rgba(35, 39, 61, 0.1),
+        0 32px 64px -24px rgba(35, 39, 61, 0.12);
+      --shadow-lift:
+        0 2px 6px rgba(35, 39, 61, 0.06),
+        0 18px 40px -14px rgba(35, 39, 61, 0.16),
+        0 48px 96px -32px rgba(35, 39, 61, 0.18);
       --font: "Montserrat", system-ui, sans-serif;
       --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
-      --radius: 14px;
-      --radius-sm: 10px;
+      --spring: cubic-bezier(0.34, 1.3, 0.64, 1);
+      --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
     }
     * { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
+    html, body { margin: 0; min-height: 100%; }
     body {
-      margin: 0;
       font-family: var(--font);
-      color: var(--ink);
-      background: var(--fog);
+      color: var(--ink-1);
+      background:
+        radial-gradient(1200px 700px at 85% -10%, rgba(6, 189, 180, 0.06), transparent 60%),
+        radial-gradient(900px 600px at -10% 30%, rgba(44, 209, 185, 0.05), transparent 55%),
+        var(--fog);
       -webkit-font-smoothing: antialiased;
-      min-height: 100%;
+      text-rendering: optimizeLegibility;
     }
-    button, input, select { font: inherit; }
-    a { color: var(--teal-dark); text-decoration: none; }
-    a:hover { text-decoration: underline; }
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+      opacity: 0.045;
+      mix-blend-mode: multiply;
+    }
+    ::selection { background: rgba(6, 189, 180, 0.25); }
+    a { color: var(--teal-dark); }
+    :focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; border-radius: 4px; }
 
-    /* —— chrome —— */
-    .bar {
-      position: sticky; top: 0; z-index: 40;
-      display: flex; align-items: center; gap: 0.75rem;
-      padding: 0.7rem 1.5rem;
-      background: rgba(240, 240, 246, 0.82);
+    .shell { max-width: 74rem; margin: 0 auto; padding: 0 1.5rem; }
+
+    /* ---------- Nav ---------- */
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
-      border-bottom: 1px solid transparent;
-      transition: border-color .2s;
+      background: rgba(240, 240, 246, 0.65);
+      transition: background 0.3s ease, box-shadow 0.3s ease;
     }
-    .bar.scrolled { border-bottom-color: var(--hair); }
-    .bar-brand {
-      display: inline-flex; align-items: center; gap: 0.5rem;
-      color: var(--ink); text-decoration: none; font-weight: 700; font-size: 0.95rem;
-      letter-spacing: -0.02em;
+    .nav.scrolled {
+      background: rgba(240, 240, 246, 0.88);
+      box-shadow: 0 1px 0 var(--hairline);
     }
-    .bar-brand:hover { text-decoration: none; opacity: 0.85; }
-    .bar-brand img { width: 22px; height: 22px; display: block; }
-    .bar-title {
-      font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em;
-      text-transform: uppercase; color: var(--muted);
-      padding-left: 0.75rem; border-left: 1px solid var(--hair-strong);
+    .nav-inner {
+      max-width: 74rem;
+      margin: 0 auto;
+      padding: 0.75rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 2rem;
     }
-    .bar-meta {
-      margin-left: auto;
-      font-family: var(--mono); font-size: 0.68rem; color: var(--muted);
-      letter-spacing: 0.02em;
+    .brand {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 0.5rem;
+      text-decoration: none;
+      color: var(--navy);
+    }
+    .brand img { width: 22px; height: 22px; display: block; align-self: center; }
+    .brand-name { font-weight: 700; font-size: 1.05rem; letter-spacing: -0.02em; }
+    .brand-sub { font-weight: 400; font-size: 0.92rem; color: var(--ink-4); }
+    .nav-links { margin-left: auto; display: flex; gap: 1.7rem; align-items: center; }
+    .nav-links a {
+      color: var(--slate);
+      text-decoration: none;
+      font-size: 0.82rem;
+      font-weight: 500;
+      transition: color 0.15s ease;
+    }
+    .nav-links a:hover { color: var(--teal-dark); }
+    .nav-links a.ext { color: var(--ink-4); }
+    @media (max-width: 640px) {
+      .nav-links { gap: 1rem; }
+      .nav-links a.ext { display: none; }
     }
 
-    .shell { max-width: 1280px; margin: 0 auto; padding: 0 1.5rem 4rem; }
-
-    /* —— connection stage (first viewport drama) —— */
-    .stage-wrap {
-      padding: 1.75rem 0 2.5rem;
-      min-height: calc(100vh - 3.5rem);
-      display: flex; flex-direction: column; gap: 1.5rem;
+    /* ---------- Connection stage (first viewport) ---------- */
+    .stage-view {
+      min-height: calc(100svh - 3.5rem);
+      display: flex;
+      flex-direction: column;
+      padding: 3.2rem 0 3.6rem;
     }
-    .stage-head {
-      display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between;
-      gap: 1rem 2rem;
+    .stage-view .shell {
+      flex: 1;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
     }
-    .stage-head h1 {
+    .eyebrow {
+      margin: 0 0 1.1rem;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.26em;
+      text-transform: uppercase;
+      color: var(--teal-dark);
+    }
+    h1 {
       margin: 0;
-      font-size: clamp(2.4rem, 5.5vw, 3.75rem);
-      font-weight: 700; letter-spacing: -0.045em; line-height: 1.05;
-      color: var(--ink);
+      font-weight: 700;
+      font-size: clamp(2.7rem, 5.6vw, 4.4rem);
+      letter-spacing: -0.045em;
+      line-height: 1.02;
+      color: var(--navy);
     }
-    .stage-head h1 em {
-      font-style: normal;
-      background: linear-gradient(100deg, var(--teal-dark), var(--teal) 55%, var(--teal-light));
-      -webkit-background-clip: text; background-clip: text; color: transparent;
+    h1 .t { color: var(--teal); }
+    .fact {
+      margin: 1.15rem 0 0;
+      max-width: 46rem;
+      font-size: clamp(0.98rem, 1.4vw, 1.12rem);
+      font-weight: 300;
+      line-height: 1.6;
+      color: var(--ink-2);
     }
-    .stage-sub {
-      margin: 0.45rem 0 0;
-      color: var(--muted); font-size: 0.95rem; font-weight: 400;
-      max-width: 28rem; line-height: 1.45;
-    }
+    .fact code { font-family: var(--mono); font-size: 0.82em; color: var(--teal-dark); }
 
-    .wf-picker {
-      display: flex; flex-wrap: wrap; gap: 0.4rem;
-      padding: 0.35rem;
-      background: var(--white);
-      border: 1px solid var(--hair);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      align-self: start;
+    /* Workflow selector — bento segments */
+    .wf-select {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      width: fit-content;
+      max-width: 100%;
+      margin: 2.1rem 0 1.25rem;
+      padding: 0.4rem;
+      background: rgba(255, 255, 255, 0.62);
+      border: 1px solid var(--hairline-mid);
+      border-radius: 18px;
     }
-    .wf-seg {
-      border: 1px solid transparent;
+    .seg {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.2rem;
+      padding: 0.55rem 1.05rem 0.6rem;
+      border: 0;
+      border-radius: 13px;
       background: transparent;
-      color: var(--muted);
-      border-radius: var(--radius-sm);
-      padding: 0.55rem 0.85rem;
+      font: inherit;
+      color: var(--ink-3);
       cursor: pointer;
-      display: inline-flex; align-items: baseline; gap: 0.45rem;
-      transition: background .18s, color .18s, border-color .18s, transform .18s;
+      transition: background 0.2s ease, color 0.2s ease, box-shadow 0.25s ease;
     }
-    .wf-seg:hover { color: var(--ink); background: rgba(35,39,61,0.03); }
-    .wf-seg.active {
-      background: var(--navy); color: var(--white);
-      box-shadow: 0 4px 14px rgba(35,39,61,0.18);
+    .seg:hover { background: rgba(6, 189, 180, 0.08); color: var(--ink-1); }
+    .seg.active {
+      background: var(--navy);
+      color: #fff;
+      box-shadow: 0 8px 18px -8px rgba(35, 39, 61, 0.5);
     }
-    .wf-name { font-weight: 600; font-size: 0.78rem; letter-spacing: -0.01em; }
-    .wf-n {
-      font-family: var(--mono); font-size: 0.62rem; opacity: 0.65;
+    .seg-name {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
     }
-    .wf-seg.active .wf-n { opacity: 0.8; color: var(--teal-light); }
+    .seg.featured .seg-name::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--teal);
+    }
+    .seg-count { font-size: 0.64rem; font-weight: 400; color: var(--ink-4); }
+    .seg.active .seg-count { color: rgba(255, 255, 255, 0.62); }
+    .seg.featured .seg-count { padding-left: 0.83rem; }
 
-    .chain-board {
+    /* The stage card */
+    .stage-card {
+      flex: 1;
+      min-height: 22rem;
+      display: flex;
+      flex-direction: column;
+      background:
+        radial-gradient(640px 220px at 18% 0%, rgba(6, 189, 180, 0.05), transparent 62%),
+        #fff;
+      border: 1px solid var(--hairline-mid);
+      border-radius: 28px;
+      box-shadow: var(--shadow-soft);
+      overflow: hidden;
+      transition: box-shadow 0.45s ease;
+    }
+    .stage-card.flash { box-shadow: 0 0 0 3px rgba(6, 189, 180, 0.35), var(--shadow-lift); }
+    .stage-paths {
       position: relative;
       flex: 1;
-      min-height: 18rem;
-      background:
-        radial-gradient(900px 420px at 20% 0%, rgba(6,189,180,0.10), transparent 60%),
-        radial-gradient(700px 380px at 90% 100%, rgba(238,197,23,0.06), transparent 55%),
-        var(--white);
-      border: 1px solid var(--hair);
-      border-radius: 22px;
-      box-shadow: var(--shadow);
-      overflow: hidden;
-      display: flex; flex-direction: column;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
     }
-    .chain-board::before {
-      content: attr(data-wf);
-      position: absolute; right: 1.25rem; bottom: 0.6rem;
-      font-size: clamp(3rem, 10vw, 6.5rem); font-weight: 700;
-      letter-spacing: -0.06em; line-height: 1;
-      color: rgba(35,39,61,0.04); pointer-events: none; user-select: none;
+    .stage-path {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      transition: opacity 0.24s ease;
     }
-    .chain-label {
-      padding: 1rem 1.35rem 0;
-      font-size: 0.65rem; font-weight: 600; letter-spacing: 0.12em;
-      text-transform: uppercase; color: var(--teal-dark);
+    .stage-path[hidden] { display: none; }
+    .stage-path.leaving {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      pointer-events: none;
     }
-    .chain-track {
-      display: flex; align-items: stretch; gap: 0;
-      padding: 1.25rem 1.35rem 2.5rem;
-      overflow-x: auto; scroll-snap-type: x proximity;
-      -webkit-overflow-scrolling: touch;
+    .stage-meta {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.4rem 1.25rem;
+      padding: 1.5rem 2rem 0;
     }
-    .chain-item {
-      display: flex; align-items: center; flex: 0 0 auto;
-      scroll-snap-align: start;
-      animation: rise 480ms cubic-bezier(.2,.8,.2,1) both;
-      animation-delay: calc(var(--i, 0) * 55ms);
+    .stage-wf-name {
+      font-family: var(--mono);
+      font-size: 1.02rem;
+      font-weight: 600;
+      color: var(--navy);
     }
-    .chain-card {
-      width: 11.5rem; min-height: 9.5rem;
-      text-align: left;
-      border: 1px solid var(--hair-strong);
-      background: linear-gradient(180deg, #fff 0%, #f7f7fb 100%);
-      border-radius: 16px;
-      padding: 1rem 1rem 0.95rem;
-      cursor: pointer;
-      display: flex; flex-direction: column; gap: 0.2rem;
-      box-shadow: var(--shadow);
-      transition: transform .2s, box-shadow .2s, border-color .2s;
-      position: relative;
-    }
-    .chain-card:hover {
-      transform: translateY(-3px);
-      box-shadow: var(--shadow-lift);
-      border-color: rgba(6,189,180,0.45);
-    }
-    .chain-card.selected {
-      border-color: var(--teal);
-      box-shadow: 0 0 0 2px var(--teal-soft), var(--shadow-lift);
-    }
-    .c-step {
-      font-family: var(--mono); font-size: 0.62rem; font-weight: 500;
-      letter-spacing: 0.08em; color: var(--teal-dark); margin-bottom: 0.35rem;
-    }
-    .c-id {
-      font-family: var(--mono); font-size: 0.7rem; color: var(--muted);
-    }
-    .c-name {
-      font-size: 0.95rem; font-weight: 700; letter-spacing: -0.025em;
-      line-height: 1.25; color: var(--ink); margin-top: 0.15rem;
-    }
-    .c-stage {
-      margin-top: auto; padding-top: 0.65rem;
-      font-size: 0.62rem; font-weight: 600; letter-spacing: 0.1em;
-      text-transform: uppercase; color: var(--mid);
-    }
-
-    /* The connection — the star */
-    .conn {
-      width: 2.6rem; flex: 0 0 auto;
-      display: flex; align-items: center; justify-content: center;
-      position: relative; height: 100%;
-      padding: 0 0.15rem;
-    }
-    .conn-line {
-      display: block; height: 3px; width: 100%;
-      background: linear-gradient(90deg, var(--teal-dark), var(--teal-light));
+    .stage-wf-name::before {
+      content: "";
+      display: inline-block;
+      width: 8px;
+      height: 8px;
       border-radius: 2px;
-      box-shadow: 0 0 12px var(--teal-glow);
+      margin-right: 0.55rem;
+      background: var(--teal);
+    }
+    .stage-wf-tag {
+      margin-left: 0.85rem;
+      font-size: 0.64rem;
+      font-weight: 600;
+      letter-spacing: 0.17em;
+      text-transform: uppercase;
+      color: var(--ink-4);
+    }
+    .stage-wf-stats { font-size: 0.76rem; font-weight: 300; color: var(--ink-3); }
+
+    .stage-track {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      overflow-x: auto;
+      overflow-y: hidden;
+      overscroll-behavior-x: contain;
+      padding: 1.5rem 2rem 1.3rem;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(6, 189, 180, 0.35) transparent;
+      -webkit-mask-image: linear-gradient(90deg, transparent, #000 2.4rem, #000 calc(100% - 2.4rem), transparent);
+      mask-image: linear-gradient(90deg, transparent, #000 2.4rem, #000 calc(100% - 2.4rem), transparent);
+    }
+    .stage-track::-webkit-scrollbar { height: 6px; }
+    .stage-track::-webkit-scrollbar-thumb { background: rgba(6, 189, 180, 0.3); border-radius: 3px; }
+    .stage-track::-webkit-scrollbar-track { background: transparent; }
+    .stage-track::before,
+    .stage-track::after { content: ""; margin: auto; }
+    .stage-track.dragging { cursor: grabbing; }
+    .stage-track.dragging .cell { cursor: grabbing; }
+
+    /* Agent cells */
+    .cell {
+      position: relative;
+      flex: none;
+      width: 10.9rem;
+      min-height: 8.6rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+      padding: 1rem 1.05rem 0.95rem;
+      background: #fff;
+      border: 1px solid var(--hairline-mid);
+      border-radius: 20px;
+      box-shadow: 0 1px 2px rgba(35, 39, 61, 0.04), 0 12px 28px -14px rgba(35, 39, 61, 0.12);
+      font: inherit;
+      text-align: left;
+      color: inherit;
+      cursor: pointer;
+      transition: border-color 0.25s ease, box-shadow 0.3s ease, background 0.25s ease;
+    }
+    .cell:hover {
+      border-color: rgba(6, 189, 180, 0.55);
+      box-shadow: 0 2px 4px rgba(35, 39, 61, 0.05), 0 20px 42px -16px rgba(6, 189, 180, 0.42);
+    }
+    .cell-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+    .cell-stage {
+      font-size: 0.6rem;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--teal-dark);
+    }
+    .cell-dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--teal); }
+    .cell-dot.stub { background: transparent; border: 1.5px dashed var(--mid); }
+    .cell-id {
+      margin-top: 0.4rem;
+      font-family: var(--mono);
+      font-size: 1.5rem;
+      font-weight: 600;
+      letter-spacing: -0.03em;
+      line-height: 1;
+      color: var(--navy);
+    }
+    .cell-name { font-size: 0.8rem; font-weight: 500; line-height: 1.4; color: var(--ink-2); }
+    .cell-num {
+      position: absolute;
+      right: 0.85rem;
+      bottom: 0.4rem;
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.04em;
+      line-height: 1;
+      color: rgba(35, 39, 61, 0.05);
+      pointer-events: none;
+      user-select: none;
+    }
+    .cell.sel {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 3px rgba(6, 189, 180, 0.25), 0 18px 40px -16px rgba(6, 189, 180, 0.45);
+    }
+    .cell.nb { background: #f1faf8; border-color: rgba(6, 189, 180, 0.4); }
+    .cell.dep { border-style: dashed; border-color: rgba(6, 189, 180, 0.65); }
+
+    /* Connector bars — the drama */
+    .conn {
+      position: relative;
+      flex: none;
+      width: 3.15rem;
+      height: 12px;
       transform-origin: left center;
-      animation: draw 700ms cubic-bezier(.2,.8,.2,1) both;
-      animation-delay: calc(var(--i, 0) * 55ms + 120ms);
     }
-    .conn-arrow {
-      position: absolute; right: 0; top: 50%;
-      width: 0; height: 0;
-      border-top: 5px solid transparent;
-      border-bottom: 5px solid transparent;
-      border-left: 7px solid var(--teal-light);
+    .conn::before {
+      content: "";
+      position: absolute;
+      left: 1px;
+      right: 8px;
+      top: 50%;
+      height: 2px;
       transform: translateY(-50%);
-      filter: drop-shadow(0 0 4px var(--teal-glow));
-      animation: pop 500ms cubic-bezier(.2,.8,.2,1) both;
-      animation-delay: calc(var(--i, 0) * 55ms + 280ms);
+      border-radius: 2px;
+      background: rgba(35, 39, 61, 0.14);
+      transition: background 0.25s ease;
     }
-    @keyframes draw {
-      from { transform: scaleX(0); opacity: 0; }
-      to { transform: scaleX(1); opacity: 1; }
+    .conn::after {
+      content: "";
+      position: absolute;
+      right: 1px;
+      top: 50%;
+      width: 7px;
+      height: 7px;
+      border-top: 1.5px solid rgba(0, 166, 146, 0.75);
+      border-right: 1.5px solid rgba(0, 166, 146, 0.75);
+      transform: translateY(-50%) rotate(45deg);
+      transition: border-color 0.25s ease;
     }
-    @keyframes pop {
-      from { opacity: 0; transform: translateY(-50%) translateX(-4px); }
-      to { opacity: 1; transform: translateY(-50%) translateX(0); }
+    .conn .pulse {
+      position: absolute;
+      left: 0;
+      top: 50%;
+      width: 34%;
+      height: 2px;
+      border-radius: 2px;
+      background: linear-gradient(90deg, transparent, var(--teal) 42%, var(--teal-light) 58%, transparent);
+      transform: translateY(-50%);
+      animation: pulse-x 2.2s cubic-bezier(0.42, 0, 0.3, 1) infinite;
+      animation-delay: calc(var(--i, 0) * 0.3s);
     }
-    @keyframes rise {
-      from { opacity: 0; transform: translateY(12px); }
-      to { opacity: 1; transform: translateY(0); }
+    @keyframes pulse-x {
+      0% { transform: translate(-120%, -50%); opacity: 0; }
+      16% { opacity: 1; }
+      84% { opacity: 1; }
+      100% { transform: translate(330%, -50%); opacity: 0; }
+    }
+    .conn.lit::before { background: rgba(6, 189, 180, 0.6); }
+    .conn.lit::after { border-color: var(--teal-dark); }
+
+    /* Entrance — only when JS is on (html.js), so no-JS still shows the stage */
+    .js .stage-path .cell,
+    .js .stage-path .conn { opacity: 0; }
+    .js .stage-path.in .cell {
+      animation: cell-in 0.68s var(--spring) both;
+      animation-delay: calc(var(--i, 0) * 65ms);
+    }
+    .js .stage-path.in .conn {
+      animation: conn-in 0.55s var(--ease-out) both;
+      animation-delay: calc(var(--i, 0) * 65ms + 150ms);
+    }
+    @keyframes cell-in {
+      from { opacity: 0; transform: translateY(18px) scale(0.985); }
+      to { opacity: 1; transform: none; }
+    }
+    @keyframes conn-in {
+      from { opacity: 0; transform: scaleX(0.25); }
+      to { opacity: 1; transform: scaleX(1); }
     }
 
-    .chain-empty {
-      padding: 3rem 1.5rem; color: var(--muted); text-align: center;
+    .stage-legend {
+      display: flex;
+      align-items: center;
+      gap: 1.15rem;
+      padding: 0.8rem 2rem 0.95rem;
+      border-top: 1px solid var(--hairline);
+      font-size: 0.68rem;
+      font-weight: 300;
+      color: var(--ink-4);
     }
+    .stage-legend .lg { display: inline-flex; align-items: center; gap: 0.4rem; }
+    .lg-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--teal); }
+    .lg-dot.stub { background: transparent; border: 1.5px dashed var(--mid); }
+    .lg-hint { margin-left: auto; }
+    @media (max-width: 720px) { .lg-hint { display: none; } }
 
-    /* —— all agents bento —— */
-    .roster { padding: 0.5rem 0 2rem; }
-    .roster-head {
-      display: flex; flex-wrap: wrap; align-items: end; gap: 1rem;
-      margin-bottom: 1.1rem;
-    }
-    .roster-head h2 {
+    /* ---------- Sections ---------- */
+    .section { padding: 6.5rem 0; border-top: 1px solid var(--hairline); scroll-margin-top: 3.5rem; }
+    .s-head { max-width: 46rem; margin-bottom: 2.6rem; }
+    .s-head h2 {
       margin: 0;
-      font-size: clamp(1.6rem, 3.2vw, 2.25rem);
-      font-weight: 700; letter-spacing: -0.035em;
+      font-size: clamp(2.2rem, 4.6vw, 3.4rem);
+      font-weight: 700;
+      letter-spacing: -0.04em;
+      line-height: 1.04;
+      color: var(--navy);
     }
-    .roster-head p {
-      margin: 0.25rem 0 0; color: var(--muted); font-size: 0.88rem;
-      width: 100%;
+    .s-head .sub {
+      margin: 1.05rem 0 0;
+      font-size: 1.02rem;
+      font-weight: 300;
+      line-height: 1.55;
+      color: var(--ink-3);
     }
+
+    [data-reveal] {
+      opacity: 0;
+      transform: translateY(26px);
+      transition: opacity 0.7s ease, transform 0.85s var(--spring);
+      transition-delay: calc(var(--i, 0) * 70ms);
+    }
+    [data-reveal].in { opacity: 1; transform: none; }
+
+    /* ---------- Quiet controls ---------- */
     .controls {
-      margin-left: auto;
-      display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.55rem;
+      align-items: center;
+      margin-bottom: 1.5rem;
     }
     .controls input, .controls select {
-      border: 1px solid var(--hair-strong);
-      background: var(--white);
-      color: var(--ink);
-      border-radius: var(--radius-sm);
-      padding: 0.45rem 0.65rem;
-      font-size: 0.78rem;
+      border: 1px solid var(--hairline);
+      background: rgba(255, 255, 255, 0.7);
+      color: var(--ink-1);
+      border-radius: 11px;
+      padding: 0.5rem 0.85rem;
+      font: inherit;
+      font-size: 0.8rem;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
     }
-    .controls input { min-width: 11rem; font-family: var(--mono); font-size: 0.72rem; }
+    .controls input { min-width: 12rem; }
+    .controls input::placeholder { color: var(--ink-4); }
     .controls input:focus, .controls select:focus {
-      outline: none; border-color: var(--teal);
-      box-shadow: 0 0 0 3px var(--teal-soft);
+      outline: none;
+      border-color: var(--teal);
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(6, 189, 180, 0.16);
     }
 
+    /* ---------- Bento ---------- */
     .bento {
       display: grid;
       grid-template-columns: repeat(6, 1fr);
-      gap: 0.75rem;
+      gap: 1.1rem;
     }
-    @media (max-width: 960px) { .bento { grid-template-columns: repeat(2, 1fr); } }
-    @media (max-width: 560px) { .bento { grid-template-columns: 1fr; } }
-    .tile { grid-column: span 2; }
-    .tile.span-3 { grid-column: span 3; }
-    .tile.span-4 { grid-column: span 4; }
-    @media (max-width: 960px) {
-      .tile, .tile.span-3, .tile.span-4 { grid-column: span 1; }
+    .span-2 { grid-column: span 2; }
+    .span-3 { grid-column: span 3; }
+    .span-4 { grid-column: span 4; }
+    @media (max-width: 1080px) {
+      .bento { grid-template-columns: repeat(2, 1fr); }
+      .span-2 { grid-column: span 1; }
+      .span-3, .span-4 { grid-column: span 2; }
+    }
+    @media (max-width: 620px) {
+      .bento { grid-template-columns: 1fr; }
+      .span-2, .span-3, .span-4 { grid-column: span 1; }
     }
 
     .tile {
       position: relative;
-      background: var(--white);
-      border: 1px solid var(--hair);
-      border-radius: 18px;
-      box-shadow: var(--shadow);
+      background: #fff;
+      border: 1px solid var(--hairline-mid);
+      border-radius: 24px;
+      box-shadow: var(--shadow-soft);
       overflow: hidden;
-      transition: opacity .25s, transform .2s, box-shadow .2s, border-color .2s;
+      display: flex;
+      flex-direction: column;
+      transition: box-shadow 0.35s ease, transform 0.35s var(--ease-out), border-color 0.3s ease;
     }
-    .tile::after {
-      content: var(--n);
-      position: absolute; right: 0.6rem; top: 0.2rem;
-      font-size: 3.2rem; font-weight: 700; letter-spacing: -0.06em;
-      color: rgba(35,39,61,0.045); pointer-events: none; line-height: 1;
-    }
-    .tile.on-path {
-      border-color: rgba(6,189,180,0.55);
-      box-shadow: 0 0 0 1px var(--teal-soft), var(--shadow-lift);
-    }
-    .tile.dim { opacity: 0.38; }
+    .tile:hover { box-shadow: var(--shadow-lift); transform: translateY(-3px); }
+    .tile.open { border-color: rgba(6, 189, 180, 0.45); }
     .tile-head {
-      width: 100%; text-align: left; border: 0; background: transparent;
-      padding: 1.15rem 1.15rem 1rem; cursor: pointer;
-      display: grid; grid-template-columns: 1fr auto; gap: 0.15rem 0.5rem;
-      position: relative; z-index: 1;
+      position: relative;
+      display: block;
+      width: 100%;
+      padding: 1.8rem 1.8rem 1.65rem;
+      background: none;
+      border: 0;
+      font: inherit;
+      color: inherit;
+      text-align: left;
+      cursor: pointer;
     }
+    .tile-wm {
+      position: absolute;
+      right: 1.15rem;
+      bottom: 0.35rem;
+      font-size: 5.6rem;
+      font-weight: 700;
+      letter-spacing: -0.05em;
+      line-height: 1;
+      color: rgba(35, 39, 61, 0.05);
+      pointer-events: none;
+      user-select: none;
+    }
+    .tile-top { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
     .tile-stage {
-      font-size: 0.65rem; font-weight: 600; letter-spacing: 0.12em;
-      text-transform: uppercase; color: var(--teal-dark);
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--teal-dark);
+    }
+    .tile-chevron {
+      flex: none;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: 1px solid var(--hairline-strong);
+      display: grid;
+      place-items: center;
+      transition: transform 0.4s var(--spring), background 0.2s ease, border-color 0.2s ease;
+    }
+    .tile-chevron::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-right: 1.5px solid var(--slate);
+      border-bottom: 1.5px solid var(--slate);
+      transform: rotate(45deg) translate(-1px, -1px);
+    }
+    .tile.open .tile-chevron {
+      transform: rotate(180deg);
+      background: rgba(6, 189, 180, 0.09);
+      border-color: rgba(6, 189, 180, 0.45);
     }
     .tile-count {
-      font-size: 1.85rem; font-weight: 700; letter-spacing: -0.04em;
-      grid-column: 1; line-height: 1.1;
+      display: block;
+      margin-top: 1rem;
+      font-size: 2.6rem;
+      font-weight: 700;
+      letter-spacing: -0.045em;
+      line-height: 1;
+      color: var(--navy);
     }
-    .tile-count::after {
-      content: " agents"; font-size: 0.72rem; font-weight: 500;
-      letter-spacing: 0; color: var(--muted); margin-left: 0.25rem;
+    .tile-count em {
+      font-style: normal;
+      font-size: 0.85rem;
+      font-weight: 400;
+      letter-spacing: 0;
+      color: var(--ink-3);
+      margin-left: 0.35rem;
     }
     .tile-preview {
-      grid-column: 1 / -1; font-size: 0.72rem; color: var(--muted);
-      line-height: 1.35; margin-top: 0.2rem;
+      display: block;
+      margin-top: 0.75rem;
+      font-size: 0.82rem;
+      font-weight: 300;
+      line-height: 1.55;
+      color: var(--ink-3);
     }
-    .chev {
-      grid-row: 1 / 3; grid-column: 2; align-self: center;
-      width: 0.5rem; height: 0.5rem;
-      border-right: 2px solid var(--mid); border-bottom: 2px solid var(--mid);
-      transform: rotate(45deg); transition: transform .2s;
+    .tile-path {
+      display: block;
+      margin-top: 0.55rem;
+      font-family: var(--mono);
+      font-size: 0.66rem;
+      letter-spacing: 0.06em;
+      color: var(--teal-dark);
+      min-height: 0.9rem;
     }
-    .tile.open .chev { transform: rotate(225deg); }
+    .tile-match {
+      display: block;
+      margin-top: 0.2rem;
+      font-family: var(--mono);
+      font-size: 0.66rem;
+      letter-spacing: 0.06em;
+      color: var(--ink-4);
+      min-height: 0.9rem;
+    }
     .tile-body {
-      display: none; border-top: 1px solid var(--hair);
-      padding: 0.25rem 0;
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.55s var(--ease-out);
     }
-    .tile.open .tile-body { display: block; }
+    .tile.open .tile-body { max-height: 26rem; overflow-y: auto; }
+    .agent-list {
+      list-style: none;
+      margin: 0 1rem 1rem;
+      padding: 0.4rem 0 0.2rem;
+      border-top: 1px solid var(--hairline);
+      display: flex;
+      flex-direction: column;
+    }
+    .agent-list li + li { border-top: 1px solid var(--hairline); }
     .agent-row {
-      width: 100%; border: 0; background: transparent; cursor: pointer;
-      display: grid; grid-template-columns: 0.6rem 2.4rem 1fr;
-      gap: 0.55rem; align-items: center;
-      padding: 0.7rem 1.15rem; text-align: left;
-      border-bottom: 1px solid var(--hair);
-      transition: background .15s;
+      width: 100%;
+      min-height: 2.9rem;
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      padding: 0.72rem 0.6rem;
+      border: 0;
+      background: none;
+      border-radius: 8px;
+      font: inherit;
+      text-align: left;
+      color: inherit;
+      cursor: pointer;
+      transition: background 0.15s ease, opacity 0.35s ease, outline-color 0.2s ease;
+      outline: 1.5px solid transparent;
+      outline-offset: -1.5px;
     }
-    .agent-row:last-child { border-bottom: 0; }
-    .agent-row:hover { background: rgba(6,189,180,0.06); }
-    .agent-row.on-path .aname { color: var(--teal-dark); font-weight: 600; }
-    .agent-row.selected {
-      background: var(--teal-soft);
+    .agent-row:hover { background: rgba(6, 189, 180, 0.07); }
+    .agent-row.dim { opacity: 0.34; }
+    .agent-row.dim.sel, .agent-row.dim.nb, .agent-row.dim.dep { opacity: 1; }
+    .agent-row.on-path .a-dot { box-shadow: 0 0 0 3px rgba(6, 189, 180, 0.16); }
+    .agent-row.sel { background: rgba(6, 189, 180, 0.1); outline-color: rgba(6, 189, 180, 0.55); }
+    .agent-row.nb { background: rgba(6, 189, 180, 0.06); }
+    .agent-row.dep { outline-style: dashed; outline-color: rgba(6, 189, 180, 0.6); }
+    .a-dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--teal); }
+    .a-dot.stub { background: transparent; border: 1.5px dashed var(--mid); }
+    .a-id { flex: none; min-width: 2.1rem; font-family: var(--mono); font-size: 0.74rem; color: var(--teal-dark); }
+    .a-name { flex: 1; font-size: 0.88rem; font-weight: 500; color: var(--ink-2); line-height: 1.35; }
+    .a-status {
+      flex: none;
+      font-family: var(--mono);
+      font-size: 0.6rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ink-4);
     }
-    .agent-row.dim { opacity: 0.35; }
-    .dot {
-      width: 0.45rem; height: 0.45rem; border-radius: 50%;
-      background: var(--mid);
-    }
-    .dot.on { background: var(--teal); box-shadow: 0 0 0 3px var(--teal-soft); }
-    .aid { font-family: var(--mono); font-size: 0.68rem; color: var(--muted); }
-    .aname { font-size: 0.82rem; font-weight: 500; letter-spacing: -0.01em; }
 
-    /* —— detail panel —— */
+    /* ---------- Detail panel ---------- */
     .scrim {
-      position: fixed; inset: 0; background: rgba(35,39,61,0.28);
-      backdrop-filter: blur(4px); z-index: 50; opacity: 0;
-      transition: opacity .25s;
+      position: fixed;
+      inset: 0;
+      z-index: 240;
+      background: rgba(35, 39, 61, 0.28);
+      backdrop-filter: blur(3px);
+      -webkit-backdrop-filter: blur(3px);
+      opacity: 0;
+      transition: opacity 0.3s ease;
     }
     .scrim.show { opacity: 1; }
     .panel {
-      position: fixed; top: 0; right: 0; z-index: 60;
-      width: min(22rem, 100%); height: 100%;
-      background: var(--white);
-      border-left: 1px solid var(--hair);
-      box-shadow: -12px 0 40px rgba(35,39,61,0.12);
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 260;
+      width: min(26rem, 94vw);
+      background: #fff;
+      border-left: 1px solid var(--hairline);
+      box-shadow: -32px 0 90px -30px rgba(35, 39, 61, 0.35);
       transform: translateX(104%);
-      transition: transform .32s cubic-bezier(.2,.8,.2,1);
-      display: flex; flex-direction: column;
-      padding: 1.25rem 1.35rem 2rem;
+      transition: transform 0.55s var(--spring);
+      overflow-y: auto;
     }
-    .panel.open { transform: translateX(0); }
-    .panel-top { display: flex; justify-content: flex-end; margin-bottom: 0.5rem; }
-    .panel-x {
-      border: 1px solid var(--hair-strong); background: var(--fog);
-      border-radius: var(--radius-sm); width: 2rem; height: 2rem;
-      cursor: pointer; color: var(--ink); font-size: 1.1rem; line-height: 1;
+    .panel.open { transform: none; }
+    .panel-inner { padding: 2.4rem 1.8rem 3rem; }
+    .panel-close {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 1px solid var(--hairline-strong);
+      background: #fff;
+      color: var(--slate);
+      font-size: 1.05rem;
+      line-height: 1;
+      cursor: pointer;
+      transition: border-color 0.2s ease, color 0.2s ease, transform 0.3s var(--spring);
     }
-    .panel .p-id {
-      font-family: var(--mono); font-size: 0.72rem; color: var(--teal-dark);
-      letter-spacing: 0.04em;
+    .panel-close:hover { border-color: var(--teal); color: var(--teal-dark); transform: rotate(90deg); }
+    .p-id {
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      letter-spacing: 0.06em;
+      color: var(--teal-dark);
+      margin-bottom: 0.5rem;
     }
     .panel h3 {
-      margin: 0.2rem 0 0.55rem;
-      font-size: 1.35rem; font-weight: 700; letter-spacing: -0.03em;
+      margin: 0 2rem 0.8rem 0;
+      font-size: 1.45rem;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      line-height: 1.15;
+      color: var(--navy);
     }
     .badge {
-      display: inline-flex; align-items: center; gap: 0.35rem;
-      font-size: 0.65rem; font-weight: 600; letter-spacing: 0.08em;
-      text-transform: uppercase; color: var(--muted); margin-bottom: 0.85rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-family: var(--mono);
+      font-size: 0.64rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+      margin-bottom: 1.4rem;
     }
     .badge i {
-      width: 0.45rem; height: 0.45rem; border-radius: 50%;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
       background: var(--teal);
+      box-shadow: 0 0 0 3px rgba(6, 189, 180, 0.18);
     }
-    .badge.stub i { background: var(--mid); }
+    .badge.stub i { background: transparent; border: 1.5px dashed var(--mid); box-shadow: none; }
     .panel dl {
-      margin: 0; display: grid; grid-template-columns: 5rem 1fr;
-      gap: 0.4rem 0.5rem; font-size: 0.78rem;
-      padding-top: 0.75rem; border-top: 1px solid var(--hair);
+      margin: 0;
+      display: grid;
+      grid-template-columns: 4.6rem 1fr;
+      gap: 0.5rem 0.75rem;
+      font-size: 0.83rem;
+      padding: 1.1rem 0;
+      border-top: 1px solid var(--hairline);
+      border-bottom: 1px solid var(--hairline);
     }
-    .panel dt { color: var(--muted); }
-    .panel dd { margin: 0; word-break: break-word; }
-    .panel code { font-family: var(--mono); font-size: 0.65rem; color: var(--slate); }
+    .panel dt { color: var(--ink-4); font-weight: 400; }
+    .panel dd { margin: 0; color: var(--ink-2); word-break: break-word; }
+    .panel code { font-family: var(--mono); font-size: 0.7rem; color: var(--teal-dark); }
     .p-label {
-      margin: 1.1rem 0 0.45rem;
-      font-size: 0.62rem; font-weight: 600; letter-spacing: 0.1em;
-      text-transform: uppercase; color: var(--muted);
+      margin: 1.5rem 0 0.55rem;
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--ink-4);
     }
-    .mini-row { display: flex; flex-wrap: wrap; gap: 0.35rem; }
-    .mini {
-      border: 1px solid var(--hair-strong); background: var(--fog);
-      border-radius: 8px; padding: 0.35rem 0.55rem;
-      font-size: 0.68rem; font-weight: 600; cursor: pointer; color: var(--ink);
+    .mini-pills { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+    .mini-pill {
+      border: 1px solid rgba(6, 189, 180, 0.4);
+      background: rgba(6, 189, 180, 0.06);
+      color: var(--teal-dark);
+      border-radius: 10px;
+      padding: 0.34rem 0.75rem;
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease;
     }
-    .mini:hover { border-color: var(--teal); color: var(--teal-dark); }
-    .conn-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.3rem; }
-    .conn-list li {
-      font-family: var(--mono); font-size: 0.72rem; color: var(--muted);
-      display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: baseline;
-    }
+    .mini-pill:hover { background: rgba(6, 189, 180, 0.14); border-color: var(--teal); }
+    .p-dim { margin: 0; font-size: 0.8rem; font-weight: 300; color: var(--ink-4); }
+    .conn-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 0.4rem; }
+    .conn-list li { font-family: var(--mono); font-size: 0.74rem; color: var(--ink-3); }
+    .conn-list .dir { color: var(--teal); }
     .conn-list button {
-      border: 0; background: none; color: var(--teal-dark);
-      font: inherit; cursor: pointer; padding: 0; font-weight: 600;
+      background: none;
+      border: none;
+      padding: 0;
+      font: inherit;
+      color: var(--teal-dark);
+      cursor: pointer;
     }
     .conn-list button:hover { text-decoration: underline; }
-    .c-kind { color: var(--mid); font-size: 0.62rem; }
-    .p-dim { color: var(--muted); font-size: 0.78rem; margin: 0; }
-
-    footer.note {
-      margin-top: 1.5rem; padding-top: 1rem;
-      border-top: 1px solid var(--hair);
-      font-family: var(--mono); font-size: 0.65rem; color: var(--muted);
-      display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center;
+    .conn-list .c-kind { color: var(--ink-4); }
+    .dep-row { display: flex; flex-direction: column; gap: 0.25rem; margin-bottom: 0.55rem; }
+    .dep-pill {
+      align-self: flex-start;
+      border: 1.5px dashed rgba(6, 189, 180, 0.55);
+      background: rgba(6, 189, 180, 0.04);
+      color: var(--teal-dark);
+      border-radius: 10px;
+      padding: 0.38rem 0.8rem;
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease;
     }
-    footer.note img { width: 14px; height: 14px; }
+    .dep-pill:hover { background: rgba(6, 189, 180, 0.12); border-color: var(--teal); }
+    .dep-pill .dep-arrow { color: var(--teal); }
+    .dep-label { font-family: var(--mono); font-size: 0.6rem; color: var(--ink-4); padding-left: 0.15rem; }
+
+    /* ---------- Footer ---------- */
+    footer {
+      border-top: 1px solid var(--hairline);
+      padding: 2.4rem 0 3.2rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.6rem 1.5rem;
+      justify-content: space-between;
+      font-size: 0.78rem;
+      font-weight: 300;
+      color: var(--ink-3);
+    }
+    footer .brand img { width: 18px; height: 18px; }
+    footer .brand-name { font-size: 0.92rem; }
+    footer .gen { font-family: var(--mono); font-size: 0.66rem; color: var(--ink-4); }
+    footer code { font-family: var(--mono); }
+
+    @media (max-width: 860px) {
+      .stage-view { padding-top: 2.4rem; }
+      .stage-meta { padding: 1.25rem 1.4rem 0; }
+      .stage-track { padding: 1.25rem 1.4rem 1.1rem; }
+      .stage-legend { padding: 0.75rem 1.4rem 0.9rem; }
+      .cell { width: 9.6rem; min-height: 8rem; }
+      .conn { width: 2.4rem; }
+    }
 
     @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
       *, *::before, *::after {
-        animation: none !important; transition: none !important;
+        animation: none !important;
+        transition: none !important;
       }
+      [data-reveal] { opacity: 1; transform: none; }
+      .js .stage-path .cell, .js .stage-path .conn { opacity: 1; }
+      .conn .pulse { display: none; }
     }
   </style>
 </head>
 <body>
-  <header class="bar" id="bar">
-    <a class="bar-brand" href="https://telivity.app" aria-label="Telivity">
-      <img src="assets/telivity/brand/mark.svg" width="22" height="22" alt="" />
-      <span>Telivity</span>
-    </a>
-    <span class="bar-title">Agent connections</span>
-    <span class="bar-meta">77 agents · 27 edges</span>
+  <nav class="nav" id="nav">
+    <div class="nav-inner">
+      <a class="brand" href="#stage" aria-label="Telivity Otaip agent graph">
+        <img src="assets/telivity/brand/mark.svg" width="22" height="22" alt="" />
+        <span class="brand-name">Telivity</span>
+        <span class="brand-sub">/ Otaip</span>
+      </a>
+      <div class="nav-links">
+        <a href="#stage">Stage</a>
+        <a href="#agents">Agents</a>
+        <a class="ext" href="https://telivity.app">telivity.app ↗</a>
+      </div>
+    </div>
+  </nav>
+
+  <header class="stage-view" id="stage">
+    <div class="shell">
+      <div class="stage-head">
+        <p class="eyebrow" data-reveal style="--i:0">Telivity Otaip · Agent graph</p>
+        <h1 data-reveal style="--i:1">Agent connections<span class="t">.</span></h1>
+        <p class="fact" data-reveal style="--i:2">77 agents · 12 stages · 5 orchestrator pipelines — one shared contract, rendered from <code>agents.graph.json</code>.</p>
+      </div>
+      <div class="wf-select" role="group" aria-label="Select workflow" data-reveal style="--i:3">
+          <button type="button" class="seg featured active" data-wf-select="full_booking" aria-pressed="true">
+            <span class="seg-name">full_booking</span>
+            <span class="seg-count">9 agents</span>
+          </button>
+          <button type="button" class="seg" data-wf-select="book_to_ticket" aria-pressed="false">
+            <span class="seg-name">book_to_ticket</span>
+            <span class="seg-count">4 agents</span>
+          </button>
+          <button type="button" class="seg" data-wf-select="exchange_flow" aria-pressed="false">
+            <span class="seg-name">exchange_flow</span>
+            <span class="seg-count">2 agents</span>
+          </button>
+          <button type="button" class="seg" data-wf-select="refund_flow" aria-pressed="false">
+            <span class="seg-name">refund_flow</span>
+            <span class="seg-count">2 agents</span>
+          </button>
+          <button type="button" class="seg" data-wf-select="search_to_price" aria-pressed="false">
+            <span class="seg-name">search_to_price</span>
+            <span class="seg-count">5 agents</span>
+          </button>
+      </div>
+      <div class="stage-card" id="stage-card" data-reveal style="--i:4">
+        <div class="stage-paths">
+          <section class="stage-path active" data-wf-path="full_booking" aria-label="full_booking pipeline">
+            <div class="stage-meta">
+              <div class="stage-meta-l">
+                <span class="stage-wf-name">full_booking</span>
+                <span class="stage-wf-tag">Orchestrator pipeline</span>
+              </div>
+              <div class="stage-wf-stats">9 agents · 4 stages · Search → Pricing → Booking → Ticketing</div>
+            </div>
+            <div class="stage-track">
+              <button type="button" class="cell" data-agent="1.1" style="--i:0">
+              <span class="cell-head"><span class="cell-stage">Search</span><span class="cell-dot" aria-hidden="true"></span></span>
+              <span class="cell-id">1.1</span>
+              <span class="cell-name">Availability Search</span>
+              <span class="cell-num" aria-hidden="true">01</span>
+            </button>
+              <span class="conn" style="--i:0" aria-hidden="true"><span class="pulse"></span></span>
+              <button type="button" class="cell" data-agent="1.4" style="--i:1">
+              <span class="cell-head"><span class="cell-stage">Search</span><span class="cell-dot" aria-hidden="true"></span></span>
+              <span class="cell-id">1.4</span>
+              <span class="cell-name">Fare Shopping</span>
+              <span class="cell-num" aria-hidden="true">02</span>
+            </button>
+              <span class="conn" style="--i:1" aria-hidden="true"><span class="pulse"></span></span>
+              <button type="button" class="cell" data-agent="2.1" style="--i:2">
+              <span class="cell-head"><span class="cell-stage">Pricing</span><span class="cell-dot" aria-hidden="true"></span></span>
+              <span class="cell-id">2.1</span>
+              <span class="cell-name">Fare Rule Agent</span>
+              <span class="cell-num" aria-hidden="true">03</span>
+            </button>
+              <span class="conn" style="--i:2" aria-hidden="true"><span class="pulse"></span></span>
+              <button type="button" class="cell" data-agent="2.2" style="--i:3">
+              <span class="cell-head"><span class="cell-stage">Pricing</span><span class="cell-dot" aria-hidden="true"></span></span>
+              <span class="cell-id">2.2</span>
+              <span class="cell-name">Fare Construction</span>
+              <span class="cell-num" aria-hidden="true">04</span>
+            </button>
+              <span class="conn" style="--i:3" aria-hidden="true"><span class="pulse"></span></span>
+              <button type="button" class="cell" data-agent="2.3" style="--i:4">
+              <span class="cell-head"><span class="cell-stage">Pricing</span><span class="cell-dot" aria-hidden="true"></span></span>
+              <span class="cell-id">2.3</span>
+              <span class="cell-name">Tax Calculation</span>
+              <span class="cell-num" aria-hidden="true">05</span>
+            </button>
+              <span class="conn" style="--i:4" aria-hidden="true"><span class="pulse"></span></span>
+              <button type="button" class="cell" data-agent="3.3" style="--i:5">
+              <span class="cell-head"><span class="cell-stage">Booking</span><span class="cell-dot" aria-hidden="true"></span></span>
+              <span class="cell-id">3.3</span>
+              <span class="cell-name">PNR Validation</span>
+              <span class="cell-num" aria-hidden="true">06</span>
+            </button>
+              <span class="conn" style="--i:5" aria-hidden="true"><span class="pulse"></span></span>
+              <button type="button" class="cell" data-agent="3.1" style="--i:6">
+              <span class="cell-head"><span class="cell-stage">Booking</span><span class="cell-dot" aria-hidden="true"></span></span>
+              <span class="cell-id">3.1</span>
+              <span class="cell-name">GDS/NDC Router</span>
+              <span class="cell-num" aria-hidden="true">07</span>
+            </button>
+              <span class="conn" style="--i:6" aria-hidden="true"><span class="pulse"></span></span>
+              <button type="button" class="cell" data-agent="3.2" style="--i:7">
+              <span class="cell-head"><span class="cell-stage">Booking</span><span class="cell-dot" aria-hidden="true"></span></span>
+              <span class="cell-id">3.2</span>
+              <span class="cell-name">PNR Builder</span>
+              <span class="cell-num" aria-hidden="true">08</span>
+            </button>
+              <span class="conn" style="--i:7" aria-hidden="true"><span class="pulse"></span></span>
+              <button type="button" class="cell" data-agent="4.1" style="--i:8">
+              <span class="cell-head"><span class="cell-stage">Ticketing</span><span class="cell-dot" aria-hidden="true"></span></span>
+              <span class="cell-id">4.1</span>
+              <span class="cell-name">Ticket Issuance</span>
+              <span class="cell-num" aria-hidden="true">09</span>
+            </button>
+            </div>
+          </section>
+          <section class="stage-path" data-wf-path="book_to_ticket" hidden aria-label="book_to_ticket pipeline">
+            <div class="stage-meta">
+              <div class="stage-meta-l">
+                <span class="stage-wf-name">book_to_ticket</span>
+                <span class="stage-wf-tag">Orchestrator pipeline</span>
+              </div>
+              <div class="stage-wf-stats">4 agents · 2 stages · Booking → Ticketing</div>
+            </div>
+            <div class="stage-track">
+              <button type="button" class="cell" data-agent="3.3" style="--i:0">
+              <span class="cell-head"><span class="cell-stage">Booking</span><span class="cell-dot" aria-hidden="true"></span></span>
+              <span class="cell-id">3.3</span>
+              <span class="cell-name">PNR Validation</span>
+              <span class="cell-num" aria-hidden="true">01</span>
+            </button>
+              <span class="conn" style="--i:0" aria-hidden="true"><span class="pulse"></span></span>
+              <button type="button" class="cell" data-agent="3.1" style="--i:1">
+              <span class="cell-head"><span class="cell-stage">Booking</span><span class="cell-dot" aria-hidden="true"></span></span>
+              <span class="cell-id">3.1</span>
+              <span class="cell-name">GDS/NDC Router</span>
+              <span class="cell-num" aria-hidden="true">02</span>
+            </button>
+              <span class="conn" style="--i:1" aria-hidden="true"><span class="pulse"></span></span>
+              <button type="button" class="cell" data-agent="3.2" style="--i:2">
+              <span class="cell-head"><span class="cell-stage">Booking</span><span class="cell-dot" aria-hidden="true"></span></span>
+              <span class="cell-id">3.2</span>
+              <span class="cell-name">PNR Builder</span>
+              <span class="cell-num" aria-hidden="true">03</span>
+            </button>
+              <span class="conn" style="--i:2" aria-hidden="true"><span class="pulse"></span></span>
+              <button type="button" class="cell" data-agent="4.1" style="--i:3">
+              <span class="cell-head"><span class="cell-stage">Ticketing</span><span class="cell-dot" aria-hidden="true"></span></span>
+              <span class="cell-id">4.1</span>
+              <span class="cell-name">Ticket Issuance</span>
+              <span class="cell-num" aria-hidden="true">04</span>
+            </button>
+            </div>
+          </section>
+          <section class="stage-path" data-wf-path="exchange_flow" hidden aria-label="exchange_flow pipeline">
+            <div class="stage-meta">
+              <div class="stage-meta-l">
+                <span class="stage-wf-name">exchange_flow</span>
+                <span class="stage-wf-tag">Orchestrator pipeline</span>
+              </div>
+              <div class="stage-wf-stats">2 agents · 1 stage · Exchange</div>
+            </div>
+            <div class="stage-track">
+              <button type="button" class="cell" data-agent="5.1" style="--i:0">
+              <span class="cell-head"><span class="cell-stage">Exchange</span><span class="cell-dot" aria-hidden="true"></span></span>
+              <span class="cell-id">5.1</span>
+              <span class="cell-name">Change Management</span>
+              <span class="cell-num" aria-hidden="true">01</span>
+            </button>
+              <span class="conn" style="--i:0" aria-hidden="true"><span class="pulse"></span></span>
+              <button type="button" class="cell" data-agent="5.2" style="--i:1">
+              <span class="cell-head"><span class="cell-stage">Exchange</span><span class="cell-dot" aria-hidden="true"></span></span>
+              <span class="cell-id">5.2</span>
+              <span class="cell-name">Exchange/Reissue</span>
+              <span class="cell-num" aria-hidden="true">02</span>
+            </button>
+            </div>
+          </section>
+          <section class="stage-path" data-wf-path="refund_flow" hidden aria-label="refund_flow pipeline">
+            <div class="stage-meta">
+              <div class="stage-meta-l">
+                <span class="stage-wf-name">refund_flow</span>
+                <span class="stage-wf-tag">Orchestrator pipeline</span>
+              </div>
+              <div class="stage-wf-stats">2 agents · 1 stage · Settlement</div>
+            </div>
+            <div class="stage-track">
+              <button type="button" class="cell" data-agent="6.1" style="--i:0">
+              <span class="cell-head"><span class="cell-stage">Settlement</span><span class="cell-dot" aria-hidden="true"></span></span>
+              <span class="cell-id">6.1</span>
+              <span class="cell-name">Refund Processing</span>
+              <span class="cell-num" aria-hidden="true">01</span>
+            </button>
+              <span class="conn" style="--i:0" aria-hidden="true"><span class="pulse"></span></span>
+              <button type="button" class="cell" data-agent="6.2" style="--i:1">
+              <span class="cell-head"><span class="cell-stage">Settlement</span><span class="cell-dot" aria-hidden="true"></span></span>
+              <span class="cell-id">6.2</span>
+              <span class="cell-name">ADM Prevention</span>
+              <span class="cell-num" aria-hidden="true">02</span>
+            </button>
+            </div>
+          </section>
+          <section class="stage-path" data-wf-path="search_to_price" hidden aria-label="search_to_price pipeline">
+            <div class="stage-meta">
+              <div class="stage-meta-l">
+                <span class="stage-wf-name">search_to_price</span>
+                <span class="stage-wf-tag">Orchestrator pipeline</span>
+              </div>
+              <div class="stage-wf-stats">5 agents · 2 stages · Search → Pricing</div>
+            </div>
+            <div class="stage-track">
+              <button type="button" class="cell" data-agent="1.1" style="--i:0">
+              <span class="cell-head"><span class="cell-stage">Search</span><span class="cell-dot" aria-hidden="true"></span></span>
+              <span class="cell-id">1.1</span>
+              <span class="cell-name">Availability Search</span>
+              <span class="cell-num" aria-hidden="true">01</span>
+            </button>
+              <span class="conn" style="--i:0" aria-hidden="true"><span class="pulse"></span></span>
+              <button type="button" class="cell" data-agent="1.4" style="--i:1">
+              <span class="cell-head"><span class="cell-stage">Search</span><span class="cell-dot" aria-hidden="true"></span></span>
+              <span class="cell-id">1.4</span>
+              <span class="cell-name">Fare Shopping</span>
+              <span class="cell-num" aria-hidden="true">02</span>
+            </button>
+              <span class="conn" style="--i:1" aria-hidden="true"><span class="pulse"></span></span>
+              <button type="button" class="cell" data-agent="2.1" style="--i:2">
+              <span class="cell-head"><span class="cell-stage">Pricing</span><span class="cell-dot" aria-hidden="true"></span></span>
+              <span class="cell-id">2.1</span>
+              <span class="cell-name">Fare Rule Agent</span>
+              <span class="cell-num" aria-hidden="true">03</span>
+            </button>
+              <span class="conn" style="--i:2" aria-hidden="true"><span class="pulse"></span></span>
+              <button type="button" class="cell" data-agent="2.2" style="--i:3">
+              <span class="cell-head"><span class="cell-stage">Pricing</span><span class="cell-dot" aria-hidden="true"></span></span>
+              <span class="cell-id">2.2</span>
+              <span class="cell-name">Fare Construction</span>
+              <span class="cell-num" aria-hidden="true">04</span>
+            </button>
+              <span class="conn" style="--i:3" aria-hidden="true"><span class="pulse"></span></span>
+              <button type="button" class="cell" data-agent="2.3" style="--i:4">
+              <span class="cell-head"><span class="cell-stage">Pricing</span><span class="cell-dot" aria-hidden="true"></span></span>
+              <span class="cell-id">2.3</span>
+              <span class="cell-name">Tax Calculation</span>
+              <span class="cell-num" aria-hidden="true">05</span>
+            </button>
+            </div>
+          </section>
+        </div>
+        <div class="stage-legend">
+          <span class="lg"><i class="lg-dot"></i>active</span>
+          <span class="lg"><i class="lg-dot stub"></i>stub</span>
+          <span class="lg-hint">scroll or drag the track · select a cell for detail</span>
+        </div>
+      </div>
+    </div>
   </header>
 
-  <div class="shell">
-    <section class="stage-wrap" id="stage">
-      <div class="stage-head">
-        <div>
-          <h1>How agents <em>connect</em></h1>
-          <p class="stage-sub">Pick a workflow. Watch the chain. Open any agent for its neighbors.</p>
-        </div>
-        <div class="wf-picker" role="group" aria-label="Workflows">
-        <button type="button" class="wf-seg active" data-workflow="full_booking" aria-pressed="true">
-          <span class="wf-name">full_booking</span>
-          <span class="wf-n">9</span>
-        </button>
-        <button type="button" class="wf-seg" data-workflow="book_to_ticket" aria-pressed="false">
-          <span class="wf-name">book_to_ticket</span>
-          <span class="wf-n">4</span>
-        </button>
-        <button type="button" class="wf-seg" data-workflow="exchange_flow" aria-pressed="false">
-          <span class="wf-name">exchange_flow</span>
-          <span class="wf-n">2</span>
-        </button>
-        <button type="button" class="wf-seg" data-workflow="refund_flow" aria-pressed="false">
-          <span class="wf-name">refund_flow</span>
-          <span class="wf-n">2</span>
-        </button>
-        <button type="button" class="wf-seg" data-workflow="search_to_price" aria-pressed="false">
-          <span class="wf-name">search_to_price</span>
-          <span class="wf-n">5</span>
-        </button>
-        </div>
+  <section class="section" id="agents">
+    <div class="shell">
+      <div class="s-head" data-reveal>
+        <p class="eyebrow">The system</p>
+        <h2>Every agent, by stage.</h2>
+        <p class="sub">Agents on the selected pipeline stay lit — the rest dim. Open a stage, select an agent, follow its connections.</p>
       </div>
-
-      <div class="chain-board" id="chain-board" data-wf="full_booking">
-        <div class="chain-label">Workflow path</div>
-        <div class="chain-track" id="chain-track">
-        <div class="chain-item" style="--i:0">
-          <button type="button" class="chain-card" data-id="1.1">
-            <span class="c-step">01</span>
-            <span class="c-id">1.1</span>
-            <span class="c-name">Availability Search</span>
-            <span class="c-stage">Search</span>
-          </button>
-          <div class="conn" aria-hidden="true"><span class="conn-line"></span><span class="conn-arrow"></span></div>
-        </div>
-        <div class="chain-item" style="--i:1">
-          <button type="button" class="chain-card" data-id="1.4">
-            <span class="c-step">02</span>
-            <span class="c-id">1.4</span>
-            <span class="c-name">Fare Shopping</span>
-            <span class="c-stage">Search</span>
-          </button>
-          <div class="conn" aria-hidden="true"><span class="conn-line"></span><span class="conn-arrow"></span></div>
-        </div>
-        <div class="chain-item" style="--i:2">
-          <button type="button" class="chain-card" data-id="2.1">
-            <span class="c-step">03</span>
-            <span class="c-id">2.1</span>
-            <span class="c-name">Fare Rule Agent</span>
-            <span class="c-stage">Pricing</span>
-          </button>
-          <div class="conn" aria-hidden="true"><span class="conn-line"></span><span class="conn-arrow"></span></div>
-        </div>
-        <div class="chain-item" style="--i:3">
-          <button type="button" class="chain-card" data-id="2.2">
-            <span class="c-step">04</span>
-            <span class="c-id">2.2</span>
-            <span class="c-name">Fare Construction</span>
-            <span class="c-stage">Pricing</span>
-          </button>
-          <div class="conn" aria-hidden="true"><span class="conn-line"></span><span class="conn-arrow"></span></div>
-        </div>
-        <div class="chain-item" style="--i:4">
-          <button type="button" class="chain-card" data-id="2.3">
-            <span class="c-step">05</span>
-            <span class="c-id">2.3</span>
-            <span class="c-name">Tax Calculation</span>
-            <span class="c-stage">Pricing</span>
-          </button>
-          <div class="conn" aria-hidden="true"><span class="conn-line"></span><span class="conn-arrow"></span></div>
-        </div>
-        <div class="chain-item" style="--i:5">
-          <button type="button" class="chain-card" data-id="3.3">
-            <span class="c-step">06</span>
-            <span class="c-id">3.3</span>
-            <span class="c-name">PNR Validation</span>
-            <span class="c-stage">Booking</span>
-          </button>
-          <div class="conn" aria-hidden="true"><span class="conn-line"></span><span class="conn-arrow"></span></div>
-        </div>
-        <div class="chain-item" style="--i:6">
-          <button type="button" class="chain-card" data-id="3.1">
-            <span class="c-step">07</span>
-            <span class="c-id">3.1</span>
-            <span class="c-name">GDS/NDC Router</span>
-            <span class="c-stage">Booking</span>
-          </button>
-          <div class="conn" aria-hidden="true"><span class="conn-line"></span><span class="conn-arrow"></span></div>
-        </div>
-        <div class="chain-item" style="--i:7">
-          <button type="button" class="chain-card" data-id="3.2">
-            <span class="c-step">08</span>
-            <span class="c-id">3.2</span>
-            <span class="c-name">PNR Builder</span>
-            <span class="c-stage">Booking</span>
-          </button>
-          <div class="conn" aria-hidden="true"><span class="conn-line"></span><span class="conn-arrow"></span></div>
-        </div>
-        <div class="chain-item" style="--i:8">
-          <button type="button" class="chain-card" data-id="4.1">
-            <span class="c-step">09</span>
-            <span class="c-id">4.1</span>
-            <span class="c-name">Ticket Issuance</span>
-            <span class="c-stage">Ticketing</span>
-          </button>
-          
-        </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="roster" id="roster">
-      <div class="roster-head">
-        <div>
-          <h2>All agents</h2>
-          <p>Stages light up when they sit on the active path. Select an agent to inspect edges.</p>
-        </div>
-        <div class="controls">
-          <input id="search" type="search" placeholder="Search id or name…" />
-          <select id="stage-filter"><option value="all">All stages</option></select>
-          <select id="status-filter">
-            <option value="all">All status</option>
-            <option value="active">Active</option>
-            <option value="stub">Stub</option>
-          </select>
-        </div>
+      <div class="controls" data-reveal>
+        <input id="search" type="search" placeholder="Search agents…" aria-label="Search agents" />
+        <select id="stage-filter" aria-label="Filter by stage">
+          <option value="all">All stages</option>
+        </select>
+        <select id="status-filter" aria-label="Filter by status">
+          <option value="all">All status</option>
+          <option value="active">Active</option>
+          <option value="stub">Stub</option>
+        </select>
       </div>
       <div class="bento" id="bento">
-        <article class="tile span-2" data-stage="reference" style="--n:'01'">
+        <section class="tile span-2" id="tile-reference" data-stage="reference" data-reveal style="--i:0">
           <button type="button" class="tile-head" aria-expanded="false">
-            <span class="tile-stage">Reference</span>
-            <span class="tile-count">7</span>
+            <span class="tile-top">
+              <span class="tile-stage">Reference</span>
+              <span class="tile-chevron" aria-hidden="true"></span>
+            </span>
+            <span class="tile-count">7<em>agents</em></span>
             <span class="tile-preview">Airport/City Code Resolver · Airline Code &amp; Alliance Mapper · +5</span>
-            <span class="chev" aria-hidden="true"></span>
+            <span class="tile-path" aria-hidden="true"></span>
+            <span class="tile-match" aria-live="polite"></span>
+            <span class="tile-wm" aria-hidden="true">01</span>
           </button>
           <div class="tile-body">
-            <button type="button" class="agent-row" data-id="0.1" data-stage="reference" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">0.1</span>
-              <span class="aname">Airport/City Code Resolver</span>
-            </button>
-            <button type="button" class="agent-row" data-id="0.2" data-stage="reference" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">0.2</span>
-              <span class="aname">Airline Code &amp; Alliance Mapper</span>
-            </button>
-            <button type="button" class="agent-row" data-id="0.3" data-stage="reference" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">0.3</span>
-              <span class="aname">Fare Basis Code Decoder</span>
-            </button>
-            <button type="button" class="agent-row" data-id="0.4" data-stage="reference" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">0.4</span>
-              <span class="aname">Class of Service Mapper</span>
-            </button>
-            <button type="button" class="agent-row" data-id="0.5" data-stage="reference" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">0.5</span>
-              <span class="aname">Equipment Type Resolver</span>
-            </button>
-            <button type="button" class="agent-row" data-id="0.6" data-stage="reference" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">0.6</span>
-              <span class="aname">Currency &amp; Tax Code Resolver</span>
-            </button>
-            <button type="button" class="agent-row" data-id="0.7" data-stage="reference" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">0.7</span>
-              <span class="aname">Country Regulatory Resolver</span>
-            </button>
+            <ul class="agent-list">
+              <li><button type="button" class="agent-row" data-agent="0.1">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">0.1</span>
+                <span class="a-name">Airport/City Code Resolver</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="0.2">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">0.2</span>
+                <span class="a-name">Airline Code &amp; Alliance Mapper</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="0.3">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">0.3</span>
+                <span class="a-name">Fare Basis Code Decoder</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="0.4">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">0.4</span>
+                <span class="a-name">Class of Service Mapper</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="0.5">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">0.5</span>
+                <span class="a-name">Equipment Type Resolver</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="0.6">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">0.6</span>
+                <span class="a-name">Currency &amp; Tax Code Resolver</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="0.7">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">0.7</span>
+                <span class="a-name">Country Regulatory Resolver</span>
+                <span class="a-status">active</span>
+              </button></li>
+            </ul>
           </div>
-        </article>
-        <article class="tile span-3" data-stage="search" style="--n:'02'">
+        </section>
+        <section class="tile span-3" id="tile-search" data-stage="search" data-reveal style="--i:1">
           <button type="button" class="tile-head" aria-expanded="false">
-            <span class="tile-stage">Search</span>
-            <span class="tile-count">8</span>
+            <span class="tile-top">
+              <span class="tile-stage">Search</span>
+              <span class="tile-chevron" aria-hidden="true"></span>
+            </span>
+            <span class="tile-count">8<em>agents</em></span>
             <span class="tile-preview">Availability Search · Schedule Lookup · +6</span>
-            <span class="chev" aria-hidden="true"></span>
+            <span class="tile-path" aria-hidden="true"></span>
+            <span class="tile-match" aria-live="polite"></span>
+            <span class="tile-wm" aria-hidden="true">02</span>
           </button>
           <div class="tile-body">
-            <button type="button" class="agent-row" data-id="1.1" data-stage="search" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">1.1</span>
-              <span class="aname">Availability Search</span>
-            </button>
-            <button type="button" class="agent-row" data-id="1.2" data-stage="search" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">1.2</span>
-              <span class="aname">Schedule Lookup</span>
-            </button>
-            <button type="button" class="agent-row" data-id="1.3" data-stage="search" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">1.3</span>
-              <span class="aname">Connection Builder</span>
-            </button>
-            <button type="button" class="agent-row" data-id="1.4" data-stage="search" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">1.4</span>
-              <span class="aname">Fare Shopping</span>
-            </button>
-            <button type="button" class="agent-row" data-id="1.5" data-stage="search" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">1.5</span>
-              <span class="aname">Ancillary Shopping</span>
-            </button>
-            <button type="button" class="agent-row" data-id="1.6" data-stage="search" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">1.6</span>
-              <span class="aname">Multi-Source Aggregator</span>
-            </button>
-            <button type="button" class="agent-row" data-id="1.7" data-stage="search" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">1.7</span>
-              <span class="aname">Hotel &amp; Car Search</span>
-            </button>
-            <button type="button" class="agent-row" data-id="1.8" data-stage="search" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">1.8</span>
-              <span class="aname">AI Travel Advisor</span>
-            </button>
+            <ul class="agent-list">
+              <li><button type="button" class="agent-row" data-agent="1.1">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">1.1</span>
+                <span class="a-name">Availability Search</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="1.2">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">1.2</span>
+                <span class="a-name">Schedule Lookup</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="1.3">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">1.3</span>
+                <span class="a-name">Connection Builder</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="1.4">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">1.4</span>
+                <span class="a-name">Fare Shopping</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="1.5">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">1.5</span>
+                <span class="a-name">Ancillary Shopping</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="1.6">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">1.6</span>
+                <span class="a-name">Multi-Source Aggregator</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="1.7">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">1.7</span>
+                <span class="a-name">Hotel &amp; Car Search</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="1.8">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">1.8</span>
+                <span class="a-name">AI Travel Advisor</span>
+                <span class="a-status">active</span>
+              </button></li>
+            </ul>
           </div>
-        </article>
-        <article class="tile span-3" data-stage="pricing" style="--n:'03'">
+        </section>
+        <section class="tile span-3" id="tile-pricing" data-stage="pricing" data-reveal style="--i:2">
           <button type="button" class="tile-head" aria-expanded="false">
-            <span class="tile-stage">Pricing</span>
-            <span class="tile-count">7</span>
+            <span class="tile-top">
+              <span class="tile-stage">Pricing</span>
+              <span class="tile-chevron" aria-hidden="true"></span>
+            </span>
+            <span class="tile-count">7<em>agents</em></span>
             <span class="tile-preview">Fare Rule Agent · Fare Construction · +5</span>
-            <span class="chev" aria-hidden="true"></span>
+            <span class="tile-path" aria-hidden="true"></span>
+            <span class="tile-match" aria-live="polite"></span>
+            <span class="tile-wm" aria-hidden="true">03</span>
           </button>
           <div class="tile-body">
-            <button type="button" class="agent-row" data-id="2.1" data-stage="pricing" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">2.1</span>
-              <span class="aname">Fare Rule Agent</span>
-            </button>
-            <button type="button" class="agent-row" data-id="2.2" data-stage="pricing" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">2.2</span>
-              <span class="aname">Fare Construction</span>
-            </button>
-            <button type="button" class="agent-row" data-id="2.3" data-stage="pricing" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">2.3</span>
-              <span class="aname">Tax Calculation</span>
-            </button>
-            <button type="button" class="agent-row" data-id="2.4" data-stage="pricing" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">2.4</span>
-              <span class="aname">Offer Builder</span>
-            </button>
-            <button type="button" class="agent-row" data-id="2.5" data-stage="pricing" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">2.5</span>
-              <span class="aname">Corporate Policy Validation</span>
-            </button>
-            <button type="button" class="agent-row" data-id="2.6" data-stage="pricing" data-status="stub">
-              <span class="dot "></span>
-              <span class="aid">2.6</span>
-              <span class="aname">Dynamic Pricing</span>
-            </button>
-            <button type="button" class="agent-row" data-id="2.7" data-stage="pricing" data-status="stub">
-              <span class="dot "></span>
-              <span class="aid">2.7</span>
-              <span class="aname">Revenue Management</span>
-            </button>
+            <ul class="agent-list">
+              <li><button type="button" class="agent-row" data-agent="2.1">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">2.1</span>
+                <span class="a-name">Fare Rule Agent</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="2.2">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">2.2</span>
+                <span class="a-name">Fare Construction</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="2.3">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">2.3</span>
+                <span class="a-name">Tax Calculation</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="2.4">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">2.4</span>
+                <span class="a-name">Offer Builder</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="2.5">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">2.5</span>
+                <span class="a-name">Corporate Policy Validation</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="2.6">
+                <span class="a-dot stub" aria-hidden="true"></span>
+                <span class="a-id">2.6</span>
+                <span class="a-name">Dynamic Pricing</span>
+                <span class="a-status">stub</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="2.7">
+                <span class="a-dot stub" aria-hidden="true"></span>
+                <span class="a-id">2.7</span>
+                <span class="a-name">Revenue Management</span>
+                <span class="a-status">stub</span>
+              </button></li>
+            </ul>
           </div>
-        </article>
-        <article class="tile span-4" data-stage="booking" style="--n:'04'">
+        </section>
+        <section class="tile span-4" id="tile-booking" data-stage="booking" data-reveal style="--i:0">
           <button type="button" class="tile-head" aria-expanded="false">
-            <span class="tile-stage">Booking</span>
-            <span class="tile-count">8</span>
+            <span class="tile-top">
+              <span class="tile-stage">Booking</span>
+              <span class="tile-chevron" aria-hidden="true"></span>
+            </span>
+            <span class="tile-count">8<em>agents</em></span>
             <span class="tile-preview">GDS/NDC Router · PNR Builder · +6</span>
-            <span class="chev" aria-hidden="true"></span>
+            <span class="tile-path" aria-hidden="true"></span>
+            <span class="tile-match" aria-live="polite"></span>
+            <span class="tile-wm" aria-hidden="true">04</span>
           </button>
           <div class="tile-body">
-            <button type="button" class="agent-row" data-id="3.1" data-stage="booking" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">3.1</span>
-              <span class="aname">GDS/NDC Router</span>
-            </button>
-            <button type="button" class="agent-row" data-id="3.2" data-stage="booking" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">3.2</span>
-              <span class="aname">PNR Builder</span>
-            </button>
-            <button type="button" class="agent-row" data-id="3.3" data-stage="booking" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">3.3</span>
-              <span class="aname">PNR Validation</span>
-            </button>
-            <button type="button" class="agent-row" data-id="3.4" data-stage="booking" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">3.4</span>
-              <span class="aname">Queue Management</span>
-            </button>
-            <button type="button" class="agent-row" data-id="3.5" data-stage="booking" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">3.5</span>
-              <span class="aname">API Abstraction</span>
-            </button>
-            <button type="button" class="agent-row" data-id="3.6" data-stage="booking" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">3.6</span>
-              <span class="aname">Order Management</span>
-            </button>
-            <button type="button" class="agent-row" data-id="3.7" data-stage="booking" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">3.7</span>
-              <span class="aname">Payment Processing</span>
-            </button>
-            <button type="button" class="agent-row" data-id="3.8" data-stage="booking" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">3.8</span>
-              <span class="aname">PNR Retrieval</span>
-            </button>
+            <ul class="agent-list">
+              <li><button type="button" class="agent-row" data-agent="3.1">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">3.1</span>
+                <span class="a-name">GDS/NDC Router</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="3.2">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">3.2</span>
+                <span class="a-name">PNR Builder</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="3.3">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">3.3</span>
+                <span class="a-name">PNR Validation</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="3.4">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">3.4</span>
+                <span class="a-name">Queue Management</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="3.5">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">3.5</span>
+                <span class="a-name">API Abstraction</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="3.6">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">3.6</span>
+                <span class="a-name">Order Management</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="3.7">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">3.7</span>
+                <span class="a-name">Payment Processing</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="3.8">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">3.8</span>
+                <span class="a-name">PNR Retrieval</span>
+                <span class="a-status">active</span>
+              </button></li>
+            </ul>
           </div>
-        </article>
-        <article class="tile span-2" data-stage="ticketing" style="--n:'05'">
+        </section>
+        <section class="tile span-2" id="tile-ticketing" data-stage="ticketing" data-reveal style="--i:1">
           <button type="button" class="tile-head" aria-expanded="false">
-            <span class="tile-stage">Ticketing</span>
-            <span class="tile-count">5</span>
+            <span class="tile-top">
+              <span class="tile-stage">Ticketing</span>
+              <span class="tile-chevron" aria-hidden="true"></span>
+            </span>
+            <span class="tile-count">5<em>agents</em></span>
             <span class="tile-preview">Ticket Issuance · EMD Management · +3</span>
-            <span class="chev" aria-hidden="true"></span>
+            <span class="tile-path" aria-hidden="true"></span>
+            <span class="tile-match" aria-live="polite"></span>
+            <span class="tile-wm" aria-hidden="true">05</span>
           </button>
           <div class="tile-body">
-            <button type="button" class="agent-row" data-id="4.1" data-stage="ticketing" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">4.1</span>
-              <span class="aname">Ticket Issuance</span>
-            </button>
-            <button type="button" class="agent-row" data-id="4.2" data-stage="ticketing" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">4.2</span>
-              <span class="aname">EMD Management</span>
-            </button>
-            <button type="button" class="agent-row" data-id="4.3" data-stage="ticketing" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">4.3</span>
-              <span class="aname">Void Agent</span>
-            </button>
-            <button type="button" class="agent-row" data-id="4.4" data-stage="ticketing" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">4.4</span>
-              <span class="aname">Itinerary Delivery</span>
-            </button>
-            <button type="button" class="agent-row" data-id="4.5" data-stage="ticketing" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">4.5</span>
-              <span class="aname">Document Verification</span>
-            </button>
+            <ul class="agent-list">
+              <li><button type="button" class="agent-row" data-agent="4.1">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">4.1</span>
+                <span class="a-name">Ticket Issuance</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="4.2">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">4.2</span>
+                <span class="a-name">EMD Management</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="4.3">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">4.3</span>
+                <span class="a-name">Void Agent</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="4.4">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">4.4</span>
+                <span class="a-name">Itinerary Delivery</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="4.5">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">4.5</span>
+                <span class="a-name">Document Verification</span>
+                <span class="a-status">active</span>
+              </button></li>
+            </ul>
           </div>
-        </article>
-        <article class="tile span-2" data-stage="exchange" style="--n:'06'">
+        </section>
+        <section class="tile span-2" id="tile-exchange" data-stage="exchange" data-reveal style="--i:2">
           <button type="button" class="tile-head" aria-expanded="false">
-            <span class="tile-stage">Exchange</span>
-            <span class="tile-count">6</span>
+            <span class="tile-top">
+              <span class="tile-stage">Exchange</span>
+              <span class="tile-chevron" aria-hidden="true"></span>
+            </span>
+            <span class="tile-count">6<em>agents</em></span>
             <span class="tile-preview">Change Management · Exchange/Reissue · +4</span>
-            <span class="chev" aria-hidden="true"></span>
+            <span class="tile-path" aria-hidden="true"></span>
+            <span class="tile-match" aria-live="polite"></span>
+            <span class="tile-wm" aria-hidden="true">06</span>
           </button>
           <div class="tile-body">
-            <button type="button" class="agent-row" data-id="5.1" data-stage="exchange" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">5.1</span>
-              <span class="aname">Change Management</span>
-            </button>
-            <button type="button" class="agent-row" data-id="5.2" data-stage="exchange" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">5.2</span>
-              <span class="aname">Exchange/Reissue</span>
-            </button>
-            <button type="button" class="agent-row" data-id="5.3" data-stage="exchange" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">5.3</span>
-              <span class="aname">Involuntary Rebook</span>
-            </button>
-            <button type="button" class="agent-row" data-id="5.4" data-stage="exchange" data-status="stub">
-              <span class="dot "></span>
-              <span class="aid">5.4</span>
-              <span class="aname">Disruption Response</span>
-            </button>
-            <button type="button" class="agent-row" data-id="5.5" data-stage="exchange" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">5.5</span>
-              <span class="aname">Self-Service Rebooking</span>
-            </button>
-            <button type="button" class="agent-row" data-id="5.6" data-stage="exchange" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">5.6</span>
-              <span class="aname">Waitlist Management</span>
-            </button>
+            <ul class="agent-list">
+              <li><button type="button" class="agent-row" data-agent="5.1">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">5.1</span>
+                <span class="a-name">Change Management</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="5.2">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">5.2</span>
+                <span class="a-name">Exchange/Reissue</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="5.3">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">5.3</span>
+                <span class="a-name">Involuntary Rebook</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="5.4">
+                <span class="a-dot stub" aria-hidden="true"></span>
+                <span class="a-id">5.4</span>
+                <span class="a-name">Disruption Response</span>
+                <span class="a-status">stub</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="5.5">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">5.5</span>
+                <span class="a-name">Self-Service Rebooking</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="5.6">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">5.6</span>
+                <span class="a-name">Waitlist Management</span>
+                <span class="a-status">active</span>
+              </button></li>
+            </ul>
           </div>
-        </article>
-        <article class="tile span-2" data-stage="settlement" style="--n:'07'">
+        </section>
+        <section class="tile span-2" id="tile-settlement" data-stage="settlement" data-reveal style="--i:0">
           <button type="button" class="tile-head" aria-expanded="false">
-            <span class="tile-stage">Settlement</span>
-            <span class="tile-count">6</span>
+            <span class="tile-top">
+              <span class="tile-stage">Settlement</span>
+              <span class="tile-chevron" aria-hidden="true"></span>
+            </span>
+            <span class="tile-count">6<em>agents</em></span>
             <span class="tile-preview">Refund Processing · ADM Prevention · +4</span>
-            <span class="chev" aria-hidden="true"></span>
+            <span class="tile-path" aria-hidden="true"></span>
+            <span class="tile-match" aria-live="polite"></span>
+            <span class="tile-wm" aria-hidden="true">07</span>
           </button>
           <div class="tile-body">
-            <button type="button" class="agent-row" data-id="6.1" data-stage="settlement" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">6.1</span>
-              <span class="aname">Refund Processing</span>
-            </button>
-            <button type="button" class="agent-row" data-id="6.2" data-stage="settlement" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">6.2</span>
-              <span class="aname">ADM Prevention</span>
-            </button>
-            <button type="button" class="agent-row" data-id="6.3" data-stage="settlement" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">6.3</span>
-              <span class="aname">ADM/ACM Processing</span>
-            </button>
-            <button type="button" class="agent-row" data-id="6.4" data-stage="settlement" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">6.4</span>
-              <span class="aname">Customer Communication</span>
-            </button>
-            <button type="button" class="agent-row" data-id="6.5" data-stage="settlement" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">6.5</span>
-              <span class="aname">Feedback &amp; Complaint</span>
-            </button>
-            <button type="button" class="agent-row" data-id="6.6" data-stage="settlement" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">6.6</span>
-              <span class="aname">Loyalty Mileage</span>
-            </button>
+            <ul class="agent-list">
+              <li><button type="button" class="agent-row" data-agent="6.1">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">6.1</span>
+                <span class="a-name">Refund Processing</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="6.2">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">6.2</span>
+                <span class="a-name">ADM Prevention</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="6.3">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">6.3</span>
+                <span class="a-name">ADM/ACM Processing</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="6.4">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">6.4</span>
+                <span class="a-name">Customer Communication</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="6.5">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">6.5</span>
+                <span class="a-name">Feedback &amp; Complaint</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="6.6">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">6.6</span>
+                <span class="a-name">Loyalty Mileage</span>
+                <span class="a-status">active</span>
+              </button></li>
+            </ul>
           </div>
-        </article>
-        <article class="tile span-2" data-stage="reconciliation" style="--n:'08'">
+        </section>
+        <section class="tile span-2" id="tile-reconciliation" data-stage="reconciliation" data-reveal style="--i:1">
           <button type="button" class="tile-head" aria-expanded="false">
-            <span class="tile-stage">Reconciliation</span>
-            <span class="tile-count">6</span>
+            <span class="tile-top">
+              <span class="tile-stage">Reconciliation</span>
+              <span class="tile-chevron" aria-hidden="true"></span>
+            </span>
+            <span class="tile-count">6<em>agents</em></span>
             <span class="tile-preview">BSP Reconciliation · ARC Reconciliation · +4</span>
-            <span class="chev" aria-hidden="true"></span>
+            <span class="tile-path" aria-hidden="true"></span>
+            <span class="tile-match" aria-live="polite"></span>
+            <span class="tile-wm" aria-hidden="true">08</span>
           </button>
           <div class="tile-body">
-            <button type="button" class="agent-row" data-id="7.1" data-stage="reconciliation" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">7.1</span>
-              <span class="aname">BSP Reconciliation</span>
-            </button>
-            <button type="button" class="agent-row" data-id="7.2" data-stage="reconciliation" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">7.2</span>
-              <span class="aname">ARC Reconciliation</span>
-            </button>
-            <button type="button" class="agent-row" data-id="7.3" data-stage="reconciliation" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">7.3</span>
-              <span class="aname">Commission Management</span>
-            </button>
-            <button type="button" class="agent-row" data-id="7.4" data-stage="reconciliation" data-status="stub">
-              <span class="dot "></span>
-              <span class="aid">7.4</span>
-              <span class="aname">Interline Settlement</span>
-            </button>
-            <button type="button" class="agent-row" data-id="7.5" data-stage="reconciliation" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">7.5</span>
-              <span class="aname">Financial Reporting</span>
-            </button>
-            <button type="button" class="agent-row" data-id="7.6" data-stage="reconciliation" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">7.6</span>
-              <span class="aname">Revenue Accounting</span>
-            </button>
+            <ul class="agent-list">
+              <li><button type="button" class="agent-row" data-agent="7.1">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">7.1</span>
+                <span class="a-name">BSP Reconciliation</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="7.2">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">7.2</span>
+                <span class="a-name">ARC Reconciliation</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="7.3">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">7.3</span>
+                <span class="a-name">Commission Management</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="7.4">
+                <span class="a-dot stub" aria-hidden="true"></span>
+                <span class="a-id">7.4</span>
+                <span class="a-name">Interline Settlement</span>
+                <span class="a-status">stub</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="7.5">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">7.5</span>
+                <span class="a-name">Financial Reporting</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="7.6">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">7.6</span>
+                <span class="a-name">Revenue Accounting</span>
+                <span class="a-status">active</span>
+              </button></li>
+            </ul>
           </div>
-        </article>
-        <article class="tile span-2" data-stage="tmc" style="--n:'09'">
+        </section>
+        <section class="tile span-2" id="tile-tmc" data-stage="tmc" data-reveal style="--i:2">
           <button type="button" class="tile-head" aria-expanded="false">
-            <span class="tile-stage">TMC</span>
-            <span class="tile-count">5</span>
+            <span class="tile-top">
+              <span class="tile-stage">TMC</span>
+              <span class="tile-chevron" aria-hidden="true"></span>
+            </span>
+            <span class="tile-count">5<em>agents</em></span>
             <span class="tile-preview">Traveler Profile · Corporate Account · +3</span>
-            <span class="chev" aria-hidden="true"></span>
+            <span class="tile-path" aria-hidden="true"></span>
+            <span class="tile-match" aria-live="polite"></span>
+            <span class="tile-wm" aria-hidden="true">09</span>
           </button>
           <div class="tile-body">
-            <button type="button" class="agent-row" data-id="8.1" data-stage="tmc" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">8.1</span>
-              <span class="aname">Traveler Profile</span>
-            </button>
-            <button type="button" class="agent-row" data-id="8.2" data-stage="tmc" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">8.2</span>
-              <span class="aname">Corporate Account</span>
-            </button>
-            <button type="button" class="agent-row" data-id="8.3" data-stage="tmc" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">8.3</span>
-              <span class="aname">Mid-Office Automation</span>
-            </button>
-            <button type="button" class="agent-row" data-id="8.4" data-stage="tmc" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">8.4</span>
-              <span class="aname">Reporting &amp; Analytics</span>
-            </button>
-            <button type="button" class="agent-row" data-id="8.5" data-stage="tmc" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">8.5</span>
-              <span class="aname">Duty of Care</span>
-            </button>
+            <ul class="agent-list">
+              <li><button type="button" class="agent-row" data-agent="8.1">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">8.1</span>
+                <span class="a-name">Traveler Profile</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="8.2">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">8.2</span>
+                <span class="a-name">Corporate Account</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="8.3">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">8.3</span>
+                <span class="a-name">Mid-Office Automation</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="8.4">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">8.4</span>
+                <span class="a-name">Reporting &amp; Analytics</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="8.5">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">8.5</span>
+                <span class="a-name">Duty of Care</span>
+                <span class="a-status">active</span>
+              </button></li>
+            </ul>
           </div>
-        </article>
-        <article class="tile span-3" data-stage="platform" style="--n:'10'">
+        </section>
+        <section class="tile span-3" id="tile-platform" data-stage="platform" data-reveal style="--i:0">
           <button type="button" class="tile-head" aria-expanded="false">
-            <span class="tile-stage">Platform</span>
-            <span class="tile-count">9</span>
+            <span class="tile-top">
+              <span class="tile-stage">Platform</span>
+              <span class="tile-chevron" aria-hidden="true"></span>
+            </span>
+            <span class="tile-count">9<em>agents</em></span>
             <span class="tile-preview">Orchestrator · Knowledge Retrieval · +7</span>
-            <span class="chev" aria-hidden="true"></span>
+            <span class="tile-path" aria-hidden="true"></span>
+            <span class="tile-match" aria-live="polite"></span>
+            <span class="tile-wm" aria-hidden="true">10</span>
           </button>
           <div class="tile-body">
-            <button type="button" class="agent-row" data-id="9.1" data-stage="platform" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">9.1</span>
-              <span class="aname">Orchestrator</span>
-            </button>
-            <button type="button" class="agent-row" data-id="9.2" data-stage="platform" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">9.2</span>
-              <span class="aname">Knowledge Retrieval</span>
-            </button>
-            <button type="button" class="agent-row" data-id="9.3" data-stage="platform" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">9.3</span>
-              <span class="aname">Monitoring &amp; Alerting</span>
-            </button>
-            <button type="button" class="agent-row" data-id="9.4" data-stage="platform" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">9.4</span>
-              <span class="aname">Audit &amp; Compliance</span>
-            </button>
-            <button type="button" class="agent-row" data-id="9.5" data-stage="platform" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">9.5</span>
-              <span class="aname">Plugin Manager</span>
-            </button>
-            <button type="button" class="agent-row" data-id="9.6" data-stage="platform" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">9.6</span>
-              <span class="aname">Performance Audit</span>
-            </button>
-            <button type="button" class="agent-row" data-id="9.7" data-stage="platform" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">9.7</span>
-              <span class="aname">Routing Audit</span>
-            </button>
-            <button type="button" class="agent-row" data-id="9.8" data-stage="platform" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">9.8</span>
-              <span class="aname">Recommendation</span>
-            </button>
-            <button type="button" class="agent-row" data-id="9.9" data-stage="platform" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">9.9</span>
-              <span class="aname">Alert</span>
-            </button>
+            <ul class="agent-list">
+              <li><button type="button" class="agent-row" data-agent="9.1">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">9.1</span>
+                <span class="a-name">Orchestrator</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="9.2">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">9.2</span>
+                <span class="a-name">Knowledge Retrieval</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="9.3">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">9.3</span>
+                <span class="a-name">Monitoring &amp; Alerting</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="9.4">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">9.4</span>
+                <span class="a-name">Audit &amp; Compliance</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="9.5">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">9.5</span>
+                <span class="a-name">Plugin Manager</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="9.6">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">9.6</span>
+                <span class="a-name">Performance Audit</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="9.7">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">9.7</span>
+                <span class="a-name">Routing Audit</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="9.8">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">9.8</span>
+                <span class="a-name">Recommendation</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="9.9">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">9.9</span>
+                <span class="a-name">Alert</span>
+                <span class="a-status">active</span>
+              </button></li>
+            </ul>
           </div>
-        </article>
-        <article class="tile span-2" data-stage="core" style="--n:'11'">
+        </section>
+        <section class="tile span-2" id="tile-core" data-stage="core" data-reveal style="--i:1">
           <button type="button" class="tile-head" aria-expanded="false">
-            <span class="tile-stage">Core</span>
-            <span class="tile-count">1</span>
+            <span class="tile-top">
+              <span class="tile-stage">Core</span>
+              <span class="tile-chevron" aria-hidden="true"></span>
+            </span>
+            <span class="tile-count">1<em>agent</em></span>
             <span class="tile-preview">Offer Evaluator</span>
-            <span class="chev" aria-hidden="true"></span>
+            <span class="tile-path" aria-hidden="true"></span>
+            <span class="tile-match" aria-live="polite"></span>
+            <span class="tile-wm" aria-hidden="true">11</span>
           </button>
           <div class="tile-body">
-            <button type="button" class="agent-row" data-id="1.9" data-stage="core" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">1.9</span>
-              <span class="aname">Offer Evaluator</span>
-            </button>
+            <ul class="agent-list">
+              <li><button type="button" class="agent-row" data-agent="1.9">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">1.9</span>
+                <span class="a-name">Offer Evaluator</span>
+                <span class="a-status">active</span>
+              </button></li>
+            </ul>
           </div>
-        </article>
-        <article class="tile span-3" data-stage="lodging" style="--n:'12'">
+        </section>
+        <section class="tile span-3" id="tile-lodging" data-stage="lodging" data-reveal style="--i:2">
           <button type="button" class="tile-head" aria-expanded="false">
-            <span class="tile-stage">Lodging</span>
-            <span class="tile-count">9</span>
+            <span class="tile-top">
+              <span class="tile-stage">Lodging</span>
+              <span class="tile-chevron" aria-hidden="true"></span>
+            </span>
+            <span class="tile-count">9<em>agents</em></span>
             <span class="tile-preview">Hotel Search Aggregator · Property Deduplication · +7</span>
-            <span class="chev" aria-hidden="true"></span>
+            <span class="tile-path" aria-hidden="true"></span>
+            <span class="tile-match" aria-live="polite"></span>
+            <span class="tile-wm" aria-hidden="true">12</span>
           </button>
           <div class="tile-body">
-            <button type="button" class="agent-row" data-id="20.1" data-stage="lodging" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">20.1</span>
-              <span class="aname">Hotel Search Aggregator</span>
-            </button>
-            <button type="button" class="agent-row" data-id="20.2" data-stage="lodging" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">20.2</span>
-              <span class="aname">Property Deduplication</span>
-            </button>
-            <button type="button" class="agent-row" data-id="20.3" data-stage="lodging" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">20.3</span>
-              <span class="aname">Hotel Content Normalization</span>
-            </button>
-            <button type="button" class="agent-row" data-id="20.4" data-stage="lodging" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">20.4</span>
-              <span class="aname">Hotel Rate Comparison</span>
-            </button>
-            <button type="button" class="agent-row" data-id="20.5" data-stage="lodging" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">20.5</span>
-              <span class="aname">Hotel Booking</span>
-            </button>
-            <button type="button" class="agent-row" data-id="20.6" data-stage="lodging" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">20.6</span>
-              <span class="aname">Hotel Modification &amp; Cancellation</span>
-            </button>
-            <button type="button" class="agent-row" data-id="20.7" data-stage="lodging" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">20.7</span>
-              <span class="aname">Confirmation Verification</span>
-            </button>
-            <button type="button" class="agent-row" data-id="20.8" data-stage="lodging" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">20.8</span>
-              <span class="aname">Activity Search</span>
-            </button>
-            <button type="button" class="agent-row" data-id="20.9" data-stage="lodging" data-status="active">
-              <span class="dot on"></span>
-              <span class="aid">20.9</span>
-              <span class="aname">Transfer Search</span>
-            </button>
+            <ul class="agent-list">
+              <li><button type="button" class="agent-row" data-agent="20.1">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">20.1</span>
+                <span class="a-name">Hotel Search Aggregator</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="20.2">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">20.2</span>
+                <span class="a-name">Property Deduplication</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="20.3">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">20.3</span>
+                <span class="a-name">Hotel Content Normalization</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="20.4">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">20.4</span>
+                <span class="a-name">Hotel Rate Comparison</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="20.5">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">20.5</span>
+                <span class="a-name">Hotel Booking</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="20.6">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">20.6</span>
+                <span class="a-name">Hotel Modification &amp; Cancellation</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="20.7">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">20.7</span>
+                <span class="a-name">Confirmation Verification</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="20.8">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">20.8</span>
+                <span class="a-name">Activity Search</span>
+                <span class="a-status">active</span>
+              </button></li>
+              <li><button type="button" class="agent-row" data-agent="20.9">
+                <span class="a-dot" aria-hidden="true"></span>
+                <span class="a-id">20.9</span>
+                <span class="a-name">Transfer Search</span>
+                <span class="a-status">active</span>
+              </button></li>
+            </ul>
           </div>
-        </article>
+        </section>
       </div>
-    </section>
+    </div>
+  </section>
 
-    <footer class="note">
-      <img src="assets/telivity/brand/mark.svg" width="14" height="14" alt="" />
-      <span>Telivity Otaip</span>
-      <span>·</span>
-      <span>77 agents · 27 edges · from <code>agents.graph.json</code></span>
+  <div class="shell">
+    <footer>
+      <a class="brand" href="https://telivity.app">
+        <img src="assets/telivity/brand/mark.svg" width="18" height="18" alt="" />
+        <span class="brand-name">Telivity</span>
+      </a>
+      <span>Otaip agent graph · 77 agents · 12 stages · 5 workflows</span>
+      <span class="gen">generated from <code>agents.graph.json</code> · <code>pnpm gen:agent-map</code></span>
     </footer>
   </div>
 
   <div class="scrim" id="scrim" hidden></div>
-  <aside class="panel" id="panel" aria-hidden="true">
-    <div class="panel-top"><button type="button" class="panel-x" id="panel-close" aria-label="Close">×</button></div>
-    <div id="panel-content"></div>
+  <aside class="panel" id="panel" aria-hidden="true" aria-label="Agent detail">
+    <button type="button" class="panel-close" id="panel-close" aria-label="Close">×</button>
+    <div class="panel-inner" id="panel-content"></div>
   </aside>
 
-  <script id="graph-data" type="application/json">{"nodes":[{"id":"0.1","name":"Airport/City Code Resolver","stage":"reference","version":"0.1.0","contract_status":"active","has_contract":true,"source_path":"packages/agents/reference/src/airport-code-resolver/index.ts"},{"id":"0.2","name":"Airline Code & Alliance Mapper","stage":"reference","version":"0.1.0","contract_status":"active","has_contract":true,"source_path":"packages/agents/reference/src/airline-code-mapper/index.ts"},{"id":"0.3","name":"Fare Basis Code Decoder","stage":"reference","version":"0.1.0","contract_status":"active","has_contract":true,"source_path":"packages/agents/reference/src/fare-basis-decoder/index.ts"},{"id":"0.4","name":"Class of Service Mapper","stage":"reference","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/reference/src/class-of-service-mapper/index.ts"},{"id":"0.5","name":"Equipment Type Resolver","stage":"reference","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/reference/src/equipment-type-resolver/index.ts"},{"id":"0.6","name":"Currency & Tax Code Resolver","stage":"reference","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/reference/src/currency-tax-resolver/index.ts"},{"id":"0.7","name":"Country Regulatory Resolver","stage":"reference","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/reference/src/country-regulatory-resolver/index.ts"},{"id":"1.1","name":"Availability Search","stage":"search","version":"0.1.0","contract_status":"active","has_contract":true,"source_path":"packages/agents/search/src/availability-search/index.ts"},{"id":"1.2","name":"Schedule Lookup","stage":"search","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/search/src/schedule-lookup/index.ts"},{"id":"1.3","name":"Connection Builder","stage":"search","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/search/src/connection-builder/index.ts"},{"id":"1.4","name":"Fare Shopping","stage":"search","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/search/src/fare-shopping/index.ts"},{"id":"1.5","name":"Ancillary Shopping","stage":"search","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/search/src/ancillary-shopping/index.ts"},{"id":"1.6","name":"Multi-Source Aggregator","stage":"search","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/search/src/multi-source-aggregator/index.ts"},{"id":"1.7","name":"Hotel & Car Search","stage":"search","version":"0.2.0","contract_status":"active","has_contract":true,"source_path":"packages/agents/search/src/hotel-car-search/index.ts"},{"id":"1.8","name":"AI Travel Advisor","stage":"search","version":"0.2.0","contract_status":"active","has_contract":true,"source_path":"packages/agents/search/src/ai-travel-advisor/index.ts"},{"id":"1.9","name":"Offer Evaluator","stage":"core","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/core/src/agents/shopping/offer-evaluator/index.ts"},{"id":"2.1","name":"Fare Rule Agent","stage":"pricing","version":"0.1.0","contract_status":"active","has_contract":true,"source_path":"packages/agents/pricing/src/fare-rule-agent/index.ts"},{"id":"2.2","name":"Fare Construction","stage":"pricing","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/pricing/src/fare-construction/index.ts"},{"id":"2.3","name":"Tax Calculation","stage":"pricing","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/pricing/src/tax-calculation/index.ts"},{"id":"2.4","name":"Offer Builder","stage":"pricing","version":"0.1.0","contract_status":"active","has_contract":true,"source_path":"packages/agents/pricing/src/offer-builder/index.ts"},{"id":"2.5","name":"Corporate Policy Validation","stage":"pricing","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/pricing/src/corporate-policy-validation/index.ts"},{"id":"2.6","name":"Dynamic Pricing","stage":"pricing","version":"0.0.0","contract_status":"stub","has_contract":false,"source_path":"packages/agents/pricing/src/dynamic-pricing/index.ts"},{"id":"2.7","name":"Revenue Management","stage":"pricing","version":"0.0.0","contract_status":"stub","has_contract":false,"source_path":"packages/agents/pricing/src/revenue-management/index.ts"},{"id":"3.1","name":"GDS/NDC Router","stage":"booking","version":"0.1.0","contract_status":"active","has_contract":true,"source_path":"packages/agents/booking/src/gds-ndc-router/index.ts"},{"id":"3.2","name":"PNR Builder","stage":"booking","version":"0.1.0","contract_status":"active","has_contract":true,"source_path":"packages/agents/booking/src/pnr-builder/index.ts"},{"id":"3.3","name":"PNR Validation","stage":"booking","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/booking/src/pnr-validation/index.ts"},{"id":"3.4","name":"Queue Management","stage":"booking","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/booking/src/queue-management/index.ts"},{"id":"3.5","name":"API Abstraction","stage":"booking","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/booking/src/api-abstraction/index.ts"},{"id":"3.6","name":"Order Management","stage":"booking","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/booking/src/order-management/index.ts"},{"id":"3.7","name":"Payment Processing","stage":"booking","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/booking/src/payment-processing/index.ts"},{"id":"3.8","name":"PNR Retrieval","stage":"booking","version":"0.1.0","contract_status":"active","has_contract":true,"source_path":"packages/agents/booking/src/pnr-retrieval/index.ts"},{"id":"4.1","name":"Ticket Issuance","stage":"ticketing","version":"0.1.0","contract_status":"active","has_contract":true,"source_path":"packages/agents/ticketing/src/ticket-issuance/index.ts"},{"id":"4.2","name":"EMD Management","stage":"ticketing","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/ticketing/src/emd-management/index.ts"},{"id":"4.3","name":"Void Agent","stage":"ticketing","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/ticketing/src/void-agent/index.ts"},{"id":"4.4","name":"Itinerary Delivery","stage":"ticketing","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/ticketing/src/itinerary-delivery/index.ts"},{"id":"4.5","name":"Document Verification","stage":"ticketing","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/ticketing/src/document-verification/index.ts"},{"id":"5.1","name":"Change Management","stage":"exchange","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/exchange/src/change-management/index.ts"},{"id":"5.2","name":"Exchange/Reissue","stage":"exchange","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/exchange/src/exchange-reissue/index.ts"},{"id":"5.3","name":"Involuntary Rebook","stage":"exchange","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/exchange/src/involuntary-rebook/index.ts"},{"id":"5.4","name":"Disruption Response","stage":"exchange","version":"0.0.0","contract_status":"stub","has_contract":false,"source_path":"packages/agents/exchange/src/disruption-response/index.ts"},{"id":"5.5","name":"Self-Service Rebooking","stage":"exchange","version":"0.2.0","contract_status":"active","has_contract":true,"source_path":"packages/agents/exchange/src/self-service-rebooking/index.ts"},{"id":"5.6","name":"Waitlist Management","stage":"exchange","version":"0.2.0","contract_status":"active","has_contract":true,"source_path":"packages/agents/exchange/src/waitlist-management/index.ts"},{"id":"6.1","name":"Refund Processing","stage":"settlement","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/settlement/src/refund-processing/index.ts"},{"id":"6.2","name":"ADM Prevention","stage":"settlement","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/settlement/src/adm-prevention/index.ts"},{"id":"6.3","name":"ADM/ACM Processing","stage":"settlement","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/settlement/src/adm-acm-processing/index.ts"},{"id":"6.4","name":"Customer Communication","stage":"settlement","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/settlement/src/customer-communication/index.ts"},{"id":"6.5","name":"Feedback & Complaint","stage":"settlement","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/settlement/src/feedback-complaint/index.ts"},{"id":"6.6","name":"Loyalty Mileage","stage":"settlement","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/settlement/src/loyalty-mileage/index.ts"},{"id":"7.1","name":"BSP Reconciliation","stage":"reconciliation","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/reconciliation/src/bsp-reconciliation/index.ts"},{"id":"7.2","name":"ARC Reconciliation","stage":"reconciliation","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/reconciliation/src/arc-reconciliation/index.ts"},{"id":"7.3","name":"Commission Management","stage":"reconciliation","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/reconciliation/src/commission-management/index.ts"},{"id":"7.4","name":"Interline Settlement","stage":"reconciliation","version":"0.0.0","contract_status":"stub","has_contract":false,"source_path":"packages/agents/reconciliation/src/interline-settlement/index.ts"},{"id":"7.5","name":"Financial Reporting","stage":"reconciliation","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/reconciliation/src/financial-reporting/index.ts"},{"id":"7.6","name":"Revenue Accounting","stage":"reconciliation","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/reconciliation/src/revenue-accounting/index.ts"},{"id":"8.1","name":"Traveler Profile","stage":"tmc","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents-tmc/src/traveler-profile/index.ts"},{"id":"8.2","name":"Corporate Account","stage":"tmc","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents-tmc/src/corporate-account/index.ts"},{"id":"8.3","name":"Mid-Office Automation","stage":"tmc","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents-tmc/src/mid-office/index.ts"},{"id":"8.4","name":"Reporting & Analytics","stage":"tmc","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents-tmc/src/reporting/index.ts"},{"id":"8.5","name":"Duty of Care","stage":"tmc","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents-tmc/src/duty-of-care/index.ts"},{"id":"9.1","name":"Orchestrator","stage":"platform","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents-platform/src/orchestrator/index.ts"},{"id":"9.2","name":"Knowledge Retrieval","stage":"platform","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents-platform/src/knowledge/index.ts"},{"id":"9.3","name":"Monitoring & Alerting","stage":"platform","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents-platform/src/monitoring/index.ts"},{"id":"9.4","name":"Audit & Compliance","stage":"platform","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents-platform/src/audit/index.ts"},{"id":"9.5","name":"Plugin Manager","stage":"platform","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents-platform/src/plugin-manager/index.ts"},{"id":"9.6","name":"Performance Audit","stage":"platform","version":"0.1.0","contract_status":"active","has_contract":true,"source_path":"packages/agents-platform/src/performance-audit/index.ts"},{"id":"9.7","name":"Routing Audit","stage":"platform","version":"0.1.0","contract_status":"active","has_contract":true,"source_path":"packages/agents-platform/src/routing-audit/index.ts"},{"id":"9.8","name":"Recommendation","stage":"platform","version":"0.1.0","contract_status":"active","has_contract":true,"source_path":"packages/agents-platform/src/recommendation/index.ts"},{"id":"9.9","name":"Alert","stage":"platform","version":"0.1.0","contract_status":"active","has_contract":true,"source_path":"packages/agents-platform/src/alert/index.ts"},{"id":"20.1","name":"Hotel Search Aggregator","stage":"lodging","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/lodging/src/hotel-search/index.ts"},{"id":"20.2","name":"Property Deduplication","stage":"lodging","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/lodging/src/property-dedup/index.ts"},{"id":"20.3","name":"Hotel Content Normalization","stage":"lodging","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/lodging/src/content-normalization/index.ts"},{"id":"20.4","name":"Hotel Rate Comparison","stage":"lodging","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/lodging/src/rate-comparison/index.ts"},{"id":"20.5","name":"Hotel Booking","stage":"lodging","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/lodging/src/hotel-booking/index.ts"},{"id":"20.6","name":"Hotel Modification & Cancellation","stage":"lodging","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/lodging/src/hotel-modification/index.ts"},{"id":"20.7","name":"Confirmation Verification","stage":"lodging","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/lodging/src/confirmation-verification/index.ts"},{"id":"20.8","name":"Activity Search","stage":"lodging","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/lodging/src/activity-search/index.ts"},{"id":"20.9","name":"Transfer Search","stage":"lodging","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/lodging/src/transfer-search/index.ts"}],"edges":[{"source":"1.1","target":"1.4","kind":"workflow","label":"search_to_price"},{"source":"1.4","target":"2.1","kind":"workflow","label":"search_to_price"},{"source":"2.1","target":"2.2","kind":"workflow","label":"search_to_price"},{"source":"2.2","target":"2.3","kind":"workflow","label":"search_to_price"},{"source":"3.3","target":"3.1","kind":"workflow","label":"book_to_ticket"},{"source":"3.1","target":"3.2","kind":"workflow","label":"book_to_ticket"},{"source":"3.2","target":"4.1","kind":"workflow","label":"book_to_ticket"},{"source":"1.1","target":"1.4","kind":"workflow","label":"full_booking"},{"source":"1.4","target":"2.1","kind":"workflow","label":"full_booking"},{"source":"2.1","target":"2.2","kind":"workflow","label":"full_booking"},{"source":"2.2","target":"2.3","kind":"workflow","label":"full_booking"},{"source":"2.3","target":"3.3","kind":"workflow","label":"full_booking"},{"source":"3.3","target":"3.1","kind":"workflow","label":"full_booking"},{"source":"3.1","target":"3.2","kind":"workflow","label":"full_booking"},{"source":"3.2","target":"4.1","kind":"workflow","label":"full_booking"},{"source":"5.1","target":"5.2","kind":"workflow","label":"exchange_flow"},{"source":"6.1","target":"6.2","kind":"workflow","label":"refund_flow"},{"source":"1.1","target":"0.1","kind":"package","label":"@otaip/agents-search → @otaip/agents-reference"},{"source":"2.1","target":"0.1","kind":"package","label":"@otaip/agents-pricing → @otaip/agents-reference"},{"source":"3.1","target":"0.1","kind":"package","label":"@otaip/agents-booking → @otaip/agents-reference"},{"source":"3.1","target":"1.1","kind":"package","label":"@otaip/agents-booking → @otaip/agents-search"},{"source":"3.1","target":"2.1","kind":"package","label":"@otaip/agents-booking → @otaip/agents-pricing"},{"source":"4.1","target":"3.1","kind":"package","label":"@otaip/agents-ticketing → @otaip/agents-booking"},{"source":"5.1","target":"1.1","kind":"package","label":"@otaip/agents-exchange → @otaip/agents-search"},{"source":"5.1","target":"4.1","kind":"package","label":"@otaip/agents-exchange → @otaip/agents-ticketing"},{"source":"6.1","target":"4.1","kind":"package","label":"@otaip/agents-settlement → @otaip/agents-ticketing"},{"source":"7.1","target":"0.1","kind":"package","label":"@otaip/agents-reconciliation → @otaip/agents-reference"}],"workflows":{"full_booking":{"chain":["1.1","1.4","2.1","2.2","2.3","3.3","3.1","3.2","4.1"],"count":9},"book_to_ticket":{"chain":["3.3","3.1","3.2","4.1"],"count":4},"exchange_flow":{"chain":["5.1","5.2"],"count":2},"refund_flow":{"chain":["6.1","6.2"],"count":2},"search_to_price":{"chain":["1.1","1.4","2.1","2.2","2.3"],"count":5}},"defaultWorkflow":"full_booking","stages":{"reference":["0.1","0.2","0.3","0.4","0.5","0.6","0.7"],"search":["1.1","1.2","1.3","1.4","1.5","1.6","1.7","1.8"],"pricing":["2.1","2.2","2.3","2.4","2.5","2.6","2.7"],"booking":["3.1","3.2","3.3","3.4","3.5","3.6","3.7","3.8"],"ticketing":["4.1","4.2","4.3","4.4","4.5"],"exchange":["5.1","5.2","5.3","5.4","5.5","5.6"],"settlement":["6.1","6.2","6.3","6.4","6.5","6.6"],"reconciliation":["7.1","7.2","7.3","7.4","7.5","7.6"],"tmc":["8.1","8.2","8.3","8.4","8.5"],"platform":["9.1","9.2","9.3","9.4","9.5","9.6","9.7","9.8","9.9"],"core":["1.9"],"lodging":["20.1","20.2","20.3","20.4","20.5","20.6","20.7","20.8","20.9"]}}</script>
+  <script id="graph-data" type="application/json">{"generated_by":"scripts/generate-manifest.ts","total_nodes":77,"total_edges":27,"nodes":[{"id":"0.1","name":"Airport/City Code Resolver","stage":"reference","version":"0.1.0","contract_status":"active","has_contract":true,"source_path":"packages/agents/reference/src/airport-code-resolver/index.ts"},{"id":"0.2","name":"Airline Code & Alliance Mapper","stage":"reference","version":"0.1.0","contract_status":"active","has_contract":true,"source_path":"packages/agents/reference/src/airline-code-mapper/index.ts"},{"id":"0.3","name":"Fare Basis Code Decoder","stage":"reference","version":"0.1.0","contract_status":"active","has_contract":true,"source_path":"packages/agents/reference/src/fare-basis-decoder/index.ts"},{"id":"0.4","name":"Class of Service Mapper","stage":"reference","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/reference/src/class-of-service-mapper/index.ts"},{"id":"0.5","name":"Equipment Type Resolver","stage":"reference","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/reference/src/equipment-type-resolver/index.ts"},{"id":"0.6","name":"Currency & Tax Code Resolver","stage":"reference","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/reference/src/currency-tax-resolver/index.ts"},{"id":"0.7","name":"Country Regulatory Resolver","stage":"reference","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/reference/src/country-regulatory-resolver/index.ts"},{"id":"1.1","name":"Availability Search","stage":"search","version":"0.1.0","contract_status":"active","has_contract":true,"source_path":"packages/agents/search/src/availability-search/index.ts"},{"id":"1.2","name":"Schedule Lookup","stage":"search","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/search/src/schedule-lookup/index.ts"},{"id":"1.3","name":"Connection Builder","stage":"search","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/search/src/connection-builder/index.ts"},{"id":"1.4","name":"Fare Shopping","stage":"search","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/search/src/fare-shopping/index.ts"},{"id":"1.5","name":"Ancillary Shopping","stage":"search","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/search/src/ancillary-shopping/index.ts"},{"id":"1.6","name":"Multi-Source Aggregator","stage":"search","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/search/src/multi-source-aggregator/index.ts"},{"id":"1.7","name":"Hotel & Car Search","stage":"search","version":"0.2.0","contract_status":"active","has_contract":true,"source_path":"packages/agents/search/src/hotel-car-search/index.ts"},{"id":"1.8","name":"AI Travel Advisor","stage":"search","version":"0.2.0","contract_status":"active","has_contract":true,"source_path":"packages/agents/search/src/ai-travel-advisor/index.ts"},{"id":"1.9","name":"Offer Evaluator","stage":"core","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/core/src/agents/shopping/offer-evaluator/index.ts"},{"id":"2.1","name":"Fare Rule Agent","stage":"pricing","version":"0.1.0","contract_status":"active","has_contract":true,"source_path":"packages/agents/pricing/src/fare-rule-agent/index.ts"},{"id":"2.2","name":"Fare Construction","stage":"pricing","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/pricing/src/fare-construction/index.ts"},{"id":"2.3","name":"Tax Calculation","stage":"pricing","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/pricing/src/tax-calculation/index.ts"},{"id":"2.4","name":"Offer Builder","stage":"pricing","version":"0.1.0","contract_status":"active","has_contract":true,"source_path":"packages/agents/pricing/src/offer-builder/index.ts"},{"id":"2.5","name":"Corporate Policy Validation","stage":"pricing","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/pricing/src/corporate-policy-validation/index.ts"},{"id":"2.6","name":"Dynamic Pricing","stage":"pricing","version":"0.0.0","contract_status":"stub","has_contract":false,"source_path":"packages/agents/pricing/src/dynamic-pricing/index.ts"},{"id":"2.7","name":"Revenue Management","stage":"pricing","version":"0.0.0","contract_status":"stub","has_contract":false,"source_path":"packages/agents/pricing/src/revenue-management/index.ts"},{"id":"3.1","name":"GDS/NDC Router","stage":"booking","version":"0.1.0","contract_status":"active","has_contract":true,"source_path":"packages/agents/booking/src/gds-ndc-router/index.ts"},{"id":"3.2","name":"PNR Builder","stage":"booking","version":"0.1.0","contract_status":"active","has_contract":true,"source_path":"packages/agents/booking/src/pnr-builder/index.ts"},{"id":"3.3","name":"PNR Validation","stage":"booking","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/booking/src/pnr-validation/index.ts"},{"id":"3.4","name":"Queue Management","stage":"booking","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/booking/src/queue-management/index.ts"},{"id":"3.5","name":"API Abstraction","stage":"booking","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/booking/src/api-abstraction/index.ts"},{"id":"3.6","name":"Order Management","stage":"booking","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/booking/src/order-management/index.ts"},{"id":"3.7","name":"Payment Processing","stage":"booking","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/booking/src/payment-processing/index.ts"},{"id":"3.8","name":"PNR Retrieval","stage":"booking","version":"0.1.0","contract_status":"active","has_contract":true,"source_path":"packages/agents/booking/src/pnr-retrieval/index.ts"},{"id":"4.1","name":"Ticket Issuance","stage":"ticketing","version":"0.1.0","contract_status":"active","has_contract":true,"source_path":"packages/agents/ticketing/src/ticket-issuance/index.ts"},{"id":"4.2","name":"EMD Management","stage":"ticketing","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/ticketing/src/emd-management/index.ts"},{"id":"4.3","name":"Void Agent","stage":"ticketing","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/ticketing/src/void-agent/index.ts"},{"id":"4.4","name":"Itinerary Delivery","stage":"ticketing","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/ticketing/src/itinerary-delivery/index.ts"},{"id":"4.5","name":"Document Verification","stage":"ticketing","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/ticketing/src/document-verification/index.ts"},{"id":"5.1","name":"Change Management","stage":"exchange","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/exchange/src/change-management/index.ts"},{"id":"5.2","name":"Exchange/Reissue","stage":"exchange","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/exchange/src/exchange-reissue/index.ts"},{"id":"5.3","name":"Involuntary Rebook","stage":"exchange","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/exchange/src/involuntary-rebook/index.ts"},{"id":"5.4","name":"Disruption Response","stage":"exchange","version":"0.0.0","contract_status":"stub","has_contract":false,"source_path":"packages/agents/exchange/src/disruption-response/index.ts"},{"id":"5.5","name":"Self-Service Rebooking","stage":"exchange","version":"0.2.0","contract_status":"active","has_contract":true,"source_path":"packages/agents/exchange/src/self-service-rebooking/index.ts"},{"id":"5.6","name":"Waitlist Management","stage":"exchange","version":"0.2.0","contract_status":"active","has_contract":true,"source_path":"packages/agents/exchange/src/waitlist-management/index.ts"},{"id":"6.1","name":"Refund Processing","stage":"settlement","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/settlement/src/refund-processing/index.ts"},{"id":"6.2","name":"ADM Prevention","stage":"settlement","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/settlement/src/adm-prevention/index.ts"},{"id":"6.3","name":"ADM/ACM Processing","stage":"settlement","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/settlement/src/adm-acm-processing/index.ts"},{"id":"6.4","name":"Customer Communication","stage":"settlement","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/settlement/src/customer-communication/index.ts"},{"id":"6.5","name":"Feedback & Complaint","stage":"settlement","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/settlement/src/feedback-complaint/index.ts"},{"id":"6.6","name":"Loyalty Mileage","stage":"settlement","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/settlement/src/loyalty-mileage/index.ts"},{"id":"7.1","name":"BSP Reconciliation","stage":"reconciliation","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/reconciliation/src/bsp-reconciliation/index.ts"},{"id":"7.2","name":"ARC Reconciliation","stage":"reconciliation","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/reconciliation/src/arc-reconciliation/index.ts"},{"id":"7.3","name":"Commission Management","stage":"reconciliation","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/reconciliation/src/commission-management/index.ts"},{"id":"7.4","name":"Interline Settlement","stage":"reconciliation","version":"0.0.0","contract_status":"stub","has_contract":false,"source_path":"packages/agents/reconciliation/src/interline-settlement/index.ts"},{"id":"7.5","name":"Financial Reporting","stage":"reconciliation","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/reconciliation/src/financial-reporting/index.ts"},{"id":"7.6","name":"Revenue Accounting","stage":"reconciliation","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/reconciliation/src/revenue-accounting/index.ts"},{"id":"8.1","name":"Traveler Profile","stage":"tmc","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents-tmc/src/traveler-profile/index.ts"},{"id":"8.2","name":"Corporate Account","stage":"tmc","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents-tmc/src/corporate-account/index.ts"},{"id":"8.3","name":"Mid-Office Automation","stage":"tmc","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents-tmc/src/mid-office/index.ts"},{"id":"8.4","name":"Reporting & Analytics","stage":"tmc","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents-tmc/src/reporting/index.ts"},{"id":"8.5","name":"Duty of Care","stage":"tmc","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents-tmc/src/duty-of-care/index.ts"},{"id":"9.1","name":"Orchestrator","stage":"platform","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents-platform/src/orchestrator/index.ts"},{"id":"9.2","name":"Knowledge Retrieval","stage":"platform","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents-platform/src/knowledge/index.ts"},{"id":"9.3","name":"Monitoring & Alerting","stage":"platform","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents-platform/src/monitoring/index.ts"},{"id":"9.4","name":"Audit & Compliance","stage":"platform","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents-platform/src/audit/index.ts"},{"id":"9.5","name":"Plugin Manager","stage":"platform","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents-platform/src/plugin-manager/index.ts"},{"id":"9.6","name":"Performance Audit","stage":"platform","version":"0.1.0","contract_status":"active","has_contract":true,"source_path":"packages/agents-platform/src/performance-audit/index.ts"},{"id":"9.7","name":"Routing Audit","stage":"platform","version":"0.1.0","contract_status":"active","has_contract":true,"source_path":"packages/agents-platform/src/routing-audit/index.ts"},{"id":"9.8","name":"Recommendation","stage":"platform","version":"0.1.0","contract_status":"active","has_contract":true,"source_path":"packages/agents-platform/src/recommendation/index.ts"},{"id":"9.9","name":"Alert","stage":"platform","version":"0.1.0","contract_status":"active","has_contract":true,"source_path":"packages/agents-platform/src/alert/index.ts"},{"id":"20.1","name":"Hotel Search Aggregator","stage":"lodging","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/lodging/src/hotel-search/index.ts"},{"id":"20.2","name":"Property Deduplication","stage":"lodging","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/lodging/src/property-dedup/index.ts"},{"id":"20.3","name":"Hotel Content Normalization","stage":"lodging","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/lodging/src/content-normalization/index.ts"},{"id":"20.4","name":"Hotel Rate Comparison","stage":"lodging","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/lodging/src/rate-comparison/index.ts"},{"id":"20.5","name":"Hotel Booking","stage":"lodging","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/lodging/src/hotel-booking/index.ts"},{"id":"20.6","name":"Hotel Modification & Cancellation","stage":"lodging","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/lodging/src/hotel-modification/index.ts"},{"id":"20.7","name":"Confirmation Verification","stage":"lodging","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/lodging/src/confirmation-verification/index.ts"},{"id":"20.8","name":"Activity Search","stage":"lodging","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/lodging/src/activity-search/index.ts"},{"id":"20.9","name":"Transfer Search","stage":"lodging","version":"0.1.0","contract_status":"active","has_contract":false,"source_path":"packages/agents/lodging/src/transfer-search/index.ts"}],"edges":[{"source":"1.1","target":"1.4","kind":"workflow","label":"search_to_price"},{"source":"1.4","target":"2.1","kind":"workflow","label":"search_to_price"},{"source":"2.1","target":"2.2","kind":"workflow","label":"search_to_price"},{"source":"2.2","target":"2.3","kind":"workflow","label":"search_to_price"},{"source":"3.3","target":"3.1","kind":"workflow","label":"book_to_ticket"},{"source":"3.1","target":"3.2","kind":"workflow","label":"book_to_ticket"},{"source":"3.2","target":"4.1","kind":"workflow","label":"book_to_ticket"},{"source":"1.1","target":"1.4","kind":"workflow","label":"full_booking"},{"source":"1.4","target":"2.1","kind":"workflow","label":"full_booking"},{"source":"2.1","target":"2.2","kind":"workflow","label":"full_booking"},{"source":"2.2","target":"2.3","kind":"workflow","label":"full_booking"},{"source":"2.3","target":"3.3","kind":"workflow","label":"full_booking"},{"source":"3.3","target":"3.1","kind":"workflow","label":"full_booking"},{"source":"3.1","target":"3.2","kind":"workflow","label":"full_booking"},{"source":"3.2","target":"4.1","kind":"workflow","label":"full_booking"},{"source":"5.1","target":"5.2","kind":"workflow","label":"exchange_flow"},{"source":"6.1","target":"6.2","kind":"workflow","label":"refund_flow"},{"source":"1.1","target":"0.1","kind":"package","label":"@otaip/agents-search → @otaip/agents-reference"},{"source":"2.1","target":"0.1","kind":"package","label":"@otaip/agents-pricing → @otaip/agents-reference"},{"source":"3.1","target":"0.1","kind":"package","label":"@otaip/agents-booking → @otaip/agents-reference"},{"source":"3.1","target":"1.1","kind":"package","label":"@otaip/agents-booking → @otaip/agents-search"},{"source":"3.1","target":"2.1","kind":"package","label":"@otaip/agents-booking → @otaip/agents-pricing"},{"source":"4.1","target":"3.1","kind":"package","label":"@otaip/agents-ticketing → @otaip/agents-booking"},{"source":"5.1","target":"1.1","kind":"package","label":"@otaip/agents-exchange → @otaip/agents-search"},{"source":"5.1","target":"4.1","kind":"package","label":"@otaip/agents-exchange → @otaip/agents-ticketing"},{"source":"6.1","target":"4.1","kind":"package","label":"@otaip/agents-settlement → @otaip/agents-ticketing"},{"source":"7.1","target":"0.1","kind":"package","label":"@otaip/agents-reconciliation → @otaip/agents-reference"}],"package_deps":[{"from_package":"@otaip/agents-search","to_package":"@otaip/agents-reference","from_stage":"search","to_stage":"reference"},{"from_package":"@otaip/agents-pricing","to_package":"@otaip/agents-reference","from_stage":"pricing","to_stage":"reference"},{"from_package":"@otaip/agents-booking","to_package":"@otaip/agents-reference","from_stage":"booking","to_stage":"reference"},{"from_package":"@otaip/agents-booking","to_package":"@otaip/agents-search","from_stage":"booking","to_stage":"search"},{"from_package":"@otaip/agents-booking","to_package":"@otaip/agents-pricing","from_stage":"booking","to_stage":"pricing"},{"from_package":"@otaip/agents-ticketing","to_package":"@otaip/agents-booking","from_stage":"ticketing","to_stage":"booking"},{"from_package":"@otaip/agents-exchange","to_package":"@otaip/agents-search","from_stage":"exchange","to_stage":"search"},{"from_package":"@otaip/agents-exchange","to_package":"@otaip/agents-ticketing","from_stage":"exchange","to_stage":"ticketing"},{"from_package":"@otaip/agents-settlement","to_package":"@otaip/agents-ticketing","from_stage":"settlement","to_stage":"ticketing"},{"from_package":"@otaip/agents-reconciliation","to_package":"@otaip/agents-reference","from_stage":"reconciliation","to_stage":"reference"}]}</script>
   <script>
-    const data = JSON.parse(document.getElementById('graph-data').textContent);
-    const nodesById = Object.fromEntries(data.nodes.map(n => [n.id, n]));
+    const graph = JSON.parse(document.getElementById('graph-data').textContent);
     const STAGE_NAMES = {"reference":"Reference","search":"Search","pricing":"Pricing","booking":"Booking","ticketing":"Ticketing","exchange":"Exchange","settlement":"Settlement","reconciliation":"Reconciliation","tmc":"TMC","platform":"Platform","core":"Core","lodging":"Lodging"};
+    const nodesById = {};
+    for (const n of graph.nodes) nodesById[n.id] = n;
+
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    const bar = document.getElementById('bar');
-    window.addEventListener('scroll', () => bar.classList.toggle('scrolled', window.scrollY > 8), { passive: true });
+    const revealEls = Array.from(document.querySelectorAll('[data-reveal]'));
+    function revealInViewport() {
+      const vh = window.innerHeight || document.documentElement.clientHeight;
+      for (const el of revealEls) {
+        if (el.classList.contains('in')) continue;
+        const r = el.getBoundingClientRect();
+        if (r.top < vh * 0.94 && r.bottom > 0) el.classList.add('in');
+      }
+    }
+    if (reduceMotion || !('IntersectionObserver' in window)) {
+      for (const el of revealEls) el.classList.add('in');
+    } else {
+      const io = new IntersectionObserver((entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('in');
+            io.unobserve(entry.target);
+          }
+        }
+      }, { threshold: 0.1, rootMargin: '0px 0px -6% 0px' });
+      for (const el of revealEls) io.observe(el);
+      revealInViewport();
+    }
 
-    let activeWf = data.defaultWorkflow || '';
-    let selectedId = null;
+    const nav = document.getElementById('nav');
+    const onScroll = () => { nav.classList.toggle('scrolled', window.scrollY > 10); };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
 
     function escape(s) {
-      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
-    function pathIds() {
-      if (!activeWf || !data.workflows[activeWf]) return new Set();
-      return new Set(data.workflows[activeWf].chain);
-    }
-
-    function renderChain() {
-      const track = document.getElementById('chain-track');
-      const board = document.getElementById('chain-board');
-      const meta = data.workflows[activeWf];
-      board.dataset.wf = activeWf || '';
-      if (!meta || !meta.chain.length) {
-        track.innerHTML = '<p class="chain-empty">No agents on this workflow.</p>';
-        return;
-      }
-      let html = '';
-      meta.chain.forEach((id, i) => {
-        const n = nodesById[id];
-        if (!n) return;
-        const sel = selectedId === id ? ' selected' : '';
-        const conn = i < meta.chain.length - 1
-          ? '<div class="conn" aria-hidden="true"><span class="conn-line"></span><span class="conn-arrow"></span></div>'
-          : '';
-        html += '<div class="chain-item" style="--i:' + i + '">'
-          + '<button type="button" class="chain-card' + sel + '" data-id="' + escape(id) + '">'
-          + '<span class="c-step">' + String(i + 1).padStart(2, '0') + '</span>'
-          + '<span class="c-id">' + escape(id) + '</span>'
-          + '<span class="c-name">' + escape(n.name) + '</span>'
-          + '<span class="c-stage">' + escape(STAGE_NAMES[n.stage] || n.stage) + '</span>'
-          + '</button>' + conn + '</div>';
+    for (const head of document.querySelectorAll('.tile-head')) {
+      head.addEventListener('click', () => {
+        const tile = head.closest('.tile');
+        const open = tile.classList.toggle('open');
+        head.setAttribute('aria-expanded', open ? 'true' : 'false');
       });
-      track.innerHTML = html;
-      for (const btn of track.querySelectorAll('.chain-card')) {
-        btn.addEventListener('click', () => selectAgent(btn.dataset.id));
-      }
     }
 
-    function paintRoster() {
-      const path = pathIds();
-      const q = document.getElementById('search').value.trim().toLowerCase();
-      const st = document.getElementById('stage-filter').value;
-      const status = document.getElementById('status-filter').value;
-      const neighbors = selectedId ? neighborSet(selectedId) : null;
+    /* ---------- Connection stage ---------- */
+    const segs = Array.from(document.querySelectorAll('[data-wf-select]'));
+    const stagePaths = Array.from(document.querySelectorAll('.stage-path'));
+    const stageCard = document.getElementById('stage-card');
+    const pathCache = {};
+    let selectedAgent = null;
 
-      for (const tile of document.querySelectorAll('.tile')) {
-        const stage = tile.dataset.stage;
-        let anyVisible = false;
-        let stageOnPath = false;
-        for (const row of tile.querySelectorAll('.agent-row')) {
-          const id = row.dataset.id;
-          const n = nodesById[id];
-          const matchQ = !q || id.includes(q) || n.name.toLowerCase().includes(q);
-          const matchSt = st === 'all' || stage === st;
-          const matchStatus = status === 'all' || n.contract_status === status;
-          const show = matchQ && matchSt && matchStatus;
-          row.hidden = !show;
-          if (show) anyVisible = true;
-          const on = path.has(id);
-          if (on) stageOnPath = true;
-          row.classList.toggle('on-path', on);
-          row.classList.toggle('selected', selectedId === id);
-          row.classList.toggle('dim', Boolean(selectedId) && selectedId !== id && !(neighbors && neighbors.has(id)));
+    function pathMembers(label) {
+      let set = pathCache[label];
+      if (!set) {
+        set = new Set();
+        for (const e of graph.edges) {
+          if (e.kind === 'workflow' && e.label === label) {
+            set.add(e.source);
+            set.add(e.target);
+          }
         }
-        tile.hidden = !anyVisible;
-        tile.classList.toggle('on-path', stageOnPath && activeWf);
-        tile.classList.toggle('dim', Boolean(activeWf) && !stageOnPath);
+        pathCache[label] = set;
+      }
+      return set;
+    }
+
+    const firstSeg = document.querySelector('.seg.active') || segs[0];
+    let activeWf = firstSeg ? firstSeg.dataset.wfSelect : null;
+
+    function applyPathHighlight() {
+      if (!activeWf) return;
+      const members = pathMembers(activeWf);
+      for (const tile of document.querySelectorAll('.tile')) {
+        let onPath = 0;
+        for (const row of tile.querySelectorAll('.agent-row')) {
+          const on = members.has(row.dataset.agent);
+          row.classList.toggle('on-path', on);
+          row.classList.toggle('dim', !on);
+          if (on) onPath++;
+        }
+        const note = tile.querySelector('.tile-path');
+        if (note) note.textContent = onPath ? onPath + ' on path' : '';
       }
     }
 
-    function neighborSet(id) {
-      const s = new Set();
-      for (const e of data.edges) {
-        if (e.source === id) s.add(e.target);
-        if (e.target === id) s.add(e.source);
+    function showPath(label) {
+      let next = null;
+      for (const p of stagePaths) {
+        if (p.dataset.wfPath === label) { next = p; break; }
       }
-      return s;
+      if (!next) return;
+      const current = document.querySelector('.stage-path.active');
+      if (current === next) return;
+      if (current) {
+        if (reduceMotion) {
+          current.classList.remove('active', 'in');
+          current.hidden = true;
+        } else {
+          current.classList.add('leaving');
+          setTimeout(() => {
+            current.classList.remove('active', 'leaving', 'in');
+            current.hidden = true;
+          }, 240);
+        }
+      }
+      next.hidden = false;
+      next.classList.add('active');
+      if (reduceMotion) {
+        next.classList.add('in');
+      } else {
+        requestAnimationFrame(() => requestAnimationFrame(() => next.classList.add('in')));
+      }
+    }
+
+    function setWorkflow(label) {
+      if (!label || label === activeWf) return;
+      activeWf = label;
+      for (const seg of segs) {
+        const on = seg.dataset.wfSelect === label;
+        seg.classList.toggle('active', on);
+        seg.setAttribute('aria-pressed', on ? 'true' : 'false');
+      }
+      showPath(label);
+      applyPathHighlight();
+      if (selectedAgent) highlightSelection(selectedAgent);
+    }
+
+    for (const seg of segs) {
+      seg.addEventListener('click', () => setWorkflow(seg.dataset.wfSelect));
+    }
+
+    /* Track: wheel mapping + drag to scroll */
+    for (const track of document.querySelectorAll('.stage-track')) {
+      track.addEventListener('wheel', (e) => {
+        if (track.scrollWidth <= track.clientWidth) return;
+        if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+          track.scrollLeft += e.deltaY;
+          e.preventDefault();
+        }
+      }, { passive: false });
+
+      let downX = 0;
+      let startScroll = 0;
+      let dragging = false;
+      let moved = false;
+      track.addEventListener('pointerdown', (e) => {
+        downX = e.clientX;
+        startScroll = track.scrollLeft;
+        dragging = true;
+        moved = false;
+      });
+      window.addEventListener('pointermove', (e) => {
+        if (!dragging) return;
+        const dx = e.clientX - downX;
+        if (!moved && Math.abs(dx) > 6) moved = true;
+        if (moved) {
+          track.scrollLeft = startScroll - dx;
+          track.classList.add('dragging');
+        }
+      });
+      window.addEventListener('pointerup', () => {
+        dragging = false;
+        track.classList.remove('dragging');
+      });
+      track.addEventListener('click', (e) => {
+        if (moved) {
+          e.stopPropagation();
+          e.preventDefault();
+          moved = false;
+        }
+      }, true);
+    }
+
+    /* ---------- Selection: edges, neighbors, package deps ---------- */
+    function clearHighlight() {
+      for (const el of document.querySelectorAll('[data-agent].sel, [data-agent].nb, [data-agent].dep')) {
+        el.classList.remove('sel', 'nb', 'dep');
+      }
+      for (const c of document.querySelectorAll('.conn.lit')) c.classList.remove('lit');
+    }
+
+    function highlightSelection(id) {
+      clearHighlight();
+      if (!id) return;
+      const nb = new Set();
+      const dep = new Set();
+      for (const e of graph.edges) {
+        if (e.kind === 'workflow') {
+          if (e.source === id) nb.add(e.target);
+          if (e.target === id) nb.add(e.source);
+        } else {
+          if (e.source === id) dep.add(e.target);
+          if (e.target === id) dep.add(e.source);
+        }
+      }
+      for (const el of document.querySelectorAll('[data-agent]')) {
+        const aid = el.dataset.agent;
+        if (aid === id) el.classList.add('sel');
+        else if (nb.has(aid)) el.classList.add('nb');
+        else if (dep.has(aid)) el.classList.add('dep');
+      }
+      const track = document.querySelector('.stage-path.active .stage-track');
+      if (track) {
+        const cell = track.querySelector('[data-agent="' + CSS.escape(id) + '"]');
+        if (cell) {
+          const prev = cell.previousElementSibling;
+          const nextEl = cell.nextElementSibling;
+          if (prev && prev.classList.contains('conn')) prev.classList.add('lit');
+          if (nextEl && nextEl.classList.contains('conn')) nextEl.classList.add('lit');
+        }
+      }
     }
 
     function workflowsFor(id) {
       const set = new Set();
-      for (const e of data.edges) {
+      for (const e of graph.edges) {
         if (e.kind === 'workflow' && (e.source === id || e.target === id)) set.add(e.label);
       }
-      return [...set].sort();
-    }
-
-    function neighbors(id) {
-      const up = [], down = [];
-      for (const e of data.edges) {
-        if (e.source === id) down.push(e);
-        if (e.target === id) up.push(e);
-      }
-      return { up, down };
+      return Array.from(set).sort();
     }
 
     const panel = document.getElementById('panel');
@@ -1262,9 +2078,20 @@
     function openPanel(id) {
       const n = nodesById[id];
       if (!n) return;
+      selectedAgent = id;
       const wfs = workflowsFor(id);
-      const nb = neighbors(id);
-      let html = '<div class="p-id">' + escape(n.id) + '</div>';
+      const wfUp = [], wfDown = [], depOut = [], depIn = [];
+      for (const e of graph.edges) {
+        if (e.kind === 'workflow') {
+          if (e.source === id) wfDown.push(e);
+          if (e.target === id) wfUp.push(e);
+        } else {
+          if (e.source === id) depOut.push(e);
+          if (e.target === id) depIn.push(e);
+        }
+      }
+      let html = '';
+      html += '<div class="p-id">' + escape(n.id) + '</div>';
       html += '<h3>' + escape(n.name) + '</h3>';
       html += '<div class="badge' + (n.contract_status === 'stub' ? ' stub' : '') + '"><i></i>' + escape(n.contract_status) + '</div>';
       html += '<dl>';
@@ -1273,27 +2100,60 @@
       html += '<dt>Contract</dt><dd>' + (n.has_contract ? 'Yes' : 'No') + '</dd>';
       html += '<dt>Source</dt><dd><code>' + escape(n.source_path) + '</code></dd>';
       html += '</dl>';
+
       html += '<div class="p-label">Workflows</div>';
       if (wfs.length) {
-        html += '<div class="mini-row">';
-        for (const w of wfs) html += '<button type="button" class="mini" data-wf-jump="' + escape(w) + '">' + escape(w) + '</button>';
+        html += '<div class="mini-pills">';
+        for (const w of wfs) {
+          html += '<button type="button" class="mini-pill" data-wf-jump="' + escape(w) + '">' + escape(w) + '</button>';
+        }
         html += '</div>';
-      } else html += '<p class="p-dim">Not in a built-in workflow.</p>';
-      html += '<div class="p-label">Connections</div><ul class="conn-list">';
-      for (const e of nb.up) {
-        html += '<li><span>&larr;</span> <button type="button" data-jump="' + escape(e.source) + '">' + escape(e.source) + '</button> <span class="c-kind">' + escape(e.kind === 'workflow' ? e.label : 'package') + '</span></li>';
+      } else {
+        html += '<p class="p-dim">Not part of a built-in workflow.</p>';
       }
-      for (const e of nb.down) {
-        html += '<li><span>&rarr;</span> <button type="button" data-jump="' + escape(e.target) + '">' + escape(e.target) + '</button> <span class="c-kind">' + escape(e.kind === 'workflow' ? e.label : 'package') + '</span></li>';
+
+      html += '<div class="p-label">Pipeline connections</div>';
+      if (wfUp.length || wfDown.length) {
+        html += '<ul class="conn-list">';
+        for (const e of wfUp) {
+          html += '<li><span class="dir">&larr;</span> <button type="button" data-jump="' + escape(e.source) + '">' + escape(e.source) + '</button> <span class="c-kind">' + escape(e.label) + '</span></li>';
+        }
+        for (const e of wfDown) {
+          html += '<li><span class="dir">&rarr;</span> <button type="button" data-jump="' + escape(e.target) + '">' + escape(e.target) + '</button> <span class="c-kind">' + escape(e.label) + '</span></li>';
+        }
+        html += '</ul>';
+      } else {
+        html += '<p class="p-dim">No pipeline edges.</p>';
       }
-      if (!nb.up.length && !nb.down.length) html += '<li class="p-dim">No graph edges.</li>';
-      html += '</ul>';
+
+      html += '<div class="p-label">Depends on</div>';
+      if (depOut.length) {
+        for (const e of depOut) {
+          const t = nodesById[e.target];
+          html += '<div class="dep-row"><button type="button" class="dep-pill" data-jump="' + escape(e.target) + '"><span class="dep-arrow">&#8674;</span> ' + escape(e.target) + (t ? ' · ' + escape(t.name) : '') + '</button><span class="dep-label">' + escape(e.label) + '</span></div>';
+        }
+      } else {
+        html += '<p class="p-dim">No package dependencies.</p>';
+      }
+
+      html += '<div class="p-label">Required by</div>';
+      if (depIn.length) {
+        for (const e of depIn) {
+          const s = nodesById[e.source];
+          html += '<div class="dep-row"><button type="button" class="dep-pill" data-jump="' + escape(e.source) + '"><span class="dep-arrow">&#8672;</span> ' + escape(e.source) + (s ? ' · ' + escape(s.name) : '') + '</button><span class="dep-label">' + escape(e.label) + '</span></div>';
+        }
+      } else {
+        html += '<p class="p-dim">Nothing depends on this package.</p>';
+      }
+
       panelContent.innerHTML = html;
       panel.classList.add('open');
       panel.setAttribute('aria-hidden', 'false');
       scrim.hidden = false;
       requestAnimationFrame(() => scrim.classList.add('show'));
       panelOpen = true;
+      highlightSelection(id);
+      document.getElementById('panel-close').focus({ preventScroll: true });
     }
     function closePanel() {
       if (!panelOpen) return;
@@ -1301,75 +2161,89 @@
       panel.setAttribute('aria-hidden', 'true');
       scrim.classList.remove('show');
       panelOpen = false;
-      setTimeout(() => { if (!panelOpen) scrim.hidden = true; }, 300);
+      selectedAgent = null;
+      clearHighlight();
+      setTimeout(() => { if (!panelOpen) scrim.hidden = true; }, 350);
     }
     document.getElementById('panel-close').addEventListener('click', closePanel);
     scrim.addEventListener('click', closePanel);
     document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') closePanel(); });
 
+    for (const btn of document.querySelectorAll('[data-agent]')) {
+      btn.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        openPanel(btn.dataset.agent);
+      });
+    }
+
     panelContent.addEventListener('click', (ev) => {
       const jump = ev.target.closest('[data-jump]');
-      if (jump) { selectAgent(jump.dataset.jump); return; }
-      const wf = ev.target.closest('[data-wf-jump]');
-      if (wf) {
-        setWorkflow(wf.dataset.wfJump);
+      if (jump) { openPanel(jump.dataset.jump); return; }
+      const wfJump = ev.target.closest('[data-wf-jump]');
+      if (wfJump) {
+        const label = wfJump.dataset.wfJump;
         closePanel();
-        document.getElementById('stage').scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth' });
+        setWorkflow(label);
+        const stage = document.getElementById('stage');
+        if (stage) stage.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth' });
+        if (stageCard && !reduceMotion) {
+          stageCard.classList.add('flash');
+          setTimeout(() => stageCard.classList.remove('flash'), 1400);
+        }
       }
     });
 
-    function selectAgent(id) {
-      selectedId = id;
-      renderChain();
-      paintRoster();
-      openPanel(id);
-    }
-
-    function setWorkflow(w) {
-      activeWf = w;
-      for (const seg of document.querySelectorAll('.wf-seg')) {
-        const on = seg.dataset.workflow === w;
-        seg.classList.toggle('active', on);
-        seg.setAttribute('aria-pressed', on ? 'true' : 'false');
-      }
-      renderChain();
-      paintRoster();
-    }
-
-    for (const seg of document.querySelectorAll('.wf-seg')) {
-      seg.addEventListener('click', () => setWorkflow(seg.dataset.workflow));
-    }
-
-    for (const head of document.querySelectorAll('.tile-head')) {
-      head.addEventListener('click', () => {
-        const tile = head.closest('.tile');
-        const open = tile.classList.toggle('open');
-        head.setAttribute('aria-expanded', open ? 'true' : 'false');
-      });
-    }
-    for (const row of document.querySelectorAll('.agent-row')) {
-      row.addEventListener('click', (ev) => {
-        ev.stopPropagation();
-        selectAgent(row.dataset.id);
-      });
-    }
-
+    /* ---------- Quiet filters ---------- */
+    const searchEl = document.getElementById('search');
     const stageEl = document.getElementById('stage-filter');
+    const statusEl = document.getElementById('status-filter');
     for (const tile of document.querySelectorAll('.tile')) {
       const o = document.createElement('option');
       o.value = tile.dataset.stage;
       o.textContent = tile.querySelector('.tile-stage').textContent;
       stageEl.appendChild(o);
     }
-    document.getElementById('search').addEventListener('input', paintRoster);
-    stageEl.addEventListener('change', paintRoster);
-    document.getElementById('status-filter').addEventListener('change', paintRoster);
-
-    // seed chain card clicks + path highlight
-    for (const btn of document.querySelectorAll('#chain-track .chain-card')) {
-      btn.addEventListener('click', () => selectAgent(btn.dataset.id));
+    function applyFilters() {
+      const q = searchEl.value.trim().toLowerCase();
+      const st = stageEl.value;
+      const ss = statusEl.value;
+      const filtering = q !== '' || st !== 'all' || ss !== 'all';
+      for (const tile of document.querySelectorAll('.tile')) {
+        const rows = tile.querySelectorAll('.agent-row');
+        let matches = 0;
+        for (const row of rows) {
+          const n = nodesById[row.dataset.agent];
+          let show = true;
+          if (st !== 'all' && n.stage !== st) show = false;
+          if (ss !== 'all' && n.contract_status !== ss) show = false;
+          if (q && n.id.toLowerCase().indexOf(q) === -1 && n.name.toLowerCase().indexOf(q) === -1) show = false;
+          row.parentElement.style.display = show ? '' : 'none';
+          if (show) matches++;
+        }
+        tile.style.display = filtering && matches === 0 ? 'none' : '';
+        const head = tile.querySelector('.tile-head');
+        if (filtering && matches > 0) {
+          tile.classList.add('open');
+          head.setAttribute('aria-expanded', 'true');
+        }
+        const note = tile.querySelector('.tile-match');
+        if (note) note.textContent = filtering ? matches + ' of ' + rows.length : '';
+      }
     }
-    paintRoster();
+    searchEl.addEventListener('input', applyFilters);
+    stageEl.addEventListener('change', applyFilters);
+    statusEl.addEventListener('change', applyFilters);
+
+    /* ---------- Init ---------- */
+    applyPathHighlight();
+    const firstPath = document.querySelector('.stage-path.active');
+    if (firstPath) {
+      if (reduceMotion) {
+        firstPath.classList.add('in');
+      } else {
+        requestAnimationFrame(() => requestAnimationFrame(() => firstPath.classList.add('in')));
+      }
+    }
   </script>
 </body>
 </html>
