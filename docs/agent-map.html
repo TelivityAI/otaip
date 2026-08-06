@@ -252,37 +252,37 @@
       overflow: visible;
     }
     svg.edges .hit { fill: none; stroke: transparent; stroke-width: 14; pointer-events: stroke; cursor: pointer; }
-    svg.edges .glow { fill: none; stroke: var(--cyan-400); stroke-width: 8; opacity: 0.10; stroke-linecap: round; }
+    svg.edges .glow { fill: none; stroke: var(--cyan-400); stroke-width: 12; opacity: 0.14; stroke-linecap: round; }
     svg.edges .core-wf {
       fill: none;
       stroke: var(--cyan-400);
-      stroke-width: 2;
-      opacity: 0.9;
+      stroke-width: 2.75;
+      opacity: 0.95;
       stroke-linecap: round;
       stroke-linejoin: round;
     }
     svg.edges .ants {
       fill: none;
       stroke: var(--cyan-200);
-      stroke-width: 1.25;
+      stroke-width: 1.75;
       stroke-linecap: round;
-      stroke-dasharray: 1 9;
-      animation: march 0.9s linear infinite;
+      stroke-dasharray: 2 8;
+      animation: march 0.85s linear infinite;
       opacity: 0;
     }
-    svg.edges g.live .core-wf { stroke-width: 2.75; opacity: 1; }
-    svg.edges g.live .glow { stroke-width: 10; opacity: 0.16; }
+    svg.edges g.live .core-wf { stroke-width: 3.5; opacity: 1; stroke: var(--cyan-300); }
+    svg.edges g.live .glow { stroke-width: 16; opacity: 0.22; }
     svg.edges g.live .ants { opacity: 1; }
     svg.edges g.dim .core-wf, svg.edges g.dim .glow, svg.edges g.dim .ants { opacity: 0.08; }
     svg.edges g.dim .core-wf { marker-end: none; }
-    svg.edges g.hot .core-wf { stroke-width: 3; opacity: 1; stroke: var(--cyan-300); }
-    svg.edges g.hot .glow { opacity: 0.22; stroke-width: 12; }
+    svg.edges g.hot .core-wf { stroke-width: 4; opacity: 1; stroke: var(--cyan-200); }
+    svg.edges g.hot .glow { opacity: 0.28; stroke-width: 18; }
     svg.edges .core-pkg {
       fill: none;
-      stroke: var(--pkg);
-      stroke-width: 1.5;
-      opacity: 0.42;
-      stroke-dasharray: 3 5;
+      stroke: var(--pkg-hi);
+      stroke-width: 2;
+      opacity: 0.55;
+      stroke-dasharray: 4 6;
       stroke-linecap: round;
       stroke-linejoin: round;
     }
