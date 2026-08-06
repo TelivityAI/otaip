@@ -3,48 +3,72 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>OTAIP Agent Map</title>
+  <title>Otaip Agent Map · Telivity</title>
+  <meta name="description" content="Telivity Otaip — visual map of travel AI agents across search, price, book, ticket, and settle." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg: #f7f4ef;
-      --ink: #1c1917;
-      --muted: #78716c;
-      --line: #d6d3d1;
-      --panel: #fffcf7;
-      --active: #0f766e;
-      --stub: #a8a29e;
-      --workflow: #c2410c;
-      --pkg: #a8a29e;
-      --hl: #0d9488;
+      --bg: #020617;
+      --ink: #f1f5f9;
+      --muted: #94a3b8;
+      --line: #1e293b;
+      --panel: #0f172a;
+      --panel-2: #020617;
+      --active: #06b6d4;
+      --stub: #64748b;
+      --workflow: #22d3ee;
+      --pkg: #475569;
+      --hl: #22d3ee;
+      --brand: #22d3ee;
+      --cta: #06b6d4;
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
-      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+      font-family: "IBM Plex Sans", system-ui, sans-serif;
       color: var(--ink);
       background:
-        radial-gradient(1200px 600px at 10% -10%, #dde8e4 0%, transparent 55%),
-        radial-gradient(900px 500px at 100% 0%, #f0e6d8 0%, transparent 50%),
+        radial-gradient(900px 480px at 8% -8%, rgba(6, 182, 212, 0.18) 0%, transparent 55%),
+        radial-gradient(700px 420px at 100% 0%, rgba(34, 211, 238, 0.08) 0%, transparent 50%),
         var(--bg);
       min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
     }
     header {
       padding: 1.5rem 1.75rem 0.75rem;
       max-width: 1400px;
       margin: 0 auto;
     }
+    .brand {
+      margin: 0 0 0.65rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--brand);
+    }
+    .brand a {
+      color: inherit;
+      text-decoration: none;
+    }
+    .brand a:hover { text-decoration: underline; }
     header h1 {
       margin: 0;
-      font-family: "IBM Plex Serif", Georgia, serif;
-      font-weight: 600;
-      font-size: 1.75rem;
-      letter-spacing: -0.02em;
+      font-family: "Space Grotesk", system-ui, sans-serif;
+      font-weight: 700;
+      font-size: clamp(1.75rem, 3vw, 2.35rem);
+      letter-spacing: -0.03em;
+      line-height: 1.1;
     }
+    header h1 span { color: var(--brand); }
     header p {
-      margin: 0.4rem 0 0;
+      margin: 0.65rem 0 0;
       color: var(--muted);
       font-size: 0.95rem;
-      max-width: 52rem;
+      max-width: 46rem;
+      line-height: 1.5;
     }
     .toolbar {
       display: flex;
@@ -56,13 +80,20 @@
       margin: 0 auto;
     }
     .toolbar input, .toolbar select {
-      border: 1px solid var(--line);
-      background: var(--panel);
-      border-radius: 6px;
-      padding: 0.4rem 0.6rem;
+      border: 1px solid #334155;
+      background: var(--panel-2);
+      color: var(--ink);
+      border-radius: 8px;
+      padding: 0.45rem 0.65rem;
       font: inherit;
       font-size: 0.875rem;
     }
+    .toolbar input::placeholder { color: #64748b; }
+    .toolbar input:focus, .toolbar select:focus {
+      outline: none;
+      border-color: var(--cta);
+    }
+    .toolbar select option { background: #0f172a; color: var(--ink); }
     .toolbar input { min-width: 12rem; }
     .legend {
       display: flex;
@@ -84,7 +115,7 @@
     .legend .l-active::before { background: var(--active); }
     .legend .l-stub::before { background: var(--stub); }
     .legend .l-wf::before { background: var(--workflow); }
-    .legend .l-pkg::before { background: var(--pkg); }
+    .legend .l-pkg::before { background: var(--pkg); border: 1px dashed #94a3b8; }
     .layout {
       display: grid;
       grid-template-columns: 1fr minmax(14rem, 18rem);
@@ -100,8 +131,8 @@
       position: relative;
       overflow-x: auto;
       border: 1px solid var(--line);
-      border-radius: 10px;
-      background: var(--panel);
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.72);
       min-height: 28rem;
     }
     .board {
@@ -120,44 +151,50 @@
       margin: 0 0 0.5rem;
       font-size: 0.7rem;
       text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--muted);
+      letter-spacing: 0.08em;
+      color: #64748b;
       font-weight: 600;
     }
     .stage .count {
       font-weight: 500;
-      opacity: 0.7;
+      color: var(--brand);
+      opacity: 0.85;
     }
     .nodes { display: flex; flex-direction: column; gap: 0.35rem; }
     .node {
       text-align: left;
-      border: 1px solid var(--line);
-      background: #fff;
-      border-radius: 6px;
-      padding: 0.4rem 0.5rem;
+      border: 1px solid #334155;
+      background: #020617;
+      border-radius: 8px;
+      padding: 0.45rem 0.55rem;
       cursor: pointer;
       display: flex;
       flex-direction: column;
       gap: 0.1rem;
       transition: border-color 0.15s, box-shadow 0.15s, opacity 0.15s;
+      color: inherit;
     }
     .node .id {
       font-family: "IBM Plex Mono", ui-monospace, monospace;
       font-size: 0.7rem;
-      color: var(--muted);
+      color: #64748b;
     }
     .node .name {
       font-size: 0.78rem;
       line-height: 1.25;
-      color: var(--ink);
+      color: #e2e8f0;
+      font-weight: 500;
     }
     .node.active { border-left: 3px solid var(--active); }
-    .node.stub { border-left: 3px solid var(--stub); opacity: 0.85; }
+    .node.stub { border-left: 3px solid var(--stub); opacity: 0.8; }
     .node.selected, .node:hover {
       border-color: var(--hl);
-      box-shadow: 0 0 0 1px var(--hl);
+      box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.55);
     }
-    .node.on-path { border-color: var(--workflow); box-shadow: 0 0 0 1px var(--workflow); }
+    .node.on-path {
+      border-color: var(--workflow);
+      box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.45);
+    }
     .node.dim { opacity: 0.28; }
     svg.edges {
       position: absolute;
@@ -169,39 +206,56 @@
       overflow: visible;
     }
     svg.edges path.workflow { fill: none; stroke: var(--workflow); stroke-width: 1.5; opacity: 0.55; }
-    svg.edges path.package { fill: none; stroke: var(--pkg); stroke-width: 1; stroke-dasharray: 4 3; opacity: 0.35; }
+    svg.edges path.package { fill: none; stroke: var(--pkg); stroke-width: 1; stroke-dasharray: 4 3; opacity: 0.4; }
     svg.edges path.hl { opacity: 1; stroke-width: 2.25; }
     .detail {
       border: 1px solid var(--line);
-      border-radius: 10px;
-      background: var(--panel);
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.85);
       padding: 1rem;
       align-self: start;
       position: sticky;
       top: 1rem;
     }
-    .detail h3 { margin: 0 0 0.5rem; font-size: 1rem; }
+    .detail h3 {
+      margin: 0 0 0.5rem;
+      font-family: "Space Grotesk", system-ui, sans-serif;
+      font-size: 1.05rem;
+      font-weight: 600;
+    }
     .detail dl { margin: 0; display: grid; grid-template-columns: 5.5rem 1fr; gap: 0.35rem 0.5rem; font-size: 0.8rem; }
     .detail dt { color: var(--muted); }
-    .detail dd { margin: 0; word-break: break-word; }
+    .detail dd { margin: 0; word-break: break-word; color: #e2e8f0; }
     .detail .empty { color: var(--muted); font-size: 0.85rem; }
-    .detail ul { margin: 0.5rem 0 0; padding-left: 1.1rem; font-size: 0.8rem; }
+    .detail ul { margin: 0.5rem 0 0; padding-left: 1.1rem; font-size: 0.8rem; color: #cbd5e1; }
+    .detail code {
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.72rem;
+      color: var(--brand);
+    }
     .note {
       max-width: 1400px;
       margin: 0 auto;
       padding: 0 1.75rem 2rem;
       font-size: 0.75rem;
-      color: var(--muted);
+      color: #64748b;
+    }
+    .note a { color: var(--brand); text-decoration: none; }
+    .note a:hover { text-decoration: underline; }
+    .note code {
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      color: #94a3b8;
     }
   </style>
 </head>
 <body>
   <header>
-    <h1>OTAIP Agent Map</h1>
+    <p class="brand"><a href="https://telivity.app">Telivity</a> · Otaip</p>
+    <h1>Agent Map for the <span>whole travel transaction</span></h1>
     <p>
-      Stage columns for every discovered agent. Solid arcs are Orchestrator
-      workflow steps; dashed arcs are package workspace dependencies (stage hubs).
-      This is navigation only — not a travel-domain knowledge graph.
+      Every discovered Otaip agent by stage. Solid cyan arcs are Orchestrator
+      workflow steps; dashed arcs are package workspace dependencies.
+      Navigation only — not a travel-domain knowledge graph.
     </p>
   </header>
   <div class="toolbar">
@@ -603,6 +657,7 @@
     </aside>
   </div>
   <p class="note">
+    <a href="https://telivity.app">Telivity</a> · Powered by Otaip.
     Generated by <code>pnpm gen:manifest</code> from <code>agents.graph.json</code>
     (77 agents, 27 edges). Do not hand-edit.
   </p>
