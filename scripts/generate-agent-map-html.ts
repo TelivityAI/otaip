@@ -260,8 +260,10 @@ ${rows}
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Telivity Otaip · Agent connections</title>
   <meta name="description" content="Interactive map of the Telivity Otaip agent system — ${graph.total_nodes} typed travel agents and the orchestrator pipelines that connect them." />
-  <link rel="icon" href="assets/telivity/favicon.ico" sizes="any" />
   <link rel="icon" href="assets/telivity/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="assets/telivity/favicon-32.png" type="image/png" sizes="32x32" />
+  <link rel="icon" href="assets/telivity/favicon-64.png" type="image/png" sizes="64x64" />
+  <link rel="apple-touch-icon" href="assets/telivity/apple-touch-icon.png" />
   <meta property="og:image" content="assets/telivity/og-image.png" />
   <script>document.documentElement.classList.add('js');</script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -1133,7 +1135,7 @@ ${rows}
   <nav class="nav" id="nav">
     <div class="nav-inner">
       <a class="brand" href="#stage" aria-label="Telivity Otaip agent graph">
-        <img src="assets/telivity/logo-1color.svg" width="22" height="22" alt="" />
+        <img src="assets/telivity/brand/mark.svg" width="22" height="22" alt="" />
         <span class="brand-name">Telivity</span>
         <span class="brand-sub">/ Otaip</span>
       </a>
@@ -1195,7 +1197,7 @@ ${tilesHtml}
   <div class="shell">
     <footer>
       <a class="brand" href="https://telivity.app">
-        <img src="assets/telivity/logo-1color.svg" width="18" height="18" alt="" />
+        <img src="assets/telivity/brand/mark.svg" width="18" height="18" alt="" />
         <span class="brand-name">Telivity</span>
       </a>
       <span>Otaip agent graph · ${graph.total_nodes} agents · ${stages.length} stages · ${workflows.length} workflows</span>
