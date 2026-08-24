@@ -26,7 +26,7 @@ function assertAssessment(result: AgentOutput<ChangeManagementResult>) {
   if (isDomainInputRequired(result.data)) {
     throw new Error(`unexpected DOMAIN_INPUT_REQUIRED: ${result.data.description}`);
   }
-  return assertAssessment(result);
+  return result.data.assessment;
 }
 
 const require = createRequire(import.meta.url);
