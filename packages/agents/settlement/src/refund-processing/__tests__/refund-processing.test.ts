@@ -112,11 +112,23 @@ describe('Refund Processing', () => {
     });
   });
 
-  describe('ATPCO default — no Cat33 rules supplied', () => {
-    it('voluntary refund with no rules: penalty = 0, full base refund', async () => {
+  describe('ATPCO default — no Cat33 conditions/charges matched', () => {
+    it('voluntary refund with no Cat33 data: free refund (not fail-closed)', async () => {
       const result = await agent.execute({
         data: makeInput({ cat33_rules: undefined }),
       });
+      expect(assertRefund(result).refund.penalty_applied).toBe('0.00');
+      expect(assertRefund(result).refund.base_fare_refund).toBe('450.00');
+    });
+
+    it('rules present but no provision match: free refund (not fail-closed)', async () => {
+      const result = await agent.execute({
+        data: makeInput({
+          fare_basis: 'ZZZNORULE',
+          cat33_rules: { rules: TEST_CAT33_RULES.rules },
+        }),
+      });
+      // ZZZNORULE matches none of the fixture patterns → free
       expect(assertRefund(result).refund.penalty_applied).toBe('0.00');
       expect(assertRefund(result).refund.base_fare_refund).toBe('450.00');
     });
@@ -192,13 +204,13 @@ describe('Refund Processing', () => {
       expect(result.data).toMatchObject({ status: 'DOMAIN_INPUT_REQUIRED' });
       if (!('missing' in result.data)) throw new Error('expected domain sentinel');
       expect(result.data.missing).toContain('partial_valuation');
-      expect(result.data.description).toMatch(/THB|Historical Ticket Based/i);
+      expect(result.data.description).toMatch(/THB|IATA Ticketing Handbook/i);
       expect(result.data.description).toMatch(/MPA-P/);
       expect(result.confidence).toBe(0);
     });
 
-    it('applies Cat 33 penalty to CAT33_THB unused base (not coupon-ratio)', async () => {
-      // Made-up: ticketed 800, THB flown 480 → unused 320; fixture HOWUS penalty 200
+    it('applies Cat 33 penalty to PUBLISHED_FARE unused base (not coupon-ratio)', async () => {
+      // Made-up: ticketed 800, published flown 480 → unused 320; fixture HOWUS penalty 200
       const coupons: CouponRefundItem[] = [
         { coupon_number: 2, status: 'O', refundable: true },
       ];
@@ -210,7 +222,7 @@ describe('Refund Processing', () => {
           total_coupons: 2,
           fare_basis: 'HOWUS',
           partial_valuation: {
-            method: 'CAT33_THB',
+            method: 'PUBLISHED_FARE',
             unused_base_fare: '320.00',
             flown_base_fare: '480.00',
             unused_taxes: [{ code: 'GB', amount: '55.00', currency: 'USD' }],
@@ -218,22 +230,46 @@ describe('Refund Processing', () => {
         }),
       });
       if ('status' in result.data) throw new Error('unexpected domain sentinel');
-      expect(assertRefund(result).refund.audit.residual_method).toBe('CAT33_THB');
+      expect(assertRefund(result).refund.audit.residual_method).toBe('PUBLISHED_FARE');
       expect(assertRefund(result).refund.audit.flown_base_fare).toBe('480.00');
       expect(assertRefund(result).refund.tax_refund).toBe('55.00');
       expect(assertRefund(result).refund.penalty_applied).toBe('200.00');
       expect(assertRefund(result).refund.base_fare_refund).toBe('120.00');
     });
 
-    it('does not invent coupon-ratio tax when THB unused taxes are supplied', async () => {
+    it('no Cat 33 data + PUBLISHED_FARE: free penalty on unused base (not fail-closed)', async () => {
+      const coupons: CouponRefundItem[] = [
+        { coupon_number: 2, status: 'O', refundable: true },
+      ];
+      const result = await agent.execute({
+        data: makeInput({
+          base_fare: '800.00',
+          refund_type: 'PARTIAL',
+          coupons_to_refund: coupons,
+          total_coupons: 2,
+          cat33_rules: undefined,
+          partial_valuation: {
+            method: 'PUBLISHED_FARE',
+            unused_base_fare: '320.00',
+            flown_base_fare: '480.00',
+            unused_taxes: [{ code: 'GB', amount: '55.00', currency: 'USD' }],
+          },
+        }),
+      });
+      if ('status' in result.data) throw new Error('unexpected domain sentinel');
+      expect(assertRefund(result).refund.penalty_applied).toBe('0.00');
+      expect(assertRefund(result).refund.base_fare_refund).toBe('320.00');
+    });
+
+    it('does not invent coupon-ratio tax when unused taxes are supplied', async () => {
       const coupons: CouponRefundItem[] = [{ coupon_number: 3, status: 'O', refundable: true }];
       const result = await agent.execute({
         data: makeInput({
           refund_type: 'PARTIAL',
           coupons_to_refund: coupons,
-          waiver_code: 'W',
+          cat33_rules: undefined,
           partial_valuation: {
-            method: 'CAT33_THB',
+            method: 'PUBLISHED_FARE',
             unused_base_fare: '112.50',
             unused_taxes: [
               { code: 'GB', amount: '20.00', currency: 'USD' },
@@ -243,7 +279,6 @@ describe('Refund Processing', () => {
         }),
       });
       if ('status' in result.data) throw new Error('unexpected domain sentinel');
-      // Must use supplied unused taxes (25.00), not 25% of 120 = 30.00 coupon ratio
       expect(assertRefund(result).refund.tax_refund).toBe('25.00');
       expect(assertRefund(result).refund.base_fare_refund).toBe('112.50');
     });
@@ -257,7 +292,7 @@ describe('Refund Processing', () => {
         data: makeInput({
           refund_type: 'PARTIAL',
           coupons_to_refund: coupons,
-          waiver_code: 'W',
+          cat33_rules: undefined,
           partial_valuation: {
             method: 'CARRIER_SPECIFIC',
             unused_base_fare: '200.00',
@@ -272,22 +307,38 @@ describe('Refund Processing', () => {
   });
 
   describe('Waiver code', () => {
-    it('bypasses penalty with waiver code', async () => {
+    it('bare waiver_code fails closed (≠ free; same split as #153)', async () => {
       const result = await agent.execute({ data: makeInput({ waiver_code: 'WAIVER123' }) });
-      expect(assertRefund(result).refund.penalty_applied).toBe('0.00');
-      expect(assertRefund(result).refund.base_fare_refund).toBe('450.00');
+      expect(result.data).toMatchObject({ status: 'DOMAIN_INPUT_REQUIRED' });
+      if (!('missing' in result.data)) throw new Error('expected domain sentinel');
+      expect(result.data.missing).toContain('waiver_effect');
+      expect(result.data.description).toMatch(/waiver_effect|Bare waiver/i);
     });
 
-    it('stores waiver code on record', async () => {
-      const result = await agent.execute({ data: makeInput({ waiver_code: 'WAIVER123' }) });
-      expect(assertRefund(result).refund.waiver_code).toBe('WAIVER123');
-      expect(assertRefund(result).refund.audit.waiver_code).toBe('WAIVER123');
+    it('bare waiver on PARTIAL fails closed even when valuation supplied', async () => {
+      const result = await agent.execute({
+        data: makeInput({
+          refund_type: 'PARTIAL',
+          coupons_to_refund: [{ coupon_number: 1, status: 'O', refundable: true }],
+          waiver_code: 'W',
+          partial_valuation: {
+            method: 'PUBLISHED_FARE',
+            unused_base_fare: '100.00',
+            unused_taxes: [{ code: 'GB', amount: '10.00', currency: 'USD' }],
+          },
+        }),
+      });
+      expect(result.data).toMatchObject({ status: 'DOMAIN_INPUT_REQUIRED' });
+      if (!('missing' in result.data)) throw new Error('expected domain sentinel');
+      expect(result.data.missing).toContain('waiver_effect');
     });
   });
 
   describe('Commission recall', () => {
     it('recalls proportional commission on full refund', async () => {
-      const result = await agent.execute({ data: makeInput({ waiver_code: 'W' }) }); // waiver so full base refund
+      const result = await agent.execute({
+        data: makeInput({ cat33_rules: undefined }), // free — full base refund
+      });
       expect(assertRefund(result).commission_recalled).toBe('31.50'); // full commission
     });
 
@@ -297,9 +348,9 @@ describe('Refund Processing', () => {
         data: makeInput({
           refund_type: 'PARTIAL',
           coupons_to_refund: coupons,
-          waiver_code: 'W',
+          cat33_rules: undefined,
           partial_valuation: {
-            method: 'CAT33_THB',
+            method: 'PUBLISHED_FARE',
             unused_base_fare: '112.50',
             unused_taxes: [{ code: 'GB', amount: '10.00', currency: 'USD' }],
           },

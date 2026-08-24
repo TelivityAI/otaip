@@ -4,7 +4,7 @@
  * Agent 5.1: ATPCO Category 31 voluntary change assessment.
  *
  * Residual value follows `docs/knowledge-base/partial-refund-residual-value.md`:
- * never residual = original − change fee; partials require CAT33_THB or
+ * never residual = original − change fee; partials require PUBLISHED_FARE or
  * CARRIER_SPECIFIC valuation (MPA-P is not passenger residual).
  */
 
@@ -98,12 +98,12 @@ export interface ChangeAssessment {
   /**
    * Residual value available for reissue (decimal string).
    * Fully unused: ticketed base fare (change fee is separate).
-   * Partially used: unused base from CAT33_THB / CARRIER_SPECIFIC valuation.
+   * Partially used: unused base from PUBLISHED_FARE / CARRIER_SPECIFIC valuation.
    * Never original − change fee.
    */
   residual_value: string;
   /** Valuation method used for residual_value */
-  residual_method: 'FULLY_UNUSED' | 'CAT33_THB' | 'CARRIER_SPECIFIC';
+  residual_method: 'FULLY_UNUSED' | 'PUBLISHED_FARE' | 'CARRIER_SPECIFIC';
   /** Forfeited amount on non-refundable downgrade (decimal string, "0.00" if none) */
   forfeited_amount: string;
   /** Tax difference (decimal string) */
@@ -162,11 +162,11 @@ export interface ChangeManagementInput {
   cat31_rules?: Cat31Rules;
   /**
    * Ticket usage. Defaults to FULLY_UNUSED when omitted.
-   * PARTIALLY_USED requires `residual_valuation` (Cat 33 THB or carrier).
+   * PARTIALLY_USED requires `residual_valuation` (PUBLISHED_FARE or carrier).
    */
   ticket_usage?: TicketUsage;
   /**
-   * Unused residual after Cat 33 THB / carrier valuation.
+   * Unused residual after published-fare / carrier valuation.
    * Required when ticket_usage is PARTIALLY_USED. See KB issue #150.
    */
   residual_valuation?: PassengerPartialValuation;

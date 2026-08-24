@@ -25,7 +25,7 @@ const PASSENGER_NAME_RE = /^[A-Z][A-Z' -]+\/[A-Z][A-Z' -]+$/;
 const RECORD_LOCATOR_RE = /^[A-Z0-9]{6}$/;
 const VALID_REFUND_TYPES = new Set(['FULL', 'PARTIAL', 'TAX_ONLY']);
 const VALID_SETTLEMENT = new Set(['BSP', 'ARC']);
-const VALID_PARTIAL_METHODS = new Set(['CAT33_THB', 'CARRIER_SPECIFIC']);
+const VALID_PARTIAL_METHODS = new Set(['PUBLISHED_FARE', 'CARRIER_SPECIFIC']);
 
 export class RefundProcessing implements Agent<RefundProcessingInput, RefundProcessingResult> {
   readonly id = '6.1';
@@ -173,7 +173,7 @@ export class RefundProcessing implements Agent<RefundProcessingInput, RefundProc
         throw new AgentInputValidationError(
           this.id,
           'partial_valuation.method',
-          'Must be CAT33_THB or CARRIER_SPECIFIC. MPA-P / original−used / coupon-ratio are rejected.',
+          'Must be PUBLISHED_FARE or CARRIER_SPECIFIC. MPA-P / original−used / coupon-ratio are rejected.',
         );
       }
       if (!v.unused_base_fare || isNaN(Number(v.unused_base_fare))) {

@@ -20,13 +20,13 @@ ATPCO Category 33 refund processing: penalty application, commission recall, BSP
 - `base_fare`, `base_fare_currency`, `taxes`, `commission?`
 - `refund_type` -- `'FULL' | 'PARTIAL' | 'TAX_ONLY'`
 - `coupons_to_refund?` -- specific coupons (for partial)
-- `partial_valuation?` -- **required for PARTIAL**: `CAT33_THB` or `CARRIER_SPECIFIC` unused base + unused taxes (see `docs/knowledge-base/partial-refund-residual-value.md`)
+- `partial_valuation?` -- **required for PARTIAL**: `PUBLISHED_FARE` or `CARRIER_SPECIFIC` unused base + unused taxes (see `docs/knowledge-base/partial-refund-residual-value.md`)
 - `total_coupons`, `waiver_code?`, `fare_basis`, `is_refundable`
-- `settlement_system` -- `'BSP' | 'ARC'`
+- Bare `waiver_code` without typed effect → fail closed (≠ free; #138/#153). No Cat 33 / unmatched → free penalty.
 
 **Output (`RefundProcessingResult`):**
 - Success: `refund` -- penalty applied, base fare refund, tax refund, tax breakdown, commission recalled, net refund, BSP/ARC reporting fields, audit trail; `net_refund_amount`, `commission_recalled`
-- Or `DOMAIN_INPUT_REQUIRED` for PARTIAL without valuation method (fail closed; never original − used / coupon-ratio / MPA-P)
+- Or `DOMAIN_INPUT_REQUIRED` for PARTIAL without valuation method, or bare `waiver_code` (never original − used / coupon-ratio / MPA-P)
 - Conjunction: PARTIAL rejected (all-or-none)
 
 ---

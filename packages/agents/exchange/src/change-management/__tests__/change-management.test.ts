@@ -140,12 +140,12 @@ describe('Change Management', () => {
       expect(result.confidence).toBe(0);
     });
 
-    it('uses CAT33_THB unused base when residual_valuation supplied', async () => {
+    it('uses PUBLISHED_FARE unused base when residual_valuation supplied', async () => {
       const result = await agent.execute({
         data: makeInput({
           ticket_usage: 'PARTIALLY_USED',
           residual_valuation: {
-            method: 'CAT33_THB',
+            method: 'PUBLISHED_FARE',
             unused_base_fare: '320.00',
             flown_base_fare: '480.00',
             unused_taxes: [{ code: 'GB', amount: '40.00', currency: 'USD' }],
@@ -154,7 +154,7 @@ describe('Change Management', () => {
       });
       if ('status' in result.data) throw new Error('unexpected domain sentinel');
       expect(assertAssessment(result).residual_value).toBe('320.00');
-      expect(assertAssessment(result).residual_method).toBe('CAT33_THB');
+      expect(assertAssessment(result).residual_method).toBe('PUBLISHED_FARE');
     });
 
     it('sets action to REISSUE for fare change', async () => {
@@ -168,8 +168,8 @@ describe('Change Management', () => {
     });
   });
 
-  describe('ATPCO default — no Cat31 rules supplied', () => {
-    it('voluntary change with no rules: penalty = 0 (ATPCO default)', async () => {
+  describe('ATPCO default — no Cat31 conditions/charges matched', () => {
+    it('voluntary change with no Cat31 data: free change (not fail-closed)', async () => {
       const result = await agent.execute({
         data: makeInput({ cat31_rules: undefined }),
       });
@@ -272,18 +272,12 @@ describe('Change Management', () => {
   });
 
   describe('Waiver codes', () => {
-    it('waives penalty with waiver code', async () => {
+    it('bare waiver_code fails closed (≠ free; same split as #153)', async () => {
       const input = makeInput({ waiver_code: 'WAIVER123' });
       const result = await agent.execute({ data: input });
-      expect(assertAssessment(result).fee_waived).toBe(true);
-      expect(assertAssessment(result).change_fee).toBe('0.00');
-      expect(assertAssessment(result).waiver_code).toBe('WAIVER123');
-    });
-
-    it('stores waiver code on assessment', async () => {
-      const input = makeInput({ waiver_code: 'ABCDEF' });
-      const result = await agent.execute({ data: input });
-      expect(assertAssessment(result).waiver_code).toBe('ABCDEF');
+      expect(result.data).toMatchObject({ status: 'DOMAIN_INPUT_REQUIRED' });
+      if (!('missing' in result.data)) throw new Error('expected domain sentinel');
+      expect(result.data.missing).toContain('waiver_effect');
     });
   });
 
@@ -328,12 +322,6 @@ describe('Change Management', () => {
       const result = await agent.execute({ data: makeInput() });
       expect(assertAssessment(result).summary).toBeTruthy();
       expect(assertAssessment(result).summary.length).toBeGreaterThan(10);
-    });
-
-    it('summary mentions waiver when applied', async () => {
-      const input = makeInput({ waiver_code: 'WAIVER123' });
-      const result = await agent.execute({ data: input });
-      expect(assertAssessment(result).summary).toContain('Waiver');
     });
 
     it('summary includes total due', async () => {

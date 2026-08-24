@@ -27,7 +27,7 @@ const CARRIER_RE = /^[A-Z0-9]{2}$/;
 const PASSENGER_NAME_RE = /^[A-Z][A-Z' -]+\/[A-Z][A-Z' -]+$/;
 const RECORD_LOCATOR_RE = /^[A-Z0-9]{6}$/;
 const VALID_USAGE = new Set(['FULLY_UNUSED', 'PARTIALLY_USED']);
-const VALID_RESIDUAL_METHODS = new Set(['CAT33_THB', 'CARRIER_SPECIFIC']);
+const VALID_RESIDUAL_METHODS = new Set(['PUBLISHED_FARE', 'CARRIER_SPECIFIC']);
 
 export class ChangeManagement implements Agent<ChangeManagementInput, ChangeManagementResult> {
   readonly id = '5.1';
@@ -165,7 +165,7 @@ export class ChangeManagement implements Agent<ChangeManagementInput, ChangeMana
         throw new AgentInputValidationError(
           this.id,
           'residual_valuation.method',
-          'Must be CAT33_THB or CARRIER_SPECIFIC. MPA-P / original−used / coupon-ratio are rejected.',
+          'Must be PUBLISHED_FARE or CARRIER_SPECIFIC. MPA-P / original−used / coupon-ratio are rejected.',
         );
       }
       if (!v.unused_base_fare || isNaN(Number(v.unused_base_fare))) {

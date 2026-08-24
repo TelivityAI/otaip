@@ -119,17 +119,17 @@ describe('Exchange/Reissue', () => {
       ).rejects.toThrow('Invalid input');
     });
 
-    it('applies CAT33_THB residual without inventing original − fee', async () => {
+    it('applies PUBLISHED_FARE residual without inventing original − fee', async () => {
       const result = await agent.execute({
         data: makeInput({
           residual_value: '320.00',
-          residual_method: 'CAT33_THB',
+          residual_method: 'PUBLISHED_FARE',
           change_fee: '150.00',
         }),
       });
       if ('status' in result.data) throw new Error('unexpected domain sentinel');
       expect(result.data.reissue.exchange_audit.residual_applied).toBe('320.00');
-      expect(result.data.reissue.exchange_audit.residual_method).toBe('CAT33_THB');
+      expect(result.data.reissue.exchange_audit.residual_method).toBe('PUBLISHED_FARE');
       // 550 - 320 + 150 + 5 tax = 385
       expect(result.data.additional_collection).toBe('385.00');
     });

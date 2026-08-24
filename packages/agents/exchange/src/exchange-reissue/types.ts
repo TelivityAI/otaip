@@ -175,7 +175,7 @@ export interface ExchangeReissueInput {
   residual_value: string;
   /**
    * How residual_value was produced. Required.
-   * PARTIALLY_USED tickets must use CAT33_THB or CARRIER_SPECIFIC.
+   * PARTIALLY_USED tickets must use PUBLISHED_FARE or CARRIER_SPECIFIC.
    */
   residual_method: PassengerResidualMethod;
   /** Waiver code (if applied in Agent 5.1) */

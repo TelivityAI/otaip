@@ -199,7 +199,7 @@ export function processReissue(input: ExchangeReissueInput): ExchangeReissueResu
     return domainInputRequired({
       missing: ['residual_method'],
       description:
-        'Exchange/reissue requires residual_method (FULLY_UNUSED, CAT33_THB, or CARRIER_SPECIFIC). Residual must not be invented as original − change fee. MPA-P is not passenger residual.',
+        'Exchange/reissue requires residual_method (FULLY_UNUSED, PUBLISHED_FARE, or CARRIER_SPECIFIC). Residual must not be invented as original − change fee. MPA-P is not passenger residual.',
       references: [
         'docs/knowledge-base/partial-refund-residual-value.md',
         'GitHub issue #150',
@@ -209,13 +209,13 @@ export function processReissue(input: ExchangeReissueInput): ExchangeReissueResu
 
   if (
     input.residual_method !== 'FULLY_UNUSED' &&
-    input.residual_method !== 'CAT33_THB' &&
+    input.residual_method !== 'PUBLISHED_FARE' &&
     input.residual_method !== 'CARRIER_SPECIFIC'
   ) {
     return domainInputRequired({
       missing: ['residual_method'],
       description:
-        'residual_method must be FULLY_UNUSED, CAT33_THB, or CARRIER_SPECIFIC. Rejected: original−change-fee, MPA-P, haversine, coupon-ratio.',
+        'residual_method must be FULLY_UNUSED, PUBLISHED_FARE, or CARRIER_SPECIFIC. Rejected: original−change-fee, MPA-P, haversine, coupon-ratio.',
       references: [
         'docs/knowledge-base/partial-refund-residual-value.md',
         'GitHub issue #150',

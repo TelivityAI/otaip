@@ -12,7 +12,7 @@
  *   penalty; involuntary refunds are full refunds.
  *
  * Partial refunds (issue #150 / KB partial-refund-residual-value.md):
- * - Require `partial_valuation` with CAT33_THB or CARRIER_SPECIFIC
+ * - Require `partial_valuation` with PUBLISHED_FARE or CARRIER_SPECIFIC
  * - Passenger path = Cat 33 penalty + THB unused base/taxes
  * - NEVER original−used, coupon-ratio, MPA-P, or haversine
  *
@@ -104,10 +104,9 @@ function applyBasePenalty(
   unusedBase: Decimal,
   rule: RefundPenaltyRule | undefined,
   isInvoluntary: boolean,
-  hasWaiver: boolean,
   isRefundable: boolean,
 ): { baseFareRefund: Decimal; penalty: Decimal } {
-  if (isInvoluntary || hasWaiver) {
+  if (isInvoluntary) {
     return { baseFareRefund: unusedBase, penalty: new Decimal(0) };
   }
   if (rule?.forfeit_base_fare && !isRefundable) {
@@ -118,7 +117,8 @@ function applyBasePenalty(
     const penalty = Decimal.min(penaltyAmount, unusedBase);
     return { baseFareRefund: unusedBase.minus(penalty), penalty };
   }
-  // No rule supplied → ATPCO default: no penalty.
+  // No Cat 33 data / no matching provision → ATPCO public default: free (no penalty).
+  // Bare waiver_code is NOT this path — fail closed before calling this helper.
   return { baseFareRefund: unusedBase, penalty: new Decimal(0) };
 }
 
@@ -127,14 +127,27 @@ export function processRefund(input: RefundProcessingInput): RefundProcessingRes
   const originalTax = sumTaxes(input.taxes);
   const rule = findPenaltyRule(input.cat33_rules, input.fare_basis);
   const isInvoluntary = input.is_involuntary === true;
-  const hasWaiver = !!input.waiver_code;
+
+  // Bare waiver_code ≠ free (same split as #153). Fail closed until typed effect.
+  if (input.waiver_code) {
+    return domainInputRequired({
+      missing: ['waiver_effect'],
+      description:
+        'waiver_code is present without typed waiver_effect. Bare waiver identity does not skip Cat 33 penalty (issue #138 / PR #153). Contrast: no Cat 33 data / unmatched provision → free refund (ATPCO public default) — that path does not apply to bare waivers or missing proration methods.',
+      references: [
+        'docs/knowledge-base/partial-refund-residual-value.md',
+        'GitHub issue #138',
+        'GitHub issue #150',
+      ],
+    });
+  }
 
   let baseFareRefund: Decimal;
   let taxRefund: Decimal;
   let taxBreakdown: TaxItem[];
   let penalty: Decimal;
   let couponsRefunded: number[];
-  let residualMethod: 'CAT33_THB' | 'CARRIER_SPECIFIC' | undefined;
+  let residualMethod: 'PUBLISHED_FARE' | 'CARRIER_SPECIFIC' | undefined;
   let flownBaseFare: string | undefined;
 
   switch (input.refund_type) {
@@ -143,7 +156,6 @@ export function processRefund(input: RefundProcessingInput): RefundProcessingRes
         originalBase,
         rule,
         isInvoluntary,
-        hasWaiver,
         input.is_refundable,
       );
       baseFareRefund = applied.baseFareRefund;
@@ -156,29 +168,29 @@ export function processRefund(input: RefundProcessingInput): RefundProcessingRes
 
     case 'PARTIAL': {
       // Fail closed without an explicit passenger valuation method.
-      // Passenger residual = Cat 33 + THB (or carrier-specific). Not MPA-P.
+      // Cat 33 no-match = free penalty (separate). Method missing ≠ free.
       const valuation = input.partial_valuation;
       if (!valuation) {
         return domainInputRequired({
           missing: [
             'partial_valuation',
-            'cat33_thb_unused_base_and_taxes_or_carrier_residual',
+            'published_fare_or_carrier_residual_amounts',
           ],
           description:
-            'PARTIAL refund requires Cat 33 Historical Ticket Based (THB) unused base/taxes or a carrier-specific residual valuation. Rejected: original−used without method, coupon-count ratio, MPA-P interline proration, and haversine through-fare splits.',
+            'PARTIAL refund requires explicit PUBLISHED_FARE or CARRIER_SPECIFIC unused base/taxes. Rejected: original−used without method, coupon-count ratio, MPA-P interline proration, and haversine through-fare splits. Absence of Cat 33 data means free Cat 33 penalty once amounts are supplied — it does not invent a proration method. THB = IATA Ticketing Handbook (cite by name only).',
           references: [
             'docs/knowledge-base/partial-refund-residual-value.md',
-            'ATPCO Category 33 Re-Price Indicator A (Historical Ticket Based)',
+            'IATA Ticketing Handbook (THB) — cite by name only',
             'GitHub issue #150',
           ],
         });
       }
 
-      if (valuation.method !== 'CAT33_THB' && valuation.method !== 'CARRIER_SPECIFIC') {
+      if (valuation.method !== 'PUBLISHED_FARE' && valuation.method !== 'CARRIER_SPECIFIC') {
         return domainInputRequired({
           missing: ['partial_valuation.method'],
           description:
-            'partial_valuation.method must be CAT33_THB or CARRIER_SPECIFIC. MPA-P is airline interline settlement, not passenger residual.',
+            'partial_valuation.method must be PUBLISHED_FARE or CARRIER_SPECIFIC. MPA-P is airline interline settlement, not passenger residual.',
           references: [
             'docs/knowledge-base/partial-refund-residual-value.md',
             'GitHub issue #150',
@@ -191,7 +203,6 @@ export function processRefund(input: RefundProcessingInput): RefundProcessingRes
         unusedBase,
         rule,
         isInvoluntary,
-        hasWaiver,
         input.is_refundable,
       );
       baseFareRefund = applied.baseFareRefund;

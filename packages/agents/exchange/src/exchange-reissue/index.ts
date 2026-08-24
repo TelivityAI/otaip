@@ -25,7 +25,7 @@ const AIRPORT_RE = /^[A-Z]{3}$/;
 const PASSENGER_NAME_RE = /^[A-Z][A-Z' -]+\/[A-Z][A-Z' -]+$/;
 const RECORD_LOCATOR_RE = /^[A-Z0-9]{6}$/;
 const VALID_GDS = new Set(['AMADEUS', 'SABRE', 'TRAVELPORT']);
-const VALID_RESIDUAL_METHODS = new Set(['FULLY_UNUSED', 'CAT33_THB', 'CARRIER_SPECIFIC']);
+const VALID_RESIDUAL_METHODS = new Set(['FULLY_UNUSED', 'PUBLISHED_FARE', 'CARRIER_SPECIFIC']);
 
 export class ExchangeReissue implements Agent<ExchangeReissueInput, ExchangeReissueResult> {
   readonly id = '5.2';
@@ -170,7 +170,7 @@ export class ExchangeReissue implements Agent<ExchangeReissueInput, ExchangeReis
       throw new AgentInputValidationError(
         this.id,
         'residual_method',
-        'Must be FULLY_UNUSED, CAT33_THB, or CARRIER_SPECIFIC. original−change-fee / MPA-P / coupon-ratio are rejected.',
+        'Must be FULLY_UNUSED, PUBLISHED_FARE, or CARRIER_SPECIFIC. original−change-fee / MPA-P / coupon-ratio are rejected.',
       );
     }
     if (!data.residual_value || isNaN(Number(data.residual_value))) {

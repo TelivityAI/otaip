@@ -4,8 +4,9 @@
  * Agent 6.1: ATPCO Category 33 refund processing with penalty application,
  * commission recall, BSP/ARC reporting, conjunction ticket handling.
  *
- * Partial refunds: Cat 33 + THB (Historical Ticket Based) or carrier-specific
- * valuation — never original−used / coupon-ratio / MPA-P. See
+ * Partial refunds: Cat 33 + IATA Ticketing Handbook (THB) practice, with
+ * explicit PUBLISHED_FARE or CARRIER_SPECIFIC valuation — never
+ * original−used / coupon-ratio / MPA-P. See
  * docs/knowledge-base/partial-refund-residual-value.md (issue #150).
  */
 
@@ -128,7 +129,7 @@ export interface RefundAuditTrail {
   /** Coupons refunded */
   coupons_refunded: number[];
   /** Valuation method for PARTIAL (when applicable) */
-  residual_method?: 'CAT33_THB' | 'CARRIER_SPECIFIC';
+  residual_method?: 'PUBLISHED_FARE' | 'CARRIER_SPECIFIC';
   /** Flown base used in valuation audit (when supplied) */
   flown_base_fare?: string;
 }
@@ -210,8 +211,9 @@ export interface RefundProcessingInput {
   cat33_rules?: Cat33Rules;
   /**
    * Required for PARTIAL refunds. Caller-supplied unused base/taxes after
-   * Cat 33 THB (Historical Ticket Based) or carrier-specific valuation.
-   * Without this, the engine returns DOMAIN_INPUT_REQUIRED (fail closed).
+   * PUBLISHED_FARE or CARRIER_SPECIFIC valuation (Cat 33 + IATA Ticketing
+   * Handbook practice). Without this, the engine returns DOMAIN_INPUT_REQUIRED.
+   * No Cat 33 / unmatched provision → free penalty once amounts are supplied.
    */
   partial_valuation?: PassengerPartialValuation;
 }
