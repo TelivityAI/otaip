@@ -1,0 +1,39 @@
+{
+  "_comment": "Redacted Transfers CONFIRMED booking. Official statuses: CONFIRMED|CANCELLED|MODIFIED — no ON_REQUEST (DQ-T6). Pickup time observed as HH:mm:ss in availability samples; booking sample uses HH:mm:ss as well.",
+  "bookings": [
+    {
+      "reference": "102-20100194",
+      "creationDate": "2026-02-03T12:54:52",
+      "status": "CONFIRMED",
+      "clientReference": "AVR-TRF-001",
+      "transfers": [
+        {
+          "status": "CONFIRMED",
+          "transferType": "PRIVATE",
+          "pickupInformation": {
+            "from": { "code": "BCN", "description": "Barcelona Airport", "type": "IATA" },
+            "to": { "code": "57", "description": "Barcelona Universal", "type": "ATLAS" },
+            "date": "2026-05-08",
+            "time": "10:00:00",
+            "pickup": {
+              "description": "Driver will meet in arrivals (fixture)."
+            }
+          },
+          "price": {
+            "totalAmount": 37.35,
+            "netAmount": null,
+            "currencyId": "EUR"
+          },
+          "cancellationPolicies": [
+            {
+              "amount": 37.35,
+              "from": "2026-05-07T10:00:00",
+              "utcOffset": "+02:00",
+              "currencyId": "EUR"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
