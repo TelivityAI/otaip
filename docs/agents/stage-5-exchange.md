@@ -19,9 +19,12 @@ ATPCO Category 31 voluntary change assessment: change fees, fare difference, res
 - `requested_itinerary` -- new segments (carrier, flight, origin, destination, date, class, fare basis), new fare, new taxes
 - `waiver_code?` -- airline-provided waiver code
 - `current_datetime?` -- ISO datetime
+- `ticket_usage?` -- `FULLY_UNUSED` (default) | `PARTIALLY_USED`
+- `residual_valuation?` -- required when partially used: `CAT33_THB` or `CARRIER_SPECIFIC` unused base/taxes (see `docs/knowledge-base/partial-refund-residual-value.md`)
 
-**Output (`ChangeManagementOutput`):**
-- `assessment` -- action (`REISSUE | REBOOK | REJECT`), change fee, fare difference, additional collection, residual value, forfeited amount, tax difference, total due, free change flag, summary
+**Output (`ChangeManagementResult`):**
+- Success: `assessment` -- action (`REISSUE | REBOOK | REJECT`), change fee, fare difference, additional collection, residual value + residual_method, forfeited amount, tax difference, total due, free change flag, summary
+- Or `DOMAIN_INPUT_REQUIRED` when partially used without an explicit residual method (fail closed; never original − change fee / MPA-P)
 
 ---
 
@@ -37,17 +40,17 @@ Ticket reissue with residual value application, tax carryforward, conjunction ti
 - `original_ticket_number`, `conjunction_originals?`, `original_issue_date`
 - `issuing_carrier`, `passenger_name`, `record_locator`
 - `original_base_fare`, `original_taxes` -- from original ticket
-- `change_fee`, `residual_value`, `waiver_code?` -- from Agent 5.1
+- `change_fee`, `residual_value`, `residual_method` -- from Agent 5.1 (`FULLY_UNUSED` | `CAT33_THB` | `CARRIER_SPECIFIC`)
+- `waiver_code?` -- from Agent 5.1
 - `new_segments` -- new flight segments
 - `new_fare`, `new_fare_currency`, `new_taxes`, `fare_calculation`
 - `form_of_payment` -- for additional collection
 - `gds?` -- GDS for command generation
 - `same_origin_destination` -- for tax carryforward eligibility
 
-**Output (`ExchangeReissueOutput`):**
-- `reissue` -- new ticket record with full audit trail, exchange commands, tax carryforward details
-- `additional_collection` -- amount due
-- `credit_amount` -- amount refundable if downgrade
+**Output (`ExchangeReissueResult`):**
+- Success: `reissue` -- new ticket record with full audit trail (includes residual_method), exchange commands, tax carryforward details; `additional_collection`; `credit_amount`
+- Or `DOMAIN_INPUT_REQUIRED` if residual method is missing/invalid (does not invent residual = original − change fee)
 
 ---
 

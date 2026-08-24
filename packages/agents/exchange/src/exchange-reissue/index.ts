@@ -4,12 +4,19 @@
  * Ticket reissue with residual value, tax carryforward,
  * GDS exchange command stubs, conjunction ticket handling.
  *
+ * Residual method required — never invent original − change fee
+ * (docs/knowledge-base/partial-refund-residual-value.md, issue #150).
+ *
  * Implements the base Agent interface from @otaip/core.
  */
 
 import type { Agent, AgentInput, AgentOutput, AgentHealthStatus } from '@otaip/core';
-import { AgentNotInitializedError, AgentInputValidationError } from '@otaip/core';
-import type { ExchangeReissueInput, ExchangeReissueOutput } from './types.js';
+import {
+  AgentNotInitializedError,
+  AgentInputValidationError,
+  isDomainInputRequired,
+} from '@otaip/core';
+import type { ExchangeReissueInput, ExchangeReissueResult } from './types.js';
 import { processReissue } from './reissue-engine.js';
 
 const TICKET_NUMBER_RE = /^\d{13}$/;
@@ -18,8 +25,9 @@ const AIRPORT_RE = /^[A-Z]{3}$/;
 const PASSENGER_NAME_RE = /^[A-Z][A-Z' -]+\/[A-Z][A-Z' -]+$/;
 const RECORD_LOCATOR_RE = /^[A-Z0-9]{6}$/;
 const VALID_GDS = new Set(['AMADEUS', 'SABRE', 'TRAVELPORT']);
+const VALID_RESIDUAL_METHODS = new Set(['FULLY_UNUSED', 'CAT33_THB', 'CARRIER_SPECIFIC']);
 
-export class ExchangeReissue implements Agent<ExchangeReissueInput, ExchangeReissueOutput> {
+export class ExchangeReissue implements Agent<ExchangeReissueInput, ExchangeReissueResult> {
   readonly id = '5.2';
   readonly name = 'Exchange/Reissue';
   readonly version = '0.1.0';
@@ -32,7 +40,7 @@ export class ExchangeReissue implements Agent<ExchangeReissueInput, ExchangeReis
 
   async execute(
     input: AgentInput<ExchangeReissueInput>,
-  ): Promise<AgentOutput<ExchangeReissueOutput>> {
+  ): Promise<AgentOutput<ExchangeReissueResult>> {
     if (!this.initialized) {
       throw new AgentNotInitializedError(this.id);
     }
@@ -40,6 +48,23 @@ export class ExchangeReissue implements Agent<ExchangeReissueInput, ExchangeReis
     this.validateInput(input.data);
 
     const result = processReissue(input.data);
+
+    if (isDomainInputRequired(result)) {
+      return {
+        data: result,
+        confidence: 0,
+        warnings: [
+          `DOMAIN_INPUT_REQUIRED: ${result.description}`,
+          ...result.missing.map((m) => `missing: ${m}`),
+        ],
+        metadata: {
+          agent_id: this.id,
+          agent_version: this.version,
+          original_ticket: input.data.original_ticket_number,
+          status: 'DOMAIN_INPUT_REQUIRED',
+        },
+      };
+    }
 
     const warnings: string[] = [];
     if (result.credit_amount !== '0.00') {
@@ -64,6 +89,7 @@ export class ExchangeReissue implements Agent<ExchangeReissueInput, ExchangeReis
         new_ticket: result.reissue.ticket_number,
         additional_collection: result.additional_collection,
         credit_amount: result.credit_amount,
+        residual_method: result.reissue.exchange_audit.residual_method,
       },
     };
   }
@@ -140,6 +166,20 @@ export class ExchangeReissue implements Agent<ExchangeReissueInput, ExchangeReis
     if (data.gds && !VALID_GDS.has(data.gds)) {
       throw new AgentInputValidationError(this.id, 'gds', `Invalid GDS: ${data.gds}`);
     }
+    if (!data.residual_method || !VALID_RESIDUAL_METHODS.has(data.residual_method)) {
+      throw new AgentInputValidationError(
+        this.id,
+        'residual_method',
+        'Must be FULLY_UNUSED, CAT33_THB, or CARRIER_SPECIFIC. original−change-fee / MPA-P / coupon-ratio are rejected.',
+      );
+    }
+    if (!data.residual_value || isNaN(Number(data.residual_value))) {
+      throw new AgentInputValidationError(
+        this.id,
+        'residual_value',
+        'Must be a valid decimal string.',
+      );
+    }
     if (data.conjunction_originals) {
       for (const ct of data.conjunction_originals) {
         if (!TICKET_NUMBER_RE.test(ct)) {
@@ -157,6 +197,7 @@ export class ExchangeReissue implements Agent<ExchangeReissueInput, ExchangeReis
 export type {
   ExchangeReissueInput,
   ExchangeReissueOutput,
+  ExchangeReissueResult,
   ReissueRecord,
   ReissuedCoupon,
   ExchangeAuditTrail,

@@ -10,16 +10,21 @@
  *   default per the project's domain spec: voluntary changes are
  *   PERMITTED AT NO CHARGE; involuntary changes have the fee waived.
  *
- * The previous "$200 default" fallback was a CLAUDE.md violation and
- * has been removed. Carrier-specific rules MUST flow in via input.
+ * Residual value (issue #150 / KB partial-refund-residual-value.md):
+ * - FULLY_UNUSED → residual = ticketed base (change fee is separate)
+ * - PARTIALLY_USED → require CAT33_THB or CARRIER_SPECIFIC valuation
+ * - NEVER residual = original − change fee
+ * - MPA-P / haversine / coupon-ratio are not passenger residual methods
  *
  * // DOMAIN_QUESTION: per-carrier ATPCO Cat31 data ingestion pipeline.
+ * // DOMAIN_QUESTION: DQ-R5 Cat 31 residual on partially used changes.
  */
 
 import Decimal from 'decimal.js';
+import { domainInputRequired } from '@otaip/core';
 import type {
   ChangeManagementInput,
-  ChangeManagementOutput,
+  ChangeManagementResult,
   ChangeAssessment,
   ChangeFeeRule,
   ChangeAction,
@@ -56,7 +61,64 @@ function isWithinFreeChangeWindow(
   return hoursSinceBooking <= freeChangeHours;
 }
 
-export function assessChange(input: ChangeManagementInput): ChangeManagementOutput {
+function resolveResidual(
+  input: ChangeManagementInput,
+  originalFare: Decimal,
+):
+  | { ok: true; residual: Decimal; method: 'FULLY_UNUSED' | 'CAT33_THB' | 'CARRIER_SPECIFIC' }
+  | { ok: false; result: ReturnType<typeof domainInputRequired> } {
+  const usage = input.ticket_usage ?? 'FULLY_UNUSED';
+
+  if (usage === 'FULLY_UNUSED') {
+    // Residual is the full ticketed base. Change fee is collected separately.
+    return { ok: true, residual: originalFare, method: 'FULLY_UNUSED' };
+  }
+
+  // PARTIALLY_USED — passenger residual = Cat 33 + THB (or carrier-specific).
+  // Never invent original − used, MPA-P, or haversine.
+  const valuation = input.residual_valuation;
+  if (!valuation) {
+    return {
+      ok: false,
+      result: domainInputRequired({
+        missing: [
+          'residual_valuation',
+          'cat33_thb_flown_amounts_or_carrier_residual',
+        ],
+        description:
+          'Partially used ticket: passenger residual requires Cat 33 Historical Ticket Based (THB) flown valuation or a carrier-specific residual amount. Cannot use original−used, MPA-P interline proration, haversine, or coupon-ratio splits.',
+        references: [
+          'docs/knowledge-base/partial-refund-residual-value.md',
+          'ATPCO Category 33 Re-Price Indicator A (Historical Ticket Based)',
+          'GitHub issue #150',
+        ],
+      }),
+    };
+  }
+
+  if (valuation.method !== 'CAT33_THB' && valuation.method !== 'CARRIER_SPECIFIC') {
+    return {
+      ok: false,
+      result: domainInputRequired({
+        missing: ['residual_valuation.method'],
+        description:
+          'Partially used residual method must be CAT33_THB or CARRIER_SPECIFIC. MPA-P is airline interline settlement, not passenger residual.',
+        references: [
+          'docs/knowledge-base/partial-refund-residual-value.md',
+          'GitHub issue #150',
+        ],
+      }),
+    };
+  }
+
+  return {
+    ok: true,
+    residual: new Decimal(valuation.unused_base_fare),
+    method: valuation.method,
+  };
+}
+
+export function assessChange(input: ChangeManagementInput): ChangeManagementResult {
   const now = currentTime(input);
   const orig = input.original_ticket;
   const req = input.requested_itinerary;
@@ -74,6 +136,7 @@ export function assessChange(input: ChangeManagementInput): ChangeManagementOutp
       fare_difference: '0.00',
       additional_collection: '0.00',
       residual_value: '0.00',
+      residual_method: 'FULLY_UNUSED',
       forfeited_amount: orig.base_fare,
       tax_difference: '0.00',
       total_due: '0.00',
@@ -82,6 +145,12 @@ export function assessChange(input: ChangeManagementInput): ChangeManagementOutp
       is_free_change: false,
     };
     return { assessment };
+  }
+
+  const originalFare = new Decimal(orig.base_fare);
+  const residualResolved = resolveResidual(input, originalFare);
+  if (!residualResolved.ok) {
+    return residualResolved.result;
   }
 
   const rule = input.cat31_rules
@@ -107,18 +176,15 @@ export function assessChange(input: ChangeManagementInput): ChangeManagementOutp
   const effectiveChangeFee =
     isFreeChange || hasWaiver || isInvoluntary ? new Decimal('0.00') : changeFeeAmount;
 
-  // Fare difference
-  const originalFare = new Decimal(orig.base_fare);
+  // Fare difference vs residual available for application toward new fare
   const newFare = new Decimal(req.new_fare);
+  const residualValue = residualResolved.residual;
   const fareDifference = newFare.minus(originalFare);
 
   // Tax difference
   const originalTax = new Decimal(orig.total_tax);
   const newTax = new Decimal(req.new_tax);
   const taxDifference = newTax.minus(originalTax);
-
-  // Residual value: original fare minus penalty
-  const residualValue = originalFare.minus(effectiveChangeFee);
 
   // Additional collection and forfeiture
   let additionalCollection = new Decimal('0.00');
@@ -160,6 +226,9 @@ export function assessChange(input: ChangeManagementInput): ChangeManagementOutp
   if (forfeitedAmount.greaterThan(0))
     summaryParts.push(`Forfeited on downgrade: ${currency} ${forfeitedAmount.toFixed(2)}.`);
   if (taxDue.greaterThan(0)) summaryParts.push(`Tax adjustment: ${currency} ${taxDue.toFixed(2)}.`);
+  summaryParts.push(
+    `Residual (${residualResolved.method}): ${currency} ${residualValue.toFixed(2)}.`,
+  );
   summaryParts.push(`Total due: ${currency} ${totalDue.toFixed(2)}.`);
 
   const assessment: ChangeAssessment = {
@@ -172,6 +241,7 @@ export function assessChange(input: ChangeManagementInput): ChangeManagementOutp
     fare_difference: fareDifference.toFixed(2),
     additional_collection: additionalCollection.toFixed(2),
     residual_value: residualValue.toFixed(2),
+    residual_method: residualResolved.method,
     forfeited_amount: forfeitedAmount.toFixed(2),
     tax_difference: taxDifference.toFixed(2),
     total_due: totalDue.toFixed(2),

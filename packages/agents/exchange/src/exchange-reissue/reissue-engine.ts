@@ -1,11 +1,16 @@
 /**
  * Exchange/Reissue Engine — residual value, tax carryforward, GDS commands.
+ *
+ * Residual is applied as supplied with an explicit residual_method.
+ * Never recomputes residual as original − change fee (issue #150).
+ * MPA-P is not a passenger residual method.
  */
 
 import Decimal from 'decimal.js';
+import { domainInputRequired } from '@otaip/core';
 import type {
   ExchangeReissueInput,
-  ExchangeReissueOutput,
+  ExchangeReissueResult,
   ReissueRecord,
   ReissuedCoupon,
   TaxItem,
@@ -58,10 +63,6 @@ function sumTaxes(taxes: TaxItem[]): Decimal {
   return total;
 }
 
-// ---------------------------------------------------------------------------
-// Tax carryforward logic
-// ---------------------------------------------------------------------------
-
 function computeTaxes(input: ExchangeReissueInput): {
   taxes: TaxItem[];
   carriedForward: TaxItem[];
@@ -69,9 +70,6 @@ function computeTaxes(input: ExchangeReissueInput): {
   totalTax: Decimal;
 } {
   if (input.same_origin_destination) {
-    // Carry forward: for matching tax codes, use the max of original and new
-    // For new codes not in original, collect the new amount
-    // For original codes not in new, carry forward (already paid)
     const origMap = new Map<string, TaxItem>();
     for (const t of input.original_taxes) {
       origMap.set(t.code, t);
@@ -86,26 +84,21 @@ function computeTaxes(input: ExchangeReissueInput): {
       if (orig) {
         const origAmt = new Decimal(orig.amount);
         const newAmt = new Decimal(nt.amount);
-        // Carry forward the original amount
         carriedForward.push(orig);
         if (newAmt.greaterThan(origAmt)) {
-          // Collect the delta
           const delta = newAmt.minus(origAmt);
           newTaxes.push({ code: nt.code, amount: delta.toFixed(2), currency: nt.currency });
           finalTaxes.push({ code: nt.code, amount: newAmt.toFixed(2), currency: nt.currency });
         } else {
-          // Already paid enough
           finalTaxes.push({ code: nt.code, amount: origAmt.toFixed(2), currency: nt.currency });
         }
         origMap.delete(nt.code);
       } else {
-        // New tax code — collect fully
         newTaxes.push(nt);
         finalTaxes.push(nt);
       }
     }
 
-    // Original taxes not in new itinerary — still show on ticket (carried forward)
     for (const [, orig] of origMap) {
       carriedForward.push(orig);
       finalTaxes.push(orig);
@@ -119,7 +112,6 @@ function computeTaxes(input: ExchangeReissueInput): {
     };
   }
 
-  // Different O/D: use new taxes entirely
   return {
     taxes: input.new_taxes,
     carriedForward: [],
@@ -127,10 +119,6 @@ function computeTaxes(input: ExchangeReissueInput): {
     totalTax: sumTaxes(input.new_taxes),
   };
 }
-
-// ---------------------------------------------------------------------------
-// GDS exchange commands
-// ---------------------------------------------------------------------------
 
 function buildExchangeCommands(
   input: ExchangeReissueInput,
@@ -191,7 +179,6 @@ function buildExchangeCommands(
       break;
   }
 
-  // Conjunction ticket reference
   if (input.conjunction_originals && input.conjunction_originals.length > 0) {
     commands.push({
       gds: input.gds,
@@ -207,11 +194,35 @@ function buildExchangeCommands(
   return commands;
 }
 
-// ---------------------------------------------------------------------------
-// Main engine
-// ---------------------------------------------------------------------------
+export function processReissue(input: ExchangeReissueInput): ExchangeReissueResult {
+  if (!input.residual_method) {
+    return domainInputRequired({
+      missing: ['residual_method'],
+      description:
+        'Exchange/reissue requires residual_method (FULLY_UNUSED, CAT33_THB, or CARRIER_SPECIFIC). Residual must not be invented as original − change fee. MPA-P is not passenger residual.',
+      references: [
+        'docs/knowledge-base/partial-refund-residual-value.md',
+        'GitHub issue #150',
+      ],
+    });
+  }
 
-export function processReissue(input: ExchangeReissueInput): ExchangeReissueOutput {
+  if (
+    input.residual_method !== 'FULLY_UNUSED' &&
+    input.residual_method !== 'CAT33_THB' &&
+    input.residual_method !== 'CARRIER_SPECIFIC'
+  ) {
+    return domainInputRequired({
+      missing: ['residual_method'],
+      description:
+        'residual_method must be FULLY_UNUSED, CAT33_THB, or CARRIER_SPECIFIC. Rejected: original−change-fee, MPA-P, haversine, coupon-ratio.',
+      references: [
+        'docs/knowledge-base/partial-refund-residual-value.md',
+        'GitHub issue #150',
+      ],
+    });
+  }
+
   const prefix = resolvePrefix(input);
   const issueDate = input.issue_date ?? new Date().toISOString().slice(0, 10);
   const serial = generateSerial(input.record_locator, input.passenger_name);
@@ -221,7 +232,7 @@ export function processReissue(input: ExchangeReissueInput): ExchangeReissueOutp
   const residualValue = new Decimal(input.residual_value);
   const changeFee = new Decimal(input.change_fee);
 
-  // Apply residual value first
+  // Apply residual as supplied — do not recompute as base − fee
   const afterResidual = newFare.minus(residualValue);
   let additionalCollection = new Decimal(0);
   let creditAmount = new Decimal(0);
@@ -229,21 +240,17 @@ export function processReissue(input: ExchangeReissueInput): ExchangeReissueOutp
   if (afterResidual.greaterThan(0)) {
     additionalCollection = afterResidual.plus(changeFee);
   } else {
-    // Residual covers the new fare — potential credit
     creditAmount = afterResidual.abs();
-    additionalCollection = changeFee; // Still owe the change fee
+    additionalCollection = changeFee;
   }
 
-  // Tax computation
   const { taxes, carriedForward, newTaxes, totalTax } = computeTaxes(input);
 
-  // Add new tax collection to additional collection
   const newTaxTotal = sumTaxes(newTaxes);
   additionalCollection = additionalCollection.plus(newTaxTotal);
 
   const totalAmount = newFare.plus(totalTax);
 
-  // Build coupons
   const coupons: ReissuedCoupon[] = input.new_segments.map((seg, idx) => ({
     coupon_number: idx + 1,
     carrier: seg.carrier,
@@ -258,7 +265,6 @@ export function processReissue(input: ExchangeReissueInput): ExchangeReissueOutp
     status: 'O' as const,
   }));
 
-  // Audit trail
   const exchangeAudit: ExchangeAuditTrail = {
     original_ticket_number: input.original_ticket_number,
     conjunction_originals: input.conjunction_originals,
@@ -266,13 +272,13 @@ export function processReissue(input: ExchangeReissueInput): ExchangeReissueOutp
     exchange_indicator: 'E',
     change_fee_paid: changeFee.toFixed(2),
     residual_applied: residualValue.toFixed(2),
+    residual_method: input.residual_method,
     additional_collection: additionalCollection.toFixed(2),
     taxes_carried_forward: carriedForward,
     taxes_new: newTaxes,
     waiver_code: input.waiver_code,
   };
 
-  // GDS commands
   const exchangeCommands = buildExchangeCommands(input, additionalCollection.toFixed(2));
 
   const reissue: ReissueRecord = {

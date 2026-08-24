@@ -8,17 +8,20 @@ export { ChangeManagement } from './change-management/index.js';
 export type {
   ChangeManagementInput,
   ChangeManagementOutput,
+  ChangeManagementResult,
   ChangeAssessment,
   OriginalTicketSummary,
   RequestedItinerary,
   ChangeFeeRule,
   ChangeAction,
+  TicketUsage,
 } from './change-management/index.js';
 
 export { ExchangeReissue } from './exchange-reissue/index.js';
 export type {
   ExchangeReissueInput,
   ExchangeReissueOutput,
+  ExchangeReissueResult,
   ReissueRecord,
   ReissuedCoupon,
   ExchangeAuditTrail,

@@ -11,16 +11,19 @@
  *   default per the project's domain spec: voluntary refunds incur NO
  *   penalty; involuntary refunds are full refunds.
  *
- * The previous "$200 default penalty" fallback was a CLAUDE.md
- * violation and has been removed.
+ * Partial refunds (issue #150 / KB partial-refund-residual-value.md):
+ * - Require `partial_valuation` with CAT33_THB or CARRIER_SPECIFIC
+ * - Passenger path = Cat 33 penalty + THB unused base/taxes
+ * - NEVER original−used, coupon-ratio, MPA-P, or haversine
  *
  * // DOMAIN_QUESTION: per-carrier ATPCO Cat33 data ingestion pipeline.
  */
 
 import Decimal from 'decimal.js';
+import { domainInputRequired } from '@otaip/core';
 import type {
   RefundProcessingInput,
-  RefundProcessingOutput,
+  RefundProcessingResult,
   RefundRecord,
   RefundAuditTrail,
   RefundPenaltyRule,
@@ -97,12 +100,33 @@ function buildArcFields(
   };
 }
 
-export function processRefund(input: RefundProcessingInput): RefundProcessingOutput {
+function applyBasePenalty(
+  unusedBase: Decimal,
+  rule: RefundPenaltyRule | undefined,
+  isInvoluntary: boolean,
+  hasWaiver: boolean,
+  isRefundable: boolean,
+): { baseFareRefund: Decimal; penalty: Decimal } {
+  if (isInvoluntary || hasWaiver) {
+    return { baseFareRefund: unusedBase, penalty: new Decimal(0) };
+  }
+  if (rule?.forfeit_base_fare && !isRefundable) {
+    return { baseFareRefund: new Decimal(0), penalty: new Decimal(0) };
+  }
+  if (rule) {
+    const penaltyAmount = new Decimal(rule.penalty_amount);
+    const penalty = Decimal.min(penaltyAmount, unusedBase);
+    return { baseFareRefund: unusedBase.minus(penalty), penalty };
+  }
+  // No rule supplied → ATPCO default: no penalty.
+  return { baseFareRefund: unusedBase, penalty: new Decimal(0) };
+}
+
+export function processRefund(input: RefundProcessingInput): RefundProcessingResult {
   const originalBase = new Decimal(input.base_fare);
   const originalTax = sumTaxes(input.taxes);
   const rule = findPenaltyRule(input.cat33_rules, input.fare_basis);
   const isInvoluntary = input.is_involuntary === true;
-
   const hasWaiver = !!input.waiver_code;
 
   let baseFareRefund: Decimal;
@@ -110,31 +134,20 @@ export function processRefund(input: RefundProcessingInput): RefundProcessingOut
   let taxBreakdown: TaxItem[];
   let penalty: Decimal;
   let couponsRefunded: number[];
+  let residualMethod: 'CAT33_THB' | 'CARRIER_SPECIFIC' | undefined;
+  let flownBaseFare: string | undefined;
 
   switch (input.refund_type) {
     case 'FULL': {
-      // Full refund — all unused coupons.
-      // Penalty source-of-truth:
-      //   - involuntary               → 0 (carrier-initiated)
-      //   - waiver code present       → 0 (waiver bypasses penalty)
-      //   - filed forfeit_base_fare   → entire base forfeited
-      //   - filed penalty_amount      → that amount
-      //   - no rule + voluntary       → 0 (ATPCO default, no invention)
-      if (isInvoluntary || hasWaiver) {
-        baseFareRefund = originalBase;
-        penalty = new Decimal(0);
-      } else if (rule?.forfeit_base_fare && !input.is_refundable) {
-        baseFareRefund = new Decimal(0);
-        penalty = new Decimal(0);
-      } else if (rule) {
-        const penaltyAmount = new Decimal(rule.penalty_amount);
-        penalty = Decimal.min(penaltyAmount, originalBase);
-        baseFareRefund = originalBase.minus(penalty);
-      } else {
-        // No rule supplied → ATPCO default for voluntary refund: no penalty.
-        baseFareRefund = originalBase;
-        penalty = new Decimal(0);
-      }
+      const applied = applyBasePenalty(
+        originalBase,
+        rule,
+        isInvoluntary,
+        hasWaiver,
+        input.is_refundable,
+      );
+      baseFareRefund = applied.baseFareRefund;
+      penalty = applied.penalty;
       taxRefund = originalTax;
       taxBreakdown = input.taxes;
       couponsRefunded = Array.from({ length: input.total_coupons }, (_, i) => i + 1);
@@ -142,38 +155,53 @@ export function processRefund(input: RefundProcessingInput): RefundProcessingOut
     }
 
     case 'PARTIAL': {
-      // Partial refund — specific coupons only.
-      const refundableCoupons = (input.coupons_to_refund ?? []).filter((c) => c.refundable);
-      const couponRatio =
-        input.total_coupons > 0
-          ? new Decimal(refundableCoupons.length).dividedBy(input.total_coupons)
-          : new Decimal(0);
-
-      const proratedBase = originalBase.times(couponRatio).toDecimalPlaces(2);
-
-      if (isInvoluntary || hasWaiver) {
-        baseFareRefund = proratedBase;
-        penalty = new Decimal(0);
-      } else if (rule?.forfeit_base_fare && !input.is_refundable) {
-        baseFareRefund = new Decimal(0);
-        penalty = new Decimal(0);
-      } else if (rule) {
-        const penaltyAmount = new Decimal(rule.penalty_amount);
-        penalty = Decimal.min(penaltyAmount, proratedBase);
-        baseFareRefund = proratedBase.minus(penalty);
-      } else {
-        // No rule supplied → ATPCO default: no penalty on prorated portion.
-        baseFareRefund = proratedBase;
-        penalty = new Decimal(0);
+      // Fail closed without an explicit passenger valuation method.
+      // Passenger residual = Cat 33 + THB (or carrier-specific). Not MPA-P.
+      const valuation = input.partial_valuation;
+      if (!valuation) {
+        return domainInputRequired({
+          missing: [
+            'partial_valuation',
+            'cat33_thb_unused_base_and_taxes_or_carrier_residual',
+          ],
+          description:
+            'PARTIAL refund requires Cat 33 Historical Ticket Based (THB) unused base/taxes or a carrier-specific residual valuation. Rejected: original−used without method, coupon-count ratio, MPA-P interline proration, and haversine through-fare splits.',
+          references: [
+            'docs/knowledge-base/partial-refund-residual-value.md',
+            'ATPCO Category 33 Re-Price Indicator A (Historical Ticket Based)',
+            'GitHub issue #150',
+          ],
+        });
       }
 
-      // Prorate taxes
-      taxRefund = originalTax.times(couponRatio).toDecimalPlaces(2);
-      taxBreakdown = input.taxes.map((t) => ({
-        code: t.code,
-        amount: new Decimal(t.amount).times(couponRatio).toDecimalPlaces(2).toFixed(2),
-        currency: t.currency,
-      }));
+      if (valuation.method !== 'CAT33_THB' && valuation.method !== 'CARRIER_SPECIFIC') {
+        return domainInputRequired({
+          missing: ['partial_valuation.method'],
+          description:
+            'partial_valuation.method must be CAT33_THB or CARRIER_SPECIFIC. MPA-P is airline interline settlement, not passenger residual.',
+          references: [
+            'docs/knowledge-base/partial-refund-residual-value.md',
+            'GitHub issue #150',
+          ],
+        });
+      }
+
+      const unusedBase = new Decimal(valuation.unused_base_fare);
+      const applied = applyBasePenalty(
+        unusedBase,
+        rule,
+        isInvoluntary,
+        hasWaiver,
+        input.is_refundable,
+      );
+      baseFareRefund = applied.baseFareRefund;
+      penalty = applied.penalty;
+      taxBreakdown = valuation.unused_taxes;
+      taxRefund = sumTaxes(taxBreakdown);
+      residualMethod = valuation.method;
+      flownBaseFare = valuation.flown_base_fare;
+
+      const refundableCoupons = (input.coupons_to_refund ?? []).filter((c) => c.refundable);
       couponsRefunded = refundableCoupons.map((c) => c.coupon_number);
       break;
     }
@@ -199,7 +227,9 @@ export function processRefund(input: RefundProcessingInput): RefundProcessingOut
   // Audit trail
   const audit: RefundAuditTrail = {
     original_ticket_number: input.ticket_number,
-    ...(input.conjunction_tickets !== undefined ? { conjunction_tickets: input.conjunction_tickets } : {}),
+    ...(input.conjunction_tickets !== undefined
+      ? { conjunction_tickets: input.conjunction_tickets }
+      : {}),
     refund_type: input.refund_type,
     original_base_fare: originalBase.toFixed(2),
     original_total_tax: originalTax.toFixed(2),
@@ -209,6 +239,8 @@ export function processRefund(input: RefundProcessingInput): RefundProcessingOut
     tax_refunded: taxRefund.toFixed(2),
     commission_recalled: commissionRecalled.toFixed(2),
     coupons_refunded: couponsRefunded,
+    ...(residualMethod !== undefined ? { residual_method: residualMethod } : {}),
+    ...(flownBaseFare !== undefined ? { flown_base_fare: flownBaseFare } : {}),
   };
 
   // Settlement fields

@@ -3,7 +3,13 @@
  *
  * Agent 6.1: ATPCO Category 33 refund processing with penalty application,
  * commission recall, BSP/ARC reporting, conjunction ticket handling.
+ *
+ * Partial refunds: Cat 33 + THB (Historical Ticket Based) or carrier-specific
+ * valuation — never original−used / coupon-ratio / MPA-P. See
+ * docs/knowledge-base/partial-refund-residual-value.md (issue #150).
  */
+
+import type { DomainInputRequired, PassengerPartialValuation } from '@otaip/core';
 
 export type RefundType = 'FULL' | 'PARTIAL' | 'TAX_ONLY';
 
@@ -121,6 +127,10 @@ export interface RefundAuditTrail {
   commission_recalled: string;
   /** Coupons refunded */
   coupons_refunded: number[];
+  /** Valuation method for PARTIAL (when applicable) */
+  residual_method?: 'CAT33_THB' | 'CARRIER_SPECIFIC';
+  /** Flown base used in valuation audit (when supplied) */
+  flown_base_fare?: string;
 }
 
 export interface RefundRecord {
@@ -198,6 +208,12 @@ export interface RefundProcessingInput {
    * full refund). The engine never invents a penalty amount.
    */
   cat33_rules?: Cat33Rules;
+  /**
+   * Required for PARTIAL refunds. Caller-supplied unused base/taxes after
+   * Cat 33 THB (Historical Ticket Based) or carrier-specific valuation.
+   * Without this, the engine returns DOMAIN_INPUT_REQUIRED (fail closed).
+   */
+  partial_valuation?: PassengerPartialValuation;
 }
 
 export interface RefundProcessingOutput {
@@ -208,3 +224,6 @@ export interface RefundProcessingOutput {
   /** Commission recalled (decimal string) */
   commission_recalled: string;
 }
+
+/** Successful refund or fail-closed domain sentinel. */
+export type RefundProcessingResult = RefundProcessingOutput | DomainInputRequired;

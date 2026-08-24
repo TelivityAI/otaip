@@ -6,7 +6,16 @@
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { ExchangeReissue } from '../index.js';
-import type { ExchangeReissueInput } from '../types.js';
+import type { ExchangeReissueInput, ExchangeReissueResult } from '../types.js';
+import type { AgentOutput } from '@otaip/core';
+import { isDomainInputRequired } from '@otaip/core';
+
+function assertReissue(result: AgentOutput<ExchangeReissueResult>) {
+  if (isDomainInputRequired(result.data)) {
+    throw new Error(`unexpected DOMAIN_INPUT_REQUIRED: ${result.data.description}`);
+  }
+  return result.data;
+}
 
 let agent: ExchangeReissue;
 
@@ -33,7 +42,9 @@ function makeInput(overrides: Partial<ExchangeReissueInput> = {}): ExchangeReiss
       { code: 'YQ', amount: '15.00', currency: 'USD' },
     ],
     change_fee: '200.00',
-    residual_value: '250.00', // 450 - 200 = 250
+    // Fully unused residual = ticketed base (NOT original − change fee). Issue #150.
+    residual_value: '450.00',
+    residual_method: 'FULLY_UNUSED',
     new_segments: [
       {
         carrier: 'BA',
@@ -57,7 +68,7 @@ function makeInput(overrides: Partial<ExchangeReissueInput> = {}): ExchangeReiss
       type: 'CREDIT_CARD',
       card_code: 'VI',
       card_last_four: '4242',
-      amount: '505.00',
+      amount: '305.00',
       currency: 'USD',
     },
     same_origin_destination: true,
@@ -70,41 +81,70 @@ describe('Exchange/Reissue', () => {
   describe('Residual value application', () => {
     it('applies residual value to new fare', async () => {
       const result = await agent.execute({ data: makeInput() });
-      expect(result.data.reissue.exchange_audit.residual_applied).toBe('250.00');
+      if ('status' in result.data) throw new Error('unexpected domain sentinel');
+      expect(result.data.reissue.exchange_audit.residual_applied).toBe('450.00');
+      expect(result.data.reissue.exchange_audit.residual_method).toBe('FULLY_UNUSED');
     });
 
     it('calculates additional collection (new fare - residual + change fee + new taxes)', async () => {
       const result = await agent.execute({ data: makeInput() });
-      // new fare 550 - residual 250 = 300, + change fee 200 = 500, + new tax delta = 5 (GB increased by 5) → 505
-      expect(Number(result.data.additional_collection)).toBeGreaterThan(0);
+      if ('status' in result.data) throw new Error('unexpected domain sentinel');
+      // new fare 550 - residual 450 = 100, + change fee 200 = 300, + GB tax delta 5 → 305
+      expect(result.data.additional_collection).toBe('305.00');
     });
 
     it('credit when residual exceeds new fare', async () => {
       const input = makeInput({
         new_fare: '200.00',
-        residual_value: '250.00',
+        residual_value: '450.00',
+        residual_method: 'FULLY_UNUSED',
         change_fee: '0.00',
       });
       const result = await agent.execute({ data: input });
+      if ('status' in result.data) throw new Error('unexpected domain sentinel');
       expect(Number(result.data.credit_amount)).toBeGreaterThan(0);
     });
 
     it('no credit when new fare exceeds residual', async () => {
       const result = await agent.execute({ data: makeInput() });
+      if ('status' in result.data) throw new Error('unexpected domain sentinel');
       expect(result.data.credit_amount).toBe('0.00');
+    });
+
+    it('rejects missing residual_method at validation', async () => {
+      await expect(
+        agent.execute({
+          data: makeInput({ residual_method: undefined as unknown as 'FULLY_UNUSED' }),
+        }),
+      ).rejects.toThrow('Invalid input');
+    });
+
+    it('applies CAT33_THB residual without inventing original − fee', async () => {
+      const result = await agent.execute({
+        data: makeInput({
+          residual_value: '320.00',
+          residual_method: 'CAT33_THB',
+          change_fee: '150.00',
+        }),
+      });
+      if ('status' in result.data) throw new Error('unexpected domain sentinel');
+      expect(result.data.reissue.exchange_audit.residual_applied).toBe('320.00');
+      expect(result.data.reissue.exchange_audit.residual_method).toBe('CAT33_THB');
+      // 550 - 320 + 150 + 5 tax = 385
+      expect(result.data.additional_collection).toBe('385.00');
     });
   });
 
   describe('Tax carryforward', () => {
     it('carries forward taxes when same origin/destination', async () => {
       const result = await agent.execute({ data: makeInput({ same_origin_destination: true }) });
-      expect(result.data.reissue.exchange_audit.taxes_carried_forward.length).toBeGreaterThan(0);
+      expect(assertReissue(result).reissue.exchange_audit.taxes_carried_forward.length).toBeGreaterThan(0);
     });
 
     it('collects only tax delta for matching codes', async () => {
       const result = await agent.execute({ data: makeInput() });
       // GB went from 85 to 90, US stayed same, YQ stayed same
-      const newTaxes = result.data.reissue.exchange_audit.taxes_new;
+      const newTaxes = assertReissue(result).reissue.exchange_audit.taxes_new;
       const gbDelta = newTaxes.find((t) => t.code === 'GB');
       expect(gbDelta).toBeDefined();
       expect(gbDelta!.amount).toBe('5.00');
@@ -112,7 +152,7 @@ describe('Exchange/Reissue', () => {
 
     it('does not carry forward taxes on different origin/destination', async () => {
       const result = await agent.execute({ data: makeInput({ same_origin_destination: false }) });
-      expect(result.data.reissue.exchange_audit.taxes_carried_forward).toHaveLength(0);
+      expect(assertReissue(result).reissue.exchange_audit.taxes_carried_forward).toHaveLength(0);
     });
 
     it('collects new tax codes in full', async () => {
@@ -125,7 +165,7 @@ describe('Exchange/Reissue', () => {
         ],
       });
       const result = await agent.execute({ data: input });
-      const newTaxes = result.data.reissue.exchange_audit.taxes_new;
+      const newTaxes = assertReissue(result).reissue.exchange_audit.taxes_new;
       const xa = newTaxes.find((t) => t.code === 'XA');
       expect(xa).toBeDefined();
       expect(xa!.amount).toBe('10.00');
@@ -135,34 +175,34 @@ describe('Exchange/Reissue', () => {
   describe('New ticket record', () => {
     it('generates 13-digit ticket number', async () => {
       const result = await agent.execute({ data: makeInput() });
-      expect(result.data.reissue.ticket_number).toMatch(/^\d{13}$/);
+      expect(assertReissue(result).reissue.ticket_number).toMatch(/^\d{13}$/);
     });
 
     it('uses BA prefix (125)', async () => {
       const result = await agent.execute({ data: makeInput() });
-      expect(result.data.reissue.ticket_number.startsWith('125')).toBe(true);
+      expect(assertReissue(result).reissue.ticket_number.startsWith('125')).toBe(true);
     });
 
     it('sets all coupons to Open status', async () => {
       const result = await agent.execute({ data: makeInput() });
-      for (const c of result.data.reissue.coupons) {
+      for (const c of assertReissue(result).reissue.coupons) {
         expect(c.status).toBe('O');
       }
     });
 
     it('sets issue date', async () => {
       const result = await agent.execute({ data: makeInput() });
-      expect(result.data.reissue.issue_date).toBe('2026-04-01');
+      expect(assertReissue(result).reissue.issue_date).toBe('2026-04-01');
     });
 
     it('preserves passenger name', async () => {
       const result = await agent.execute({ data: makeInput() });
-      expect(result.data.reissue.passenger_name).toBe('SMITH/JOHN');
+      expect(assertReissue(result).reissue.passenger_name).toBe('SMITH/JOHN');
     });
 
     it('calculates total amount correctly', async () => {
       const result = await agent.execute({ data: makeInput() });
-      const total = Number(result.data.reissue.total_amount);
+      const total = Number(assertReissue(result).reissue.total_amount);
       expect(total).toBeGreaterThan(0);
     });
   });
@@ -170,28 +210,28 @@ describe('Exchange/Reissue', () => {
   describe('Exchange audit trail', () => {
     it('records original ticket number', async () => {
       const result = await agent.execute({ data: makeInput() });
-      expect(result.data.reissue.exchange_audit.original_ticket_number).toBe('1251234567890');
+      expect(assertReissue(result).reissue.exchange_audit.original_ticket_number).toBe('1251234567890');
     });
 
     it('sets exchange indicator to E', async () => {
       const result = await agent.execute({ data: makeInput() });
-      expect(result.data.reissue.exchange_audit.exchange_indicator).toBe('E');
+      expect(assertReissue(result).reissue.exchange_audit.exchange_indicator).toBe('E');
     });
 
     it('records change fee paid', async () => {
       const result = await agent.execute({ data: makeInput() });
-      expect(result.data.reissue.exchange_audit.change_fee_paid).toBe('200.00');
+      expect(assertReissue(result).reissue.exchange_audit.change_fee_paid).toBe('200.00');
     });
 
     it('records original issue date', async () => {
       const result = await agent.execute({ data: makeInput() });
-      expect(result.data.reissue.exchange_audit.original_issue_date).toBe('2026-03-01');
+      expect(assertReissue(result).reissue.exchange_audit.original_issue_date).toBe('2026-03-01');
     });
 
     it('records waiver code when present', async () => {
       const input = makeInput({ waiver_code: 'WAIVER456' });
       const result = await agent.execute({ data: input });
-      expect(result.data.reissue.exchange_audit.waiver_code).toBe('WAIVER456');
+      expect(assertReissue(result).reissue.exchange_audit.waiver_code).toBe('WAIVER456');
     });
   });
 
@@ -199,8 +239,8 @@ describe('Exchange/Reissue', () => {
     it('generates Amadeus TKTXCH command', async () => {
       const input = makeInput({ gds: 'AMADEUS' });
       const result = await agent.execute({ data: input });
-      expect(result.data.reissue.exchange_commands).toBeDefined();
-      const tktxch = result.data.reissue.exchange_commands!.find(
+      expect(assertReissue(result).reissue.exchange_commands).toBeDefined();
+      const tktxch = assertReissue(result).reissue.exchange_commands!.find(
         (c) => c.command_name === 'TKTXCH',
       );
       expect(tktxch).toBeDefined();
@@ -210,7 +250,7 @@ describe('Exchange/Reissue', () => {
     it('generates Sabre EXCHANGE_PNR command', async () => {
       const input = makeInput({ gds: 'SABRE' });
       const result = await agent.execute({ data: input });
-      const cmd = result.data.reissue.exchange_commands!.find(
+      const cmd = assertReissue(result).reissue.exchange_commands!.find(
         (c) => c.command_name === 'EXCHANGE_PNR',
       );
       expect(cmd).toBeDefined();
@@ -219,7 +259,7 @@ describe('Exchange/Reissue', () => {
     it('generates Travelport UNIVERSAL_RECORD_EXCHANGE command', async () => {
       const input = makeInput({ gds: 'TRAVELPORT' });
       const result = await agent.execute({ data: input });
-      const cmd = result.data.reissue.exchange_commands!.find(
+      const cmd = assertReissue(result).reissue.exchange_commands!.find(
         (c) => c.command_name === 'UNIVERSAL_RECORD_EXCHANGE',
       );
       expect(cmd).toBeDefined();
@@ -227,7 +267,7 @@ describe('Exchange/Reissue', () => {
 
     it('omits commands when no GDS specified', async () => {
       const result = await agent.execute({ data: makeInput() });
-      expect(result.data.reissue.exchange_commands).toBeUndefined();
+      expect(assertReissue(result).reissue.exchange_commands).toBeUndefined();
     });
   });
 
@@ -238,8 +278,8 @@ describe('Exchange/Reissue', () => {
         gds: 'AMADEUS',
       });
       const result = await agent.execute({ data: input });
-      expect(result.data.reissue.exchange_audit.conjunction_originals).toHaveLength(2);
-      const conjRef = result.data.reissue.exchange_commands!.find(
+      expect(assertReissue(result).reissue.exchange_audit.conjunction_originals).toHaveLength(2);
+      const conjRef = assertReissue(result).reissue.exchange_commands!.find(
         (c) => c.command_name === 'CONJUNCTION_REFERENCE',
       );
       expect(conjRef).toBeDefined();

@@ -52,8 +52,17 @@ export { fetchWithRetry, fetchOnce } from './http/index.js';
 export type { FetchOnceOptions } from './http/index.js';
 export type { FetchWithRetryOptions } from './http/index.js';
 
-export type { DomainInputRequired } from './domain/index.js';
-export { domainInputRequired, isDomainInputRequired } from './domain/index.js';
+export type {
+  DomainInputRequired,
+  PassengerResidualMethod,
+  PassengerPartialValuation,
+  RejectedPassengerResidualMethod,
+} from './domain/index.js';
+export {
+  domainInputRequired,
+  isDomainInputRequired,
+  REJECTED_PASSENGER_RESIDUAL_METHODS,
+} from './domain/index.js';
 
 export {
   EU261_BANDS,

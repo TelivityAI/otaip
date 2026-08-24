@@ -14,10 +14,20 @@ import { createRequire } from 'node:module';
 import { ChangeManagement } from '../index.js';
 import type {
   ChangeManagementInput,
+  ChangeManagementResult,
   Cat31Rules,
   OriginalTicketSummary,
   RequestedItinerary,
 } from '../types.js';
+import type { AgentOutput } from '@otaip/core';
+import { isDomainInputRequired } from '@otaip/core';
+
+function assertAssessment(result: AgentOutput<ChangeManagementResult>) {
+  if (isDomainInputRequired(result.data)) {
+    throw new Error(`unexpected DOMAIN_INPUT_REQUIRED: ${result.data.description}`);
+  }
+  return assertAssessment(result);
+}
 
 const require = createRequire(import.meta.url);
 const TEST_CAT31_RULES = require('./fixtures/test-cat31-rules.json') as Cat31Rules;
@@ -85,40 +95,76 @@ describe('Change Management', () => {
   describe('Basic change assessment (with filed Cat31 rules)', () => {
     it('calculates fare difference (upgrade)', async () => {
       const result = await agent.execute({ data: makeInput() });
-      expect(result.data.assessment.fare_difference).toBe('100.00');
+      if ('status' in result.data) throw new Error('unexpected domain sentinel');
+      expect(assertAssessment(result).fare_difference).toBe('100.00');
     });
 
     it('calculates additional collection on upgrade', async () => {
       const result = await agent.execute({ data: makeInput() });
-      expect(result.data.assessment.additional_collection).toBe('100.00');
+      if ('status' in result.data) throw new Error('unexpected domain sentinel');
+      expect(assertAssessment(result).additional_collection).toBe('100.00');
     });
 
     it('includes change fee for restricted fare per filed rule', async () => {
       const result = await agent.execute({ data: makeInput() });
-      expect(Number(result.data.assessment.change_fee)).toBeGreaterThan(0);
+      if ('status' in result.data) throw new Error('unexpected domain sentinel');
+      expect(Number(assertAssessment(result).change_fee)).toBeGreaterThan(0);
     });
 
     it('calculates total due (fee + additional + tax delta)', async () => {
       const result = await agent.execute({ data: makeInput() });
-      const totalDue = Number(result.data.assessment.total_due);
+      if ('status' in result.data) throw new Error('unexpected domain sentinel');
+      const totalDue = Number(assertAssessment(result).total_due);
       expect(totalDue).toBeGreaterThan(0);
     });
 
-    it('calculates residual value', async () => {
+    it('calculates residual value as full ticketed base (not original − fee)', async () => {
       const result = await agent.execute({ data: makeInput() });
-      const residual = Number(result.data.assessment.residual_value);
-      expect(residual).toBeGreaterThan(0);
-      expect(residual).toBeLessThanOrEqual(450);
+      expect(result.data).not.toHaveProperty('status', 'DOMAIN_INPUT_REQUIRED');
+      if ('status' in result.data) throw new Error('unexpected domain sentinel');
+      // Fully unused: residual = original base; change fee is separate (issue #150)
+      expect(assertAssessment(result).residual_value).toBe('450.00');
+      expect(assertAssessment(result).residual_method).toBe('FULLY_UNUSED');
+      expect(Number(assertAssessment(result).change_fee)).toBeGreaterThan(0);
+    });
+
+    it('fail-closed when partially used without residual valuation method', async () => {
+      const result = await agent.execute({
+        data: makeInput({ ticket_usage: 'PARTIALLY_USED' }),
+      });
+      expect(result.data).toMatchObject({
+        status: 'DOMAIN_INPUT_REQUIRED',
+      });
+      if (!('missing' in result.data)) throw new Error('expected domain sentinel');
+      expect(result.data.missing).toContain('residual_valuation');
+      expect(result.confidence).toBe(0);
+    });
+
+    it('uses CAT33_THB unused base when residual_valuation supplied', async () => {
+      const result = await agent.execute({
+        data: makeInput({
+          ticket_usage: 'PARTIALLY_USED',
+          residual_valuation: {
+            method: 'CAT33_THB',
+            unused_base_fare: '320.00',
+            flown_base_fare: '480.00',
+            unused_taxes: [{ code: 'GB', amount: '40.00', currency: 'USD' }],
+          },
+        }),
+      });
+      if ('status' in result.data) throw new Error('unexpected domain sentinel');
+      expect(assertAssessment(result).residual_value).toBe('320.00');
+      expect(assertAssessment(result).residual_method).toBe('CAT33_THB');
     });
 
     it('sets action to REISSUE for fare change', async () => {
       const result = await agent.execute({ data: makeInput() });
-      expect(result.data.assessment.action).toBe('REISSUE');
+      expect(assertAssessment(result).action).toBe('REISSUE');
     });
 
     it('calculates tax difference', async () => {
       const result = await agent.execute({ data: makeInput() });
-      expect(result.data.assessment.tax_difference).toBe('10.00');
+      expect(assertAssessment(result).tax_difference).toBe('10.00');
     });
   });
 
@@ -127,26 +173,26 @@ describe('Change Management', () => {
       const result = await agent.execute({
         data: makeInput({ cat31_rules: undefined }),
       });
-      expect(result.data.assessment.change_fee).toBe('0.00');
-      expect(result.data.assessment.fee_waived).toBe(false);
-      expect(result.data.assessment.summary).toContain('ATPCO default');
+      expect(assertAssessment(result).change_fee).toBe('0.00');
+      expect(assertAssessment(result).fee_waived).toBe(false);
+      expect(assertAssessment(result).summary).toContain('ATPCO default');
     });
 
     it('involuntary change with no rules: penalty = 0, fee_waived = true', async () => {
       const result = await agent.execute({
         data: makeInput({ cat31_rules: undefined, is_involuntary: true }),
       });
-      expect(result.data.assessment.change_fee).toBe('0.00');
-      expect(result.data.assessment.fee_waived).toBe(true);
-      expect(result.data.assessment.summary).toContain('Involuntary');
+      expect(assertAssessment(result).change_fee).toBe('0.00');
+      expect(assertAssessment(result).fee_waived).toBe(true);
+      expect(assertAssessment(result).summary).toContain('Involuntary');
     });
 
     it('involuntary change with rules: filed penalty still waived to 0', async () => {
       const result = await agent.execute({
         data: makeInput({ is_involuntary: true }),
       });
-      expect(result.data.assessment.change_fee).toBe('0.00');
-      expect(result.data.assessment.fee_waived).toBe(true);
+      expect(assertAssessment(result).change_fee).toBe('0.00');
+      expect(assertAssessment(result).fee_waived).toBe(true);
     });
   });
 
@@ -156,8 +202,8 @@ describe('Change Management', () => {
         requested_itinerary: makeRequested({ new_fare: '450.00', new_tax: '120.00' }),
       });
       const result = await agent.execute({ data: input });
-      expect(result.data.assessment.fare_difference).toBe('0.00');
-      expect(result.data.assessment.additional_collection).toBe('0.00');
+      expect(assertAssessment(result).fare_difference).toBe('0.00');
+      expect(assertAssessment(result).additional_collection).toBe('0.00');
     });
 
     it('negative fare difference on downgrade', async () => {
@@ -165,7 +211,7 @@ describe('Change Management', () => {
         requested_itinerary: makeRequested({ new_fare: '350.00', new_tax: '110.00' }),
       });
       const result = await agent.execute({ data: input });
-      expect(result.data.assessment.fare_difference).toBe('-100.00');
+      expect(assertAssessment(result).fare_difference).toBe('-100.00');
     });
 
     it('forfeits difference on non-refundable downgrade per filed rule', async () => {
@@ -174,7 +220,7 @@ describe('Change Management', () => {
         requested_itinerary: makeRequested({ new_fare: '350.00', new_tax: '110.00' }),
       });
       const result = await agent.execute({ data: input });
-      expect(result.data.assessment.forfeited_amount).toBe('100.00');
+      expect(assertAssessment(result).forfeited_amount).toBe('100.00');
     });
 
     it('no forfeiture on refundable fare downgrade', async () => {
@@ -183,7 +229,7 @@ describe('Change Management', () => {
         requested_itinerary: makeRequested({ new_fare: '350.00', new_tax: '110.00' }),
       });
       const result = await agent.execute({ data: input });
-      expect(result.data.assessment.forfeited_amount).toBe('0.00');
+      expect(assertAssessment(result).forfeited_amount).toBe('0.00');
     });
   });
 
@@ -194,9 +240,9 @@ describe('Change Management', () => {
         current_datetime: '2026-03-15T20:00:00Z',
       });
       const result = await agent.execute({ data: input });
-      expect(result.data.assessment.is_free_change).toBe(true);
-      expect(result.data.assessment.change_fee).toBe('0.00');
-      expect(result.data.assessment.fee_waived).toBe(true);
+      expect(assertAssessment(result).is_free_change).toBe(true);
+      expect(assertAssessment(result).change_fee).toBe('0.00');
+      expect(assertAssessment(result).fee_waived).toBe(true);
     });
 
     it('not free after 24h window', async () => {
@@ -205,7 +251,7 @@ describe('Change Management', () => {
         current_datetime: '2026-03-15T12:00:00Z',
       });
       const result = await agent.execute({ data: input });
-      expect(result.data.assessment.is_free_change).toBe(false);
+      expect(assertAssessment(result).is_free_change).toBe(false);
     });
 
     it('full-fare Y class has no change fee per filed rule', async () => {
@@ -213,7 +259,7 @@ describe('Change Management', () => {
         original_ticket: makeOriginal({ fare_basis: 'YOWUS' }),
       });
       const result = await agent.execute({ data: input });
-      expect(result.data.assessment.change_fee).toBe('0.00');
+      expect(assertAssessment(result).change_fee).toBe('0.00');
     });
 
     it('business class has no change fee per filed rule', async () => {
@@ -221,7 +267,7 @@ describe('Change Management', () => {
         original_ticket: makeOriginal({ fare_basis: 'COWUS' }),
       });
       const result = await agent.execute({ data: input });
-      expect(result.data.assessment.change_fee).toBe('0.00');
+      expect(assertAssessment(result).change_fee).toBe('0.00');
     });
   });
 
@@ -229,15 +275,15 @@ describe('Change Management', () => {
     it('waives penalty with waiver code', async () => {
       const input = makeInput({ waiver_code: 'WAIVER123' });
       const result = await agent.execute({ data: input });
-      expect(result.data.assessment.fee_waived).toBe(true);
-      expect(result.data.assessment.change_fee).toBe('0.00');
-      expect(result.data.assessment.waiver_code).toBe('WAIVER123');
+      expect(assertAssessment(result).fee_waived).toBe(true);
+      expect(assertAssessment(result).change_fee).toBe('0.00');
+      expect(assertAssessment(result).waiver_code).toBe('WAIVER123');
     });
 
     it('stores waiver code on assessment', async () => {
       const input = makeInput({ waiver_code: 'ABCDEF' });
       const result = await agent.execute({ data: input });
-      expect(result.data.assessment.waiver_code).toBe('ABCDEF');
+      expect(assertAssessment(result).waiver_code).toBe('ABCDEF');
     });
   });
 
@@ -247,7 +293,7 @@ describe('Change Management', () => {
         original_ticket: makeOriginal({ fare_basis: 'HOWBASIC' }),
       });
       const result = await agent.execute({ data: input });
-      expect(result.data.assessment.action).toBe('REJECT');
+      expect(assertAssessment(result).action).toBe('REJECT');
     });
 
     it('rejects change for NR (non-rebookable) fares', async () => {
@@ -255,7 +301,7 @@ describe('Change Management', () => {
         original_ticket: makeOriginal({ fare_basis: 'HOWNR' }),
       });
       const result = await agent.execute({ data: input });
-      expect(result.data.assessment.action).toBe('REJECT');
+      expect(assertAssessment(result).action).toBe('REJECT');
     });
 
     it('warns when change is rejected', async () => {
@@ -273,26 +319,26 @@ describe('Change Management', () => {
         cat31_rules: undefined,
       });
       const result = await agent.execute({ data: input });
-      expect(result.data.assessment.action).not.toBe('REJECT');
+      expect(assertAssessment(result).action).not.toBe('REJECT');
     });
   });
 
   describe('Summary', () => {
     it('generates human-readable summary', async () => {
       const result = await agent.execute({ data: makeInput() });
-      expect(result.data.assessment.summary).toBeTruthy();
-      expect(result.data.assessment.summary.length).toBeGreaterThan(10);
+      expect(assertAssessment(result).summary).toBeTruthy();
+      expect(assertAssessment(result).summary.length).toBeGreaterThan(10);
     });
 
     it('summary mentions waiver when applied', async () => {
       const input = makeInput({ waiver_code: 'WAIVER123' });
       const result = await agent.execute({ data: input });
-      expect(result.data.assessment.summary).toContain('Waiver');
+      expect(assertAssessment(result).summary).toContain('Waiver');
     });
 
     it('summary includes total due', async () => {
       const result = await agent.execute({ data: makeInput() });
-      expect(result.data.assessment.summary).toContain('Total due');
+      expect(assertAssessment(result).summary).toContain('Total due');
     });
   });
 

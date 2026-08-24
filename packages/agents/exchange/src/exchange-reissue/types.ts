@@ -3,7 +3,12 @@
  *
  * Agent 5.2: Ticket reissue with residual value, tax carryforward,
  * GDS exchange command stubs.
+ *
+ * Residual is consumed from Agent 5.1 / caller — never recomputed as
+ * original − change fee. See docs/knowledge-base/partial-refund-residual-value.md.
  */
+
+import type { DomainInputRequired, PassengerResidualMethod } from '@otaip/core';
 
 export type ExchangeGdsSystem = 'AMADEUS' | 'SABRE' | 'TRAVELPORT';
 
@@ -63,6 +68,8 @@ export interface ExchangeAuditTrail {
   change_fee_paid: string;
   /** Residual value applied (decimal string) */
   residual_applied: string;
+  /** Residual valuation method (from input) */
+  residual_method: PassengerResidualMethod;
   /** Additional collection (decimal string) */
   additional_collection: string;
   /** Taxes carried forward from original ticket */
@@ -161,8 +168,16 @@ export interface ExchangeReissueInput {
   original_taxes: TaxItem[];
   /** Change fee (decimal string, from Agent 5.1) */
   change_fee: string;
-  /** Residual value (decimal string, from Agent 5.1) */
+  /**
+   * Residual value (decimal string, from Agent 5.1).
+   * Must be valued via residual_method — never invent original − change fee.
+   */
   residual_value: string;
+  /**
+   * How residual_value was produced. Required.
+   * PARTIALLY_USED tickets must use CAT33_THB or CARRIER_SPECIFIC.
+   */
+  residual_method: PassengerResidualMethod;
   /** Waiver code (if applied in Agent 5.1) */
   waiver_code?: string;
   /** New segments */
@@ -195,3 +210,6 @@ export interface ExchangeReissueOutput {
   /** Credit note amount if refund due (decimal string) */
   credit_amount: string;
 }
+
+/** Successful reissue or fail-closed domain sentinel. */
+export type ExchangeReissueResult = ExchangeReissueOutput | DomainInputRequired;

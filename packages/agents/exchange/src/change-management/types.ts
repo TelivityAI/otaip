@@ -2,9 +2,18 @@
  * Change Management — Types
  *
  * Agent 5.1: ATPCO Category 31 voluntary change assessment.
+ *
+ * Residual value follows `docs/knowledge-base/partial-refund-residual-value.md`:
+ * never residual = original − change fee; partials require CAT33_THB or
+ * CARRIER_SPECIFIC valuation (MPA-P is not passenger residual).
  */
 
+import type { DomainInputRequired, PassengerPartialValuation } from '@otaip/core';
+
 export type ChangeAction = 'REISSUE' | 'REBOOK' | 'REJECT';
+
+/** Whether any coupon has been flown. */
+export type TicketUsage = 'FULLY_UNUSED' | 'PARTIALLY_USED';
 
 export interface OriginalTicketSummary {
   /** 13-digit ticket number */
@@ -86,8 +95,15 @@ export interface ChangeAssessment {
   fare_difference: string;
   /** Additional collection required (decimal string, "0.00" if none) */
   additional_collection: string;
-  /** Residual value: original fare minus penalty, available for reissue (decimal string) */
+  /**
+   * Residual value available for reissue (decimal string).
+   * Fully unused: ticketed base fare (change fee is separate).
+   * Partially used: unused base from CAT33_THB / CARRIER_SPECIFIC valuation.
+   * Never original − change fee.
+   */
   residual_value: string;
+  /** Valuation method used for residual_value */
+  residual_method: 'FULLY_UNUSED' | 'CAT33_THB' | 'CARRIER_SPECIFIC';
   /** Forfeited amount on non-refundable downgrade (decimal string, "0.00" if none) */
   forfeited_amount: string;
   /** Tax difference (decimal string) */
@@ -144,9 +160,22 @@ export interface ChangeManagementInput {
    * // DOMAIN_QUESTION: per-carrier ATPCO Cat31 ingestion pipeline.
    */
   cat31_rules?: Cat31Rules;
+  /**
+   * Ticket usage. Defaults to FULLY_UNUSED when omitted.
+   * PARTIALLY_USED requires `residual_valuation` (Cat 33 THB or carrier).
+   */
+  ticket_usage?: TicketUsage;
+  /**
+   * Unused residual after Cat 33 THB / carrier valuation.
+   * Required when ticket_usage is PARTIALLY_USED. See KB issue #150.
+   */
+  residual_valuation?: PassengerPartialValuation;
 }
 
 export interface ChangeManagementOutput {
   /** Change assessment */
   assessment: ChangeAssessment;
 }
+
+/** Successful assessment or fail-closed domain sentinel. */
+export type ChangeManagementResult = ChangeManagementOutput | DomainInputRequired;

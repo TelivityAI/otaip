@@ -4,20 +4,32 @@
  * ATPCO Category 31 voluntary change assessment: change fees,
  * fare difference, residual value, waiver codes.
  *
+ * Residual: see docs/knowledge-base/partial-refund-residual-value.md
+ * (issue #150). Never residual = original − change fee.
+ *
  * Implements the base Agent interface from @otaip/core.
  */
 
 import type { Agent, AgentInput, AgentOutput, AgentHealthStatus } from '@otaip/core';
-import { AgentNotInitializedError, AgentInputValidationError } from '@otaip/core';
-import type { ChangeManagementInput, ChangeManagementOutput } from './types.js';
+import {
+  AgentNotInitializedError,
+  AgentInputValidationError,
+  isDomainInputRequired,
+} from '@otaip/core';
+import type {
+  ChangeManagementInput,
+  ChangeManagementResult,
+} from './types.js';
 import { assessChange } from './change-engine.js';
 
 const TICKET_NUMBER_RE = /^\d{13}$/;
 const CARRIER_RE = /^[A-Z0-9]{2}$/;
 const PASSENGER_NAME_RE = /^[A-Z][A-Z' -]+\/[A-Z][A-Z' -]+$/;
 const RECORD_LOCATOR_RE = /^[A-Z0-9]{6}$/;
+const VALID_USAGE = new Set(['FULLY_UNUSED', 'PARTIALLY_USED']);
+const VALID_RESIDUAL_METHODS = new Set(['CAT33_THB', 'CARRIER_SPECIFIC']);
 
-export class ChangeManagement implements Agent<ChangeManagementInput, ChangeManagementOutput> {
+export class ChangeManagement implements Agent<ChangeManagementInput, ChangeManagementResult> {
   readonly id = '5.1';
   readonly name = 'Change Management';
   readonly version = '0.1.0';
@@ -30,7 +42,7 @@ export class ChangeManagement implements Agent<ChangeManagementInput, ChangeMana
 
   async execute(
     input: AgentInput<ChangeManagementInput>,
-  ): Promise<AgentOutput<ChangeManagementOutput>> {
+  ): Promise<AgentOutput<ChangeManagementResult>> {
     if (!this.initialized) {
       throw new AgentNotInitializedError(this.id);
     }
@@ -38,6 +50,23 @@ export class ChangeManagement implements Agent<ChangeManagementInput, ChangeMana
     this.validateInput(input.data);
 
     const result = assessChange(input.data);
+
+    if (isDomainInputRequired(result)) {
+      return {
+        data: result,
+        confidence: 0,
+        warnings: [
+          `DOMAIN_INPUT_REQUIRED: ${result.description}`,
+          ...result.missing.map((m) => `missing: ${m}`),
+        ],
+        metadata: {
+          agent_id: this.id,
+          agent_version: this.version,
+          original_ticket: input.data.original_ticket.ticket_number,
+          status: 'DOMAIN_INPUT_REQUIRED',
+        },
+      };
+    }
 
     const warnings: string[] = [];
     if (result.assessment.action === 'REJECT') {
@@ -60,6 +89,7 @@ export class ChangeManagement implements Agent<ChangeManagementInput, ChangeMana
         action: result.assessment.action,
         total_due: result.assessment.total_due,
         fee_waived: result.assessment.fee_waived,
+        residual_method: result.assessment.residual_method,
       },
     };
   }
@@ -120,15 +150,50 @@ export class ChangeManagement implements Agent<ChangeManagementInput, ChangeMana
     if (!ri.new_fare || isNaN(Number(ri.new_fare))) {
       throw new AgentInputValidationError(this.id, 'new_fare', 'Must be a valid decimal string.');
     }
+
+    if (data.ticket_usage !== undefined && !VALID_USAGE.has(data.ticket_usage)) {
+      throw new AgentInputValidationError(
+        this.id,
+        'ticket_usage',
+        'Must be FULLY_UNUSED or PARTIALLY_USED.',
+      );
+    }
+
+    if (data.residual_valuation) {
+      const v = data.residual_valuation;
+      if (!VALID_RESIDUAL_METHODS.has(v.method)) {
+        throw new AgentInputValidationError(
+          this.id,
+          'residual_valuation.method',
+          'Must be CAT33_THB or CARRIER_SPECIFIC. MPA-P / original−used / coupon-ratio are rejected.',
+        );
+      }
+      if (!v.unused_base_fare || isNaN(Number(v.unused_base_fare))) {
+        throw new AgentInputValidationError(
+          this.id,
+          'residual_valuation.unused_base_fare',
+          'Must be a valid decimal string.',
+        );
+      }
+      if (!v.unused_taxes || !Array.isArray(v.unused_taxes)) {
+        throw new AgentInputValidationError(
+          this.id,
+          'residual_valuation.unused_taxes',
+          'Unused tax breakdown is required for partial residual valuation.',
+        );
+      }
+    }
   }
 }
 
 export type {
   ChangeManagementInput,
   ChangeManagementOutput,
+  ChangeManagementResult,
   ChangeAssessment,
   OriginalTicketSummary,
   RequestedItinerary,
   ChangeFeeRule,
   ChangeAction,
+  TicketUsage,
 } from './types.js';
