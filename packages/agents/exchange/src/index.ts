@@ -20,7 +20,11 @@ export type {
   UsDot24HourContext,
   UsDot24HourAssessment,
   UsDot24HourCarrierRemedyRow,
+  WaiverEffect,
+  WaiverPenaltyReduction,
+  WaiverRefundForm,
 } from './change-management/index.js';
+export { WAIVER_EFFECTS } from './change-management/index.js';
 
 export {
   ExchangeReissue,

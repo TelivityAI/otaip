@@ -10,7 +10,7 @@
 import type { Agent, AgentInput, AgentOutput, AgentHealthStatus } from '@otaip/core';
 import { AgentNotInitializedError, AgentInputValidationError } from '@otaip/core';
 import type { ChangeManagementInput, ChangeManagementOutput } from './types.js';
-import { assessChange } from './change-engine.js';
+import { assessChange, assertChangeWaiverInput } from './change-engine.js';
 
 const TICKET_NUMBER_RE = /^\d{13}$/;
 const CARRIER_RE = /^[A-Z0-9]{2}$/;
@@ -122,6 +122,8 @@ export class ChangeManagement implements Agent<ChangeManagementInput, ChangeMana
     if (!ri.new_fare || isNaN(Number(ri.new_fare))) {
       throw new AgentInputValidationError(this.id, 'new_fare', 'Must be a valid decimal string.');
     }
+
+    assertChangeWaiverInput(data);
   }
 }
 
@@ -141,4 +143,10 @@ export type {
   UsDot24HourAssessment,
   UsDot24HourCarrierRemedyRow,
   Cat31Rules,
+  WaiverEffect,
+  WaiverPenaltyReduction,
+  WaiverRefundForm,
 } from './types.js';
+
+export { WAIVER_EFFECTS } from './types.js';
+export { assertChangeWaiverInput } from './change-engine.js';

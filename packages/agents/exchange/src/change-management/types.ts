@@ -6,6 +6,10 @@
  *
  * DOT 24h (hold OR cancel) is NOT Cat 31 free change — see
  * docs/knowledge-base/us-dot-24-hour-reservation.md.
+ *
+ * Waiver typology: docs/knowledge-base/waiver-typology.md
+ * - No Cat 31 data / no match → free change (ATPCO default; not fail-closed).
+ * - Bare waiver_code without waiver_effect → fail closed (≠ skip penalty).
  */
 
 export type ChangeAction = 'REISSUE' | 'REBOOK' | 'REJECT';
@@ -102,6 +106,33 @@ export interface UsDot24HourAssessment {
   notes: string;
 }
 
+/**
+ * Semantic effect of a Cat 31 (or IRROP) waiver.
+ * See docs/knowledge-base/waiver-typology.md — code alone does not imply ELIMINATE_PENALTY.
+ */
+export type WaiverEffect =
+  | 'ELIMINATE_PENALTY'
+  | 'REDUCE_PENALTY'
+  | 'CHANGE_REFUND_FORM'
+  | 'CHANGE_REBOOKING_CLASS'
+  | 'IRROP_INVOLUNTARY';
+
+/** Remaining change fee after waiver, or percent of filed fee eliminated. */
+export type WaiverPenaltyReduction =
+  | { kind: 'FIXED'; amount: string; currency: string }
+  | { kind: 'PERCENT_WAIVED'; percent: number };
+
+/** Refund form companion (shared typology; primarily Cat 33). */
+export type WaiverRefundForm = 'CASH' | 'MCO' | 'EMD' | 'CREDIT';
+
+export const WAIVER_EFFECTS: readonly WaiverEffect[] = [
+  'ELIMINATE_PENALTY',
+  'REDUCE_PENALTY',
+  'CHANGE_REFUND_FORM',
+  'CHANGE_REBOOKING_CLASS',
+  'IRROP_INVOLUNTARY',
+] as const;
+
 export interface OriginalTicketSummary {
   /** 13-digit ticket number */
   ticket_number: string;
@@ -182,10 +213,16 @@ export interface ChangeAssessment {
   change_fee: string;
   /** Change fee currency */
   change_fee_currency: string;
-  /** Whether change fee was waived */
+  /** Whether change fee was waived (eliminate / IRROP / free window / involuntary) */
   fee_waived: boolean;
   /** Waiver code (if provided) */
   waiver_code?: string;
+  /** Typed waiver effect (required when waiver_code is set) */
+  waiver_effect?: WaiverEffect;
+  /** Permitted booking classes when waiver constrains rebooking class */
+  permitted_booking_classes?: string[];
+  /** Permitted fare-basis patterns when waiver constrains rebooking fare */
+  permitted_fare_basis_patterns?: string[];
   /** Fare difference: new fare minus original (decimal string, negative = downgrade) */
   fare_difference: string;
   /** Additional collection required (decimal string, "0.00" if none) */
@@ -233,8 +270,34 @@ export interface ChangeManagementInput {
   original_ticket: OriginalTicketSummary;
   /** Requested new itinerary */
   requested_itinerary: RequestedItinerary;
-  /** Waiver code (if airline provided one) */
+  /**
+   * Waiver code identity (OSI/SSR/endorsement/NDC). Presence alone does NOT
+   * skip penalty — see docs/knowledge-base/waiver-typology.md.
+   * When set, `waiver_effect` is required (fail closed).
+   */
   waiver_code?: string;
+  /**
+   * Typed semantic effect of the waiver. Required when `waiver_code` is set.
+   * // TODO: DOMAIN_QUESTION: DQ-W1 — per-carrier map from free-text codes → effect
+   */
+  waiver_effect?: WaiverEffect;
+  /**
+   * Required when `waiver_effect` is REDUCE_PENALTY.
+   * FIXED = remaining change fee; PERCENT_WAIVED = % of filed fee eliminated.
+   */
+  waiver_penalty_reduction?: WaiverPenaltyReduction;
+  /**
+   * Companion for CHANGE_REFUND_FORM (shared typology; Cat 31 assessment
+   * records it only — monetary form conversion is Agent 6.1 / settlement).
+   */
+  waiver_refund_form?: WaiverRefundForm;
+  /**
+   * Required when `waiver_effect` is CHANGE_REBOOKING_CLASS — at least one of
+   * these lists must be non-empty. Does not eliminate the filed Cat 31 fee.
+   * // TODO: DOMAIN_QUESTION: DQ-W4 — carrier class-substitution tables
+   */
+  permitted_booking_classes?: string[];
+  permitted_fare_basis_patterns?: string[];
   /** Current date/time (ISO — defaults to now) */
   current_datetime?: string;
   /**
