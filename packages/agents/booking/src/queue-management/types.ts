@@ -18,6 +18,13 @@ export type QueueItemStatus = 'pending' | 'processing' | 'processed' | 'failed' 
 
 export type QueueGdsSystem = 'AMADEUS' | 'SABRE' | 'TRAVELPORT';
 
+/**
+ * Travelport host family for queue command generation.
+ * GALILEO ≡ Travelport+ column in the public format-compare table.
+ * Source: docs/knowledge-base/tmc-mid-office-ttl-queues.md
+ */
+export type TravelportHost = 'APOLLO' | 'GALILEO' | 'WORLDSPAN';
+
 export type QueueAction =
   | 'ROUTE_TO_TICKETING'
   | 'ROUTE_TO_REISSUE'
@@ -80,12 +87,17 @@ export interface QueueCommand {
 export interface QueueManagementInput {
   /** Queue entries to process */
   entries: QueueEntry[];
-  /** Current date/time for priority calculation (ISO — defaults to now) */
+  /** Current date/time for priority calculation (ISO — defaults to now; compare as Zulu for TTL) */
   current_time?: string;
   /** GDS system for queue commands */
   gds?: QueueGdsSystem;
   /** Queue number to generate read commands for */
   queue_number?: number;
+  /**
+   * Required for accurate Travelport place/list/remove commands.
+   * GALILEO = Travelport+ host family.
+   */
+  travelport_host?: TravelportHost;
 }
 
 export interface QueueManagementOutput {
