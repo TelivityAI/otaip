@@ -1,0 +1,11 @@
+{
+  "_comment": "Redacted PRECONFIRMED booking fixture. Official Preconfirm/Reconfirm docs: PRECONFIRMED is a payment-hold status, not ON_REQUEST (DQ-A3 CLOSED). Source shape: developer.hotelbeds.com/documentation/activities/booking-api/booking-and-post-booking/preconfirm-and-reconfirm/",
+  "operationId": "ACTRTR-BOOKINGPreconfirm-fixture-redacted",
+  "auditData": {},
+  "booking": {
+    "creationDate": "2026-03-22T17:06:32.000Z",
+    "reference": "102-6112608",
+    "clientReference": "AVR-ACT-PRECONFIRM-001",
+    "status": "PRECONFIRMED"
+  }
+}

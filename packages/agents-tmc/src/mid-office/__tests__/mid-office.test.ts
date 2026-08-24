@@ -62,11 +62,12 @@ describe('Mid-Office Automation', () => {
       expect(res.data.results[0]!.issues.find((i) => i.code === 'TTL_URGENT')).toBeUndefined();
     });
 
-    it('urgent when deadline within 1 hour', async () => {
+    it('urgent when deadline within 1 hour (different Zulu day)', async () => {
+      // Crossing midnight Zulu: not deadline-day, but ≤1h window.
       const res = await agent.execute({
         data: makeInput({
-          pnrs: [makePnr({ ticket_deadline: '2026-04-01T12:30:00Z' })],
-          current_datetime: '2026-04-01T12:00:00Z',
+          pnrs: [makePnr({ ticket_deadline: '2026-04-02T00:15:00Z' })],
+          current_datetime: '2026-04-01T23:30:00Z',
         }),
       });
       expect(
@@ -74,11 +75,12 @@ describe('Mid-Office Automation', () => {
       ).toBe(true);
     });
 
-    it('high when deadline within 4 hours', async () => {
+    it('high when deadline within 4 hours (different Zulu day)', async () => {
+      // Same-day rule must not apply — different Zulu dates, 3h remaining.
       const res = await agent.execute({
         data: makeInput({
-          pnrs: [makePnr({ ticket_deadline: '2026-04-01T14:00:00Z' })],
-          current_datetime: '2026-04-01T12:00:00Z',
+          pnrs: [makePnr({ ticket_deadline: '2026-04-02T01:00:00Z' })],
+          current_datetime: '2026-04-01T22:00:00Z',
         }),
       });
       expect(res.data.results[0]!.issues.some((i) => i.code === 'TTL_APPROACHING')).toBe(true);
@@ -92,6 +94,63 @@ describe('Mid-Office Automation', () => {
         }),
       });
       expect(res.data.results[0]!.issues.some((i) => i.code === 'TTL_URGENT')).toBe(true);
+    });
+
+    it('urgent on Zulu deadline day even with many hours remaining', async () => {
+      // Agency TZ (e.g. US Pacific) would still be prior calendar day at 01:00Z —
+      // OTAIP uses Zulu only (T.TAU/T.TAW/ORB); QCC TZ is display-only.
+      const res = await agent.execute({
+        data: makeInput({
+          pnrs: [makePnr({ ticket_deadline: '2026-04-01T23:00:00Z' })],
+          current_datetime: '2026-04-01T01:00:00Z',
+        }),
+      });
+      const issue = res.data.results[0]!.issues.find((i) => i.code === 'TTL_URGENT');
+      expect(issue).toBeDefined();
+      expect(issue!.message).toMatch(/deadline day 2026-04-01Z/i);
+    });
+
+    it('not deadline-day urgent just before Zulu midnight when >4h remain', async () => {
+      const res = await agent.execute({
+        data: makeInput({
+          pnrs: [makePnr({ ticket_deadline: '2026-04-02T12:00:00Z' })],
+          current_datetime: '2026-04-01T23:00:00Z',
+        }),
+      });
+      expect(res.data.results[0]!.issues.some((i) => i.code === 'TTL_URGENT')).toBe(false);
+      expect(res.data.results[0]!.issues.some((i) => i.code === 'TTL_APPROACHING')).toBe(false);
+    });
+
+    it('urgent when ticket issued on deadline day (Zulu ADM pattern)', async () => {
+      const res = await agent.execute({
+        data: makeInput({
+          pnrs: [
+            makePnr({
+              ticket_deadline: '2026-04-01T23:59:00Z',
+              ticket_issued_at: '2026-04-01T08:00:00Z',
+            }),
+          ],
+          current_datetime: '2026-04-02T12:00:00Z',
+        }),
+      });
+      const issue = res.data.results[0]!.issues.find((i) => i.code === 'TTL_URGENT');
+      expect(issue).toBeDefined();
+      expect(issue!.message).toMatch(/issued on deadline day/i);
+    });
+
+    it('no TTL issue when issued on a different Zulu day than deadline', async () => {
+      const res = await agent.execute({
+        data: makeInput({
+          pnrs: [
+            makePnr({
+              ticket_deadline: '2026-04-02T12:00:00Z',
+              ticket_issued_at: '2026-04-01T20:00:00Z',
+            }),
+          ],
+          current_datetime: '2026-04-03T12:00:00Z',
+        }),
+      });
+      expect(res.data.results[0]!.issues.some((i) => i.code.startsWith('TTL_'))).toBe(false);
     });
   });
 

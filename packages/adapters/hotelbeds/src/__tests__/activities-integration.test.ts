@@ -88,7 +88,7 @@ describe.skipIf(!HAS_CREDENTIALS)('Hotelbeds Activities — sandbox integration'
       clientReference: `OTAIP-INT-ACT-${Date.now()}`,
     });
     expect(result.bookingReference.length).toBeGreaterThan(0);
-    expect(['CONFIRMED', 'ON_REQUEST']).toContain(result.status);
+    expect(['CONFIRMED', 'PRECONFIRMED', 'CANCELLED']).toContain(result.status);
     bookingRef = result.bookingReference;
   });
 

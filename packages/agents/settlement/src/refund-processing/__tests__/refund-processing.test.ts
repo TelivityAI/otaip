@@ -102,10 +102,31 @@ describe('Refund Processing', () => {
     });
   });
 
-  describe('ATPCO default — no Cat33 rules supplied', () => {
-    it('voluntary refund with no rules: penalty = 0, full base refund', async () => {
+  describe('ATPCO default — no Cat33 conditions/charges matched', () => {
+    it('voluntary refund with no Cat33 data: free refund (not fail-closed)', async () => {
       const result = await agent.execute({
         data: makeInput({ cat33_rules: undefined }),
+      });
+      expect(result.data.refund.penalty_applied).toBe('0.00');
+      expect(result.data.refund.base_fare_refund).toBe('450.00');
+    });
+
+    it('rules present but no provision matches fare basis: free refund (not fail-closed)', async () => {
+      const result = await agent.execute({
+        data: makeInput({
+          fare_basis: 'ZZZNOMATCH',
+          cat33_rules: {
+            rules: [
+              {
+                fare_basis_pattern: '^ONLYTHIS$',
+                penalty_amount: '999.00',
+                currency: 'USD',
+                forfeit_base_fare: false,
+                notes: 'test fixture — deliberately non-matching',
+              },
+            ],
+          },
+        }),
       });
       expect(result.data.refund.penalty_applied).toBe('0.00');
       expect(result.data.refund.base_fare_refund).toBe('450.00');
@@ -130,6 +151,15 @@ describe('Refund Processing', () => {
       });
       expect(result.data.refund.penalty_applied).toBe('0.00');
       expect(result.data.refund.base_fare_refund).toBe('450.00');
+    });
+
+    it('no Cat33 data + bare waiver_code: still fail-closed for missing waiver_effect', async () => {
+      // Missing Cat data must NOT be conflated with bare-waiver fail-closed.
+      await expect(
+        agent.execute({
+          data: makeInput({ cat33_rules: undefined, waiver_code: 'BARE' }),
+        }),
+      ).rejects.toThrow('waiver_effect');
     });
   });
 
@@ -205,23 +235,127 @@ describe('Refund Processing', () => {
     });
   });
 
-  describe('Waiver code', () => {
-    it('bypasses penalty with waiver code', async () => {
-      const result = await agent.execute({ data: makeInput({ waiver_code: 'WAIVER123' }) });
+  describe('Waiver typology', () => {
+    it('fail closed: waiver_code without waiver_effect', async () => {
+      await expect(
+        agent.execute({ data: makeInput({ waiver_code: 'WAIVER123' }) }),
+      ).rejects.toThrow('waiver_effect');
+    });
+
+    it('fail closed: unknown waiver_effect', async () => {
+      await expect(
+        agent.execute({
+          data: makeInput({
+            waiver_code: 'X',
+            waiver_effect: 'SKIP_EVERYTHING' as 'ELIMINATE_PENALTY',
+          }),
+        }),
+      ).rejects.toThrow('waiver_effect');
+    });
+
+    it('ELIMINATE_PENALTY zeros filed Cat 33 charge', async () => {
+      const result = await agent.execute({
+        data: makeInput({
+          waiver_code: 'WAIVER123',
+          waiver_effect: 'ELIMINATE_PENALTY',
+        }),
+      });
+      expect(result.data.refund.penalty_applied).toBe('0.00');
+      expect(result.data.refund.base_fare_refund).toBe('450.00');
+      expect(result.data.refund.waiver_effect).toBe('ELIMINATE_PENALTY');
+      expect(result.data.refund.waiver_code).toBe('WAIVER123');
+      expect(result.data.refund.audit.waiver_code).toBe('WAIVER123');
+    });
+
+    it('REDUCE_PENALTY FIXED applies remaining amount (not invent)', async () => {
+      const result = await agent.execute({
+        data: makeInput({
+          fare_basis: 'EOWUS', // filed penalty 300 in fixture
+          waiver_code: 'RD50',
+          waiver_effect: 'REDUCE_PENALTY',
+          waiver_penalty_reduction: { kind: 'FIXED', amount: '50.00', currency: 'USD' },
+        }),
+      });
+      expect(result.data.refund.penalty_applied).toBe('50.00');
+      expect(result.data.refund.base_fare_refund).toBe('400.00');
+    });
+
+    it('REDUCE_PENALTY PERCENT_WAIVED halves filed penalty when percent=50', async () => {
+      const result = await agent.execute({
+        data: makeInput({
+          fare_basis: 'EOWUS',
+          waiver_code: 'RD50PCT',
+          waiver_effect: 'REDUCE_PENALTY',
+          waiver_penalty_reduction: { kind: 'PERCENT_WAIVED', percent: 50 },
+        }),
+      });
+      expect(result.data.refund.penalty_applied).toBe('150.00');
+    });
+
+    it('fail closed: REDUCE_PENALTY without reduction companion', async () => {
+      await expect(
+        agent.execute({
+          data: makeInput({
+            waiver_code: 'RD',
+            waiver_effect: 'REDUCE_PENALTY',
+          }),
+        }),
+      ).rejects.toThrow('waiver_penalty_reduction');
+    });
+
+    it('CHANGE_REFUND_FORM keeps filed penalty and records form', async () => {
+      const result = await agent.execute({
+        data: makeInput({
+          fare_basis: 'EOWUS',
+          waiver_code: 'CREDIT1',
+          waiver_effect: 'CHANGE_REFUND_FORM',
+          waiver_refund_form: 'CREDIT',
+        }),
+      });
+      expect(result.data.refund.penalty_applied).toBe('300.00');
+      expect(result.data.refund.waiver_refund_form).toBe('CREDIT');
+      expect(result.data.refund.audit.waiver_refund_form).toBe('CREDIT');
+    });
+
+    it('fail closed: CHANGE_REFUND_FORM without form', async () => {
+      await expect(
+        agent.execute({
+          data: makeInput({
+            waiver_code: 'CREDIT1',
+            waiver_effect: 'CHANGE_REFUND_FORM',
+          }),
+        }),
+      ).rejects.toThrow('waiver_refund_form');
+    });
+
+    it('IRROP_INVOLUNTARY zeros voluntary Cat 33 charge', async () => {
+      const result = await agent.execute({
+        data: makeInput({
+          fare_basis: 'EOWUS',
+          waiver_code: 'IRROP9',
+          waiver_effect: 'IRROP_INVOLUNTARY',
+        }),
+      });
       expect(result.data.refund.penalty_applied).toBe('0.00');
       expect(result.data.refund.base_fare_refund).toBe('450.00');
     });
 
-    it('stores waiver code on record', async () => {
-      const result = await agent.execute({ data: makeInput({ waiver_code: 'WAIVER123' }) });
-      expect(result.data.refund.waiver_code).toBe('WAIVER123');
-      expect(result.data.refund.audit.waiver_code).toBe('WAIVER123');
+    it('never treats bare waiver_code as general skip-penalty rule', async () => {
+      // Regression: any waiver ⇒ 0 must not hold
+      await expect(
+        agent.execute({ data: makeInput({ waiver_code: 'ANYTHING' }) }),
+      ).rejects.toThrow(/waiver_effect|skip penalty/i);
     });
   });
 
   describe('Commission recall', () => {
     it('recalls proportional commission on full refund', async () => {
-      const result = await agent.execute({ data: makeInput({ waiver_code: 'W' }) }); // waiver so full base refund
+      const result = await agent.execute({
+        data: makeInput({
+          waiver_code: 'W',
+          waiver_effect: 'ELIMINATE_PENALTY',
+        }),
+      });
       expect(result.data.commission_recalled).toBe('31.50'); // full commission
     });
 
@@ -232,6 +366,7 @@ describe('Refund Processing', () => {
           refund_type: 'PARTIAL',
           coupons_to_refund: coupons,
           waiver_code: 'W',
+          waiver_effect: 'ELIMINATE_PENALTY',
         }),
       });
       // 1/4 = 25% of base = 112.50 refunded → commission recall = 31.50 * 112.50/450 = 7.875 → 7.88
