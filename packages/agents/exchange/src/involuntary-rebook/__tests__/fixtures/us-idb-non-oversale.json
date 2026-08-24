@@ -1,0 +1,61 @@
+{
+  "id": "us-idb-non-oversale",
+  "description": "US DOT 14 CFR §250 IDB is oversale-specific. A US domestic delay/cancel is NOT denied boarding — US_DOT applies false. Carrier TIME_CHANGE threshold supplied explicitly (no 60-minute hardcode).",
+  "source": "https://www.ecfr.gov/current/title-14/chapter-II/subchapter-A/part-250",
+  "expect": {
+    "is_involuntary": true,
+    "trigger": "TIME_CHANGE",
+    "eu261_applies": false,
+    "us_dot_applies": false,
+    "art8_passenger_choice_required": false,
+    "measurement_point": "DEPARTURE",
+    "protection_path": "SAME_OPERATING"
+  },
+  "input": {
+    "original_pnr": {
+      "record_locator": "USDLAY",
+      "passenger_name": "JONES/PAT",
+      "affected_segment": {
+        "carrier": "DL",
+        "flight_number": "400",
+        "origin": "ATL",
+        "destination": "LAX",
+        "departure_date": "2026-08-10",
+        "departure_time": "08:00",
+        "booking_class": "Y",
+        "fare_basis": "YOWUS",
+        "operating_carrier": "DL"
+      },
+      "issuing_carrier": "DL",
+      "departure_country": "US",
+      "arrival_country": "US",
+      "is_checked_in": true,
+      "is_eu_carrier": false
+    },
+    "schedule_change": {
+      "change_type": "TIME_CHANGE",
+      "original_departure_time": "08:00",
+      "new_departure_time": "11:30",
+      "time_change_minutes": 210,
+      "carrier_reason": "Late inbound aircraft"
+    },
+    "thresholds": {
+      "time_change_minutes": 90,
+      "measurement_point": "DEPARTURE"
+    },
+    "is_oversale_denied_boarding": false,
+    "available_flights": [
+      {
+        "carrier": "DL",
+        "flight_number": "412",
+        "departure_date": "2026-08-10",
+        "departure_time": "14:00",
+        "booking_class": "Y",
+        "is_same_operating_carrier": true,
+        "is_alliance_partner": false,
+        "is_interline": false,
+        "endorsement_allows": true
+      }
+    ]
+  }
+}

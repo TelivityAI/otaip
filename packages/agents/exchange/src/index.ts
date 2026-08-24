@@ -59,10 +59,13 @@ export type {
   InvoluntaryRebookOutput,
   InvoluntaryRebookResult,
   InvoluntaryTrigger,
+  IrropMeasurementPoint,
   ProtectionPath,
+  ProtectionFlightOption,
   ProtectionOption,
   RegulatoryFlag,
   RegulatoryFramework,
+  Art8Choice,
   ScheduleChangeNotification,
   OriginalPnrSummary,
 } from './involuntary-rebook/index.js';
