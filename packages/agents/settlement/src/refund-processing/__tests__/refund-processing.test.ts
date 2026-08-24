@@ -201,7 +201,7 @@ describe('Refund Processing', () => {
   });
 
   describe('Partial refund', () => {
-    it('prorates fare for partial refund', async () => {
+    it('fail-closed without partial_valuation method', async () => {
       const coupons: CouponRefundItem[] = [
         { coupon_number: 1, status: 'O', refundable: true },
         { coupon_number: 2, status: 'O', refundable: true },
@@ -209,18 +209,80 @@ describe('Refund Processing', () => {
       const result = await agent.execute({
         data: makeInput({ refund_type: 'PARTIAL', coupons_to_refund: coupons }),
       });
-      // 2 of 4 coupons = 50% of base fare
-      expect(Number(result.data.refund.audit.original_base_fare)).toBe(450);
-      expect(result.data.refund.audit.coupons_refunded).toEqual([1, 2]);
+      expect(result.data).toMatchObject({ status: 'DOMAIN_INPUT_REQUIRED' });
+      if (!('missing' in result.data)) throw new Error('expected domain sentinel');
+      expect(result.data.missing).toContain('partial_valuation');
+      expect(result.data.description).toMatch(/THB|IATA Ticketing Handbook/i);
+      expect(result.data.description).toMatch(/MPA-P/);
     });
 
-    it('prorates taxes for partial refund', async () => {
+    it('applies Cat 33 penalty to PUBLISHED_FARE unused base (not coupon-ratio)', async () => {
+      const coupons: CouponRefundItem[] = [{ coupon_number: 2, status: 'O', refundable: true }];
+      const result = await agent.execute({
+        data: makeInput({
+          base_fare: '800.00',
+          refund_type: 'PARTIAL',
+          coupons_to_refund: coupons,
+          total_coupons: 2,
+          fare_basis: 'HOWUS',
+          partial_valuation: {
+            method: 'PUBLISHED_FARE',
+            unused_base_fare: '320.00',
+            flown_base_fare: '480.00',
+            unused_taxes: [{ code: 'GB', amount: '55.00', currency: 'USD' }],
+          },
+        }),
+      });
+      if ('status' in result.data) throw new Error('unexpected domain sentinel');
+      expect(result.data.refund.audit.residual_method).toBe('PUBLISHED_FARE');
+      expect(result.data.refund.audit.flown_base_fare).toBe('480.00');
+      expect(result.data.refund.tax_refund).toBe('55.00');
+      expect(result.data.refund.penalty_applied).toBe('200.00');
+      expect(result.data.refund.base_fare_refund).toBe('120.00');
+    });
+
+    it('no Cat 33 data + PUBLISHED_FARE: free penalty on unused base (not fail-closed)', async () => {
+      const coupons: CouponRefundItem[] = [{ coupon_number: 2, status: 'O', refundable: true }];
+      const result = await agent.execute({
+        data: makeInput({
+          base_fare: '800.00',
+          refund_type: 'PARTIAL',
+          coupons_to_refund: coupons,
+          total_coupons: 2,
+          cat33_rules: undefined,
+          partial_valuation: {
+            method: 'PUBLISHED_FARE',
+            unused_base_fare: '320.00',
+            flown_base_fare: '480.00',
+            unused_taxes: [{ code: 'GB', amount: '55.00', currency: 'USD' }],
+          },
+        }),
+      });
+      if ('status' in result.data) throw new Error('unexpected domain sentinel');
+      expect(result.data.refund.penalty_applied).toBe('0.00');
+      expect(result.data.refund.base_fare_refund).toBe('320.00');
+    });
+
+    it('does not invent coupon-ratio tax when unused taxes are supplied', async () => {
       const coupons: CouponRefundItem[] = [{ coupon_number: 3, status: 'O', refundable: true }];
       const result = await agent.execute({
-        data: makeInput({ refund_type: 'PARTIAL', coupons_to_refund: coupons }),
+        data: makeInput({
+          refund_type: 'PARTIAL',
+          coupons_to_refund: coupons,
+          cat33_rules: undefined,
+          partial_valuation: {
+            method: 'PUBLISHED_FARE',
+            unused_base_fare: '112.50',
+            unused_taxes: [
+              { code: 'GB', amount: '20.00', currency: 'USD' },
+              { code: 'US', amount: '5.00', currency: 'USD' },
+            ],
+          },
+        }),
       });
-      // 1 of 4 coupons = 25% of taxes
-      expect(result.data.refund.tax_refund).toBe('30.00');
+      if ('status' in result.data) throw new Error('unexpected domain sentinel');
+      expect(result.data.refund.tax_refund).toBe('25.00');
+      expect(result.data.refund.base_fare_refund).toBe('112.50');
     });
 
     it('only refunds coupons marked as refundable', async () => {
@@ -229,9 +291,20 @@ describe('Refund Processing', () => {
         { coupon_number: 2, status: 'L', refundable: false },
       ];
       const result = await agent.execute({
-        data: makeInput({ refund_type: 'PARTIAL', coupons_to_refund: coupons }),
+        data: makeInput({
+          refund_type: 'PARTIAL',
+          coupons_to_refund: coupons,
+          cat33_rules: undefined,
+          partial_valuation: {
+            method: 'CARRIER_SPECIFIC',
+            unused_base_fare: '200.00',
+            unused_taxes: [{ code: 'GB', amount: '10.00', currency: 'USD' }],
+          },
+        }),
       });
+      if ('status' in result.data) throw new Error('unexpected domain sentinel');
       expect(result.data.refund.audit.coupons_refunded).toEqual([1]);
+      expect(result.data.refund.audit.residual_method).toBe('CARRIER_SPECIFIC');
     });
   });
 
@@ -365,11 +438,15 @@ describe('Refund Processing', () => {
         data: makeInput({
           refund_type: 'PARTIAL',
           coupons_to_refund: coupons,
-          waiver_code: 'W',
-          waiver_effect: 'ELIMINATE_PENALTY',
+          cat33_rules: undefined,
+          partial_valuation: {
+            method: 'PUBLISHED_FARE',
+            unused_base_fare: '112.50',
+            unused_taxes: [{ code: 'GB', amount: '10.00', currency: 'USD' }],
+          },
         }),
       });
-      // 1/4 = 25% of base = 112.50 refunded → commission recall = 31.50 * 112.50/450 = 7.875 → 7.88
+      if ('status' in result.data) throw new Error('unexpected domain sentinel');
       expect(Number(result.data.commission_recalled)).toBeGreaterThan(0);
       expect(Number(result.data.commission_recalled)).toBeLessThan(31.5);
     });

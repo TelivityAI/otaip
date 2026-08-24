@@ -8,6 +8,7 @@ export { RefundProcessing } from './refund-processing/index.js';
 export type {
   RefundProcessingInput,
   RefundProcessingOutput,
+  RefundProcessingResult,
   RefundRecord,
   RefundAuditTrail,
   RefundType,

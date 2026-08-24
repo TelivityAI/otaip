@@ -24,9 +24,11 @@ ATPCO Category 31 voluntary change assessment: change fees, fare difference, res
 - `current_datetime?` -- ISO datetime
 - `cat31_rules?` -- filed Cat 31 rules (omit → ATPCO default no charge)
 - `us_dot_24h?` -- `part_259_applicable?`, `booking_channel?` (`airline_direct` | `agency` | `ndc` | `gds` | `unknown`)
+- `ticket_usage?` -- `FULLY_UNUSED` (default) or `PARTIALLY_USED`
+- `residual_valuation?` -- required when `PARTIALLY_USED`: `PUBLISHED_FARE` or `CARRIER_SPECIFIC` unused amounts (issue #150; never coupon-ratio / MPA-P / haversine)
 
 **Output (`ChangeManagementOutput`):**
-- `assessment` -- action (`REISSUE | REBOOK | REJECT`), change fee, fare difference, additional collection, residual value, forfeited amount, tax difference, total due, Cat 31 `is_free_change` flag, summary
+- `assessment` -- action (`REISSUE | REBOOK | REJECT`), change fee, fare difference, additional collection, residual value + `residual_method`, forfeited amount, tax difference, total due, Cat 31 `is_free_change` flag, summary
 - `us_dot_24h` -- carrier remedy (`cancel` | `hold` | `unknown`), eligibility, ineligibility reasons (including `departure_within_7_days`, `channel_coverage_unknown`), entitlement (`penalty_free_cancel` | `unpaid_fare_hold` | `none` | `unknown`). **Not** a free-change boolean. Channel coverage follows carrier disclosure — not a baked-in “third-party never qualifies” rule.
 
 ---
@@ -46,7 +48,7 @@ Ticket reissue with residual value application, **per-tax** carryforward (`CARRY
 - `original_ticket_number`, `conjunction_originals?`, `original_issue_date`
 - `issuing_carrier`, `passenger_name`, `record_locator`
 - `original_base_fare`, `original_taxes` -- from original ticket
-- `change_fee`, `residual_value`, `waiver_code?` -- from Agent 5.1
+- `change_fee`, `residual_value`, `residual_method` -- from Agent 5.1 (`FULLY_UNUSED` | `PUBLISHED_FARE` | `CARRIER_SPECIFIC`; never original − change fee)
 - `new_segments` -- new flight segments
 - `new_fare`, `new_fare_currency`, `new_taxes`, `fare_calculation`
 - `form_of_payment` -- for additional collection

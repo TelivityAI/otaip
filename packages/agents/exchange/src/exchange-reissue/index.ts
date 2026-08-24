@@ -11,8 +11,8 @@
  */
 
 import type { Agent, AgentInput, AgentOutput, AgentHealthStatus } from '@otaip/core';
-import { AgentNotInitializedError, AgentInputValidationError } from '@otaip/core';
-import type { ExchangeReissueInput, ExchangeReissueOutput } from './types.js';
+import { AgentNotInitializedError, AgentInputValidationError, isDomainInputRequired } from '@otaip/core';
+import type { ExchangeReissueInput, ExchangeReissueResult } from './types.js';
 import { processReissue } from './reissue-engine.js';
 import {
   TaxCarryforwardRuleMissingError,
@@ -32,7 +32,9 @@ const VALID_NATURE = new Set(['TRANSPORT', 'SALES']);
 const VALID_MIN_GEO = new Set(['SAME_AIRPORT', 'SAME_CITY']);
 const VALID_EXPIRED_ACTION = new Set(['RECALCULATE', 'FORFEIT']);
 
-export class ExchangeReissue implements Agent<ExchangeReissueInput, ExchangeReissueOutput> {
+const VALID_RESIDUAL_METHODS = new Set(['FULLY_UNUSED', 'PUBLISHED_FARE', 'CARRIER_SPECIFIC']);
+
+export class ExchangeReissue implements Agent<ExchangeReissueInput, ExchangeReissueResult> {
   readonly id = '5.2';
   readonly name = 'Exchange/Reissue';
   readonly version = '0.2.0';
@@ -45,14 +47,14 @@ export class ExchangeReissue implements Agent<ExchangeReissueInput, ExchangeReis
 
   async execute(
     input: AgentInput<ExchangeReissueInput>,
-  ): Promise<AgentOutput<ExchangeReissueOutput>> {
+  ): Promise<AgentOutput<ExchangeReissueResult>> {
     if (!this.initialized) {
       throw new AgentNotInitializedError(this.id);
     }
 
     this.validateInput(input.data);
 
-    let result: ExchangeReissueOutput;
+    let result: ExchangeReissueResult;
     try {
       result = processReissue(input.data);
     } catch (err) {
@@ -64,6 +66,23 @@ export class ExchangeReissue implements Agent<ExchangeReissueInput, ExchangeReis
         );
       }
       throw err;
+    }
+
+    if (isDomainInputRequired(result)) {
+      return {
+        data: result,
+        confidence: 0,
+        warnings: [
+          `DOMAIN_INPUT_REQUIRED: ${result.description}`,
+          ...result.missing.map((m) => `missing: ${m}`),
+        ],
+        metadata: {
+          agent_id: this.id,
+          agent_version: this.version,
+          original_ticket: input.data.original_ticket_number,
+          status: 'DOMAIN_INPUT_REQUIRED',
+        },
+      };
     }
 
     const warnings: string[] = [];
@@ -95,6 +114,7 @@ export class ExchangeReissue implements Agent<ExchangeReissueInput, ExchangeReis
         additional_collection: result.additional_collection,
         credit_amount: result.credit_amount,
         tax_decision_count: result.tax_decisions.length,
+        residual_method: result.reissue.exchange_audit.residual_method,
       },
     };
   }
@@ -170,6 +190,20 @@ export class ExchangeReissue implements Agent<ExchangeReissueInput, ExchangeReis
     }
     if (data.gds && !VALID_GDS.has(data.gds)) {
       throw new AgentInputValidationError(this.id, 'gds', `Invalid GDS: ${data.gds}`);
+    }
+    if (!data.residual_method || !VALID_RESIDUAL_METHODS.has(data.residual_method)) {
+      throw new AgentInputValidationError(
+        this.id,
+        'residual_method',
+        'Must be FULLY_UNUSED, PUBLISHED_FARE, or CARRIER_SPECIFIC. original−change-fee / MPA-P / coupon-ratio are rejected.',
+      );
+    }
+    if (!data.residual_value || isNaN(Number(data.residual_value))) {
+      throw new AgentInputValidationError(
+        this.id,
+        'residual_value',
+        'Must be a valid decimal string.',
+      );
     }
     if (data.conjunction_originals) {
       for (const ct of data.conjunction_originals) {
@@ -281,6 +315,7 @@ export class ExchangeReissue implements Agent<ExchangeReissueInput, ExchangeReis
 export type {
   ExchangeReissueInput,
   ExchangeReissueOutput,
+  ExchangeReissueResult,
   ReissueRecord,
   ReissuedCoupon,
   ExchangeAuditTrail,

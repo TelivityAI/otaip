@@ -15,7 +15,11 @@
 
 import Decimal from 'decimal.js';
 import type { Agent, AgentHealthStatus, AgentInput, AgentOutput, SearchOffer } from '@otaip/core';
-import { AgentInputValidationError, AgentNotInitializedError } from '@otaip/core';
+import {
+  AgentInputValidationError,
+  AgentNotInitializedError,
+  isDomainInputRequired,
+} from '@otaip/core';
 import { AvailabilitySearch } from '@otaip/agents-search';
 import type { AvailabilitySearchInput } from '@otaip/agents-search';
 import { ChangeManagement } from '../change-management/index.js';
@@ -148,7 +152,7 @@ export class SelfServiceRebookingAgent
         })
         .catch(() => null);
 
-      if (!assessment) continue;
+      if (!assessment || isDomainInputRequired(assessment.data)) continue;
       const a = assessment.data.assessment;
 
       // Skip REJECTed candidates entirely (noted in count but not returned).

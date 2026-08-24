@@ -20,16 +20,23 @@
  *    Presence of a waiver code ≠ skip penalty.
  * See docs/knowledge-base/waiver-typology.md.
  *
+ * Residual value (issue #150 / KB partial-refund-residual-value.md):
+ * - FULLY_UNUSED → residual = ticketed base (change fee is separate)
+ * - PARTIALLY_USED → require PUBLISHED_FARE or CARRIER_SPECIFIC valuation
+ * - NEVER residual = original − change fee
+ * - MPA-P / haversine / coupon-ratio are not passenger residual methods
+ *
  * // DOMAIN_QUESTION: per-carrier ATPCO Cat31 data ingestion pipeline.
  * // DOMAIN_QUESTION: DQ-W1 — map free-text waiver codes → WaiverEffect
  * //   (only when a waiver_code is present; not when Cat 31 data is absent).
+ * // DOMAIN_QUESTION: DQ-R5 Cat 31 residual on partially used changes.
  */
 
 import Decimal from 'decimal.js';
-import { AgentInputValidationError } from '@otaip/core';
+import { AgentInputValidationError, domainInputRequired } from '@otaip/core';
 import type {
   ChangeManagementInput,
-  ChangeManagementOutput,
+  ChangeManagementResult,
   ChangeAssessment,
   ChangeFeeRule,
   ChangeAction,
@@ -72,6 +79,60 @@ function isWithinFreeChangeWindow(
   return hoursSinceBooking <= freeChangeHours;
 }
 
+function resolveResidual(
+  input: ChangeManagementInput,
+  originalFare: Decimal,
+):
+  | { ok: true; residual: Decimal; method: 'FULLY_UNUSED' | 'PUBLISHED_FARE' | 'CARRIER_SPECIFIC' }
+  | { ok: false; result: ReturnType<typeof domainInputRequired> } {
+  const usage = input.ticket_usage ?? 'FULLY_UNUSED';
+
+  if (usage === 'FULLY_UNUSED') {
+    return { ok: true, residual: originalFare, method: 'FULLY_UNUSED' };
+  }
+
+  const valuation = input.residual_valuation;
+  if (!valuation) {
+    return {
+      ok: false,
+      result: domainInputRequired({
+        missing: [
+          'residual_valuation',
+          'published_fare_or_carrier_residual_amounts',
+        ],
+        description:
+          'Partially used ticket: passenger residual requires explicit PUBLISHED_FARE or CARRIER_SPECIFIC unused amounts (Cat 33 + IATA Ticketing Handbook practice). Cannot use original−used, MPA-P interline proration, haversine, or coupon-ratio splits. Note: absence of Cat 33 data means free penalty — it does not invent a proration method.',
+        references: [
+          'docs/knowledge-base/partial-refund-residual-value.md',
+          'IATA Ticketing Handbook (THB) — cite by name only',
+          'GitHub issue #150',
+        ],
+      }),
+    };
+  }
+
+  if (valuation.method !== 'PUBLISHED_FARE' && valuation.method !== 'CARRIER_SPECIFIC') {
+    return {
+      ok: false,
+      result: domainInputRequired({
+        missing: ['residual_valuation.method'],
+        description:
+          'Partially used residual method must be PUBLISHED_FARE or CARRIER_SPECIFIC. MPA-P is airline interline settlement, not passenger residual.',
+        references: [
+          'docs/knowledge-base/partial-refund-residual-value.md',
+          'GitHub issue #150',
+        ],
+      }),
+    };
+  }
+
+  return {
+    ok: true,
+    residual: new Decimal(valuation.unused_base_fare),
+    method: valuation.method,
+  };
+}
+
 /**
  * Fail closed only for waiver semantics — never for missing Cat 31 data.
  * Absence of Cat 31 / no matched provision is handled by the ATPCO free default
@@ -84,7 +145,6 @@ export function assertChangeWaiverInput(input: ChangeManagementInput): void {
   if (!hasCode && effect === undefined) return;
 
   if (hasCode && effect === undefined) {
-    // TODO: DOMAIN_QUESTION: DQ-W1 — what is the waiver type and its specific effect?
     throw new AgentInputValidationError(
       AGENT_ID,
       'waiver_effect',
@@ -126,7 +186,6 @@ export function assertChangeWaiverInput(input: ChangeManagementInput): void {
     const classes = input.permitted_booking_classes ?? [];
     const patterns = input.permitted_fare_basis_patterns ?? [];
     if (classes.length === 0 && patterns.length === 0) {
-      // TODO: DOMAIN_QUESTION: DQ-W4 — carrier class-substitution tables
       throw new AgentInputValidationError(
         AGENT_ID,
         'permitted_booking_classes',
@@ -195,7 +254,6 @@ function applyWaiverToFee(
     }
     case 'CHANGE_REFUND_FORM':
     case 'CHANGE_REBOOKING_CLASS':
-      // Constraint only — filed Cat 31 charge still applies
       return filedFee;
     default:
       throw new AgentInputValidationError(
@@ -206,7 +264,7 @@ function applyWaiverToFee(
   }
 }
 
-export function assessChange(input: ChangeManagementInput): ChangeManagementOutput {
+export function assessChange(input: ChangeManagementInput): ChangeManagementResult {
   assertChangeWaiverInput(input);
 
   const now = currentTime(input);
@@ -218,7 +276,6 @@ export function assessChange(input: ChangeManagementInput): ChangeManagementOutp
 
   const usDot24h = assessUsDot24Hour(input, now);
 
-  // Reject path applies only when filed rules say so.
   if (isRejectFare(input.cat31_rules, orig.fare_basis)) {
     const assessment: ChangeAssessment = {
       original_ticket_number: orig.ticket_number,
@@ -229,6 +286,7 @@ export function assessChange(input: ChangeManagementInput): ChangeManagementOutp
       fare_difference: '0.00',
       additional_collection: '0.00',
       residual_value: '0.00',
+      residual_method: 'FULLY_UNUSED',
       forfeited_amount: orig.base_fare,
       tax_difference: '0.00',
       total_due: '0.00',
@@ -241,19 +299,20 @@ export function assessChange(input: ChangeManagementInput): ChangeManagementOutp
     return { assessment, us_dot_24h: usDot24h };
   }
 
+  const originalFare = new Decimal(orig.base_fare);
+  const residualResolved = resolveResidual(input, originalFare);
+  if (!residualResolved.ok) {
+    return residualResolved.result;
+  }
+
   const rule = input.cat31_rules
     ? findMatchingRule(input.cat31_rules.rules, orig.fare_basis)
     : undefined;
 
-  // Penalty source-of-truth:
-  //   1. Filed Cat31 rule for this fare basis  → rule.change_fee
-  //   2. No rule + involuntary / IRROP         → 0
-  //   3. No rule + voluntary                   → 0 (ATPCO public default)
   const changeFeeAmount = rule ? new Decimal(rule.change_fee) : new Decimal('0.00');
   const freeChangeHours = rule?.free_change_hours ?? 0;
   const forfeitOnDowngrade = rule?.forfeit_difference_on_downgrade ?? false;
 
-  // Cat 31 filed free-change window ONLY — not US DOT 24h (§259.5(b)(4)).
   const isFreeChange = isWithinFreeChangeWindow(orig.booking_date, now, freeChangeHours);
 
   let effectiveChangeFee: Decimal;
@@ -274,20 +333,14 @@ export function assessChange(input: ChangeManagementInput): ChangeManagementOutp
     effect === 'IRROP_INVOLUNTARY' ||
     (effect === 'REDUCE_PENALTY' && effectiveChangeFee.equals(0));
 
-  // Fare difference
-  const originalFare = new Decimal(orig.base_fare);
   const newFare = new Decimal(req.new_fare);
+  const residualValue = residualResolved.residual;
   const fareDifference = newFare.minus(originalFare);
 
-  // Tax difference
   const originalTax = new Decimal(orig.total_tax);
   const newTax = new Decimal(req.new_tax);
   const taxDifference = newTax.minus(originalTax);
 
-  // Residual value: original fare minus penalty
-  const residualValue = originalFare.minus(effectiveChangeFee);
-
-  // Additional collection and forfeiture
   let additionalCollection = new Decimal('0.00');
   let forfeitedAmount = new Decimal('0.00');
 
@@ -313,7 +366,9 @@ export function assessChange(input: ChangeManagementInput): ChangeManagementOutp
   }
   if (isFreeChange) summaryParts.push('Free change (within booking window).');
   if (effect === 'ELIMINATE_PENALTY') {
-    summaryParts.push(`Waiver code ${input.waiver_code!} effect ELIMINATE_PENALTY — change fee eliminated.`);
+    summaryParts.push(
+      `Waiver code ${input.waiver_code!} effect ELIMINATE_PENALTY — change fee eliminated.`,
+    );
   } else if (effect === 'REDUCE_PENALTY') {
     summaryParts.push(
       `Waiver code ${input.waiver_code!} effect REDUCE_PENALTY — change fee ${currency} ${effectiveChangeFee.toFixed(2)}.`,
@@ -331,6 +386,8 @@ export function assessChange(input: ChangeManagementInput): ChangeManagementOutp
   }
   if (!rule && !input.cat31_rules)
     summaryParts.push('No Cat31 rules supplied — applying ATPCO default (no charge).');
+  else if (input.cat31_rules && !rule)
+    summaryParts.push('No matching Cat31 provision — applying ATPCO default (no charge).');
   if (effectiveChangeFee.greaterThan(0))
     summaryParts.push(`Change fee: ${currency} ${effectiveChangeFee.toFixed(2)}.`);
   if (additionalCollection.greaterThan(0))
@@ -338,6 +395,9 @@ export function assessChange(input: ChangeManagementInput): ChangeManagementOutp
   if (forfeitedAmount.greaterThan(0))
     summaryParts.push(`Forfeited on downgrade: ${currency} ${forfeitedAmount.toFixed(2)}.`);
   if (taxDue.greaterThan(0)) summaryParts.push(`Tax adjustment: ${currency} ${taxDue.toFixed(2)}.`);
+  summaryParts.push(
+    `Residual (${residualResolved.method}): ${currency} ${residualValue.toFixed(2)}.`,
+  );
   summaryParts.push(`Total due: ${currency} ${totalDue.toFixed(2)}.`);
 
   const assessment: ChangeAssessment = {
@@ -357,6 +417,7 @@ export function assessChange(input: ChangeManagementInput): ChangeManagementOutp
     fare_difference: fareDifference.toFixed(2),
     additional_collection: additionalCollection.toFixed(2),
     residual_value: residualValue.toFixed(2),
+    residual_method: residualResolved.method,
     forfeited_amount: forfeitedAmount.toFixed(2),
     tax_difference: taxDifference.toFixed(2),
     total_due: totalDue.toFixed(2),

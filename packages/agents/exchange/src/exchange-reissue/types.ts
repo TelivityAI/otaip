@@ -6,7 +6,12 @@
  *
  * Tax carryforward: see docs/knowledge-base/tax-carryforward-reissue.md
  * Same O&D alone is insufficient. Decisions are per tax code.
+ *
+ * Residual: explicit residual_method required — never original − change fee
+ * (docs/knowledge-base/partial-refund-residual-value.md, issue #150).
  */
+
+import type { DomainInputRequired, PassengerResidualMethod } from '@otaip/core';
 
 export type ExchangeGdsSystem = 'AMADEUS' | 'SABRE' | 'TRAVELPORT';
 
@@ -131,6 +136,8 @@ export interface ExchangeAuditTrail {
   change_fee_paid: string;
   /** Residual value applied (decimal string) */
   residual_applied: string;
+  /** Valuation method for residual_applied (from Agent 5.1) */
+  residual_method: PassengerResidualMethod;
   /** Additional collection (decimal string) */
   additional_collection: string;
   /** Taxes carried forward from original ticket */
@@ -233,6 +240,10 @@ export interface ExchangeReissueInput {
   change_fee: string;
   /** Residual value (decimal string, from Agent 5.1) */
   residual_value: string;
+  /**
+   * How residual_value was determined. Required — never infer original − change fee.
+   */
+  residual_method: PassengerResidualMethod;
   /** Waiver code (if applied in Agent 5.1) */
   waiver_code?: string;
   /** New segments */
@@ -281,3 +292,6 @@ export interface ExchangeReissueOutput {
   /** Per-tax carryforward decisions (also on exchange_audit) */
   tax_decisions: TaxCarryforwardDecision[];
 }
+
+/** Successful reissue or fail-closed domain sentinel. */
+export type ExchangeReissueResult = ExchangeReissueOutput | DomainInputRequired;

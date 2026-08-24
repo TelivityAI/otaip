@@ -109,11 +109,37 @@ describe('Change Management', () => {
       expect(totalDue).toBeGreaterThan(0);
     });
 
-    it('calculates residual value', async () => {
+    it('calculates residual value as full ticketed base (not original − fee)', async () => {
       const result = await agent.execute({ data: makeInput() });
-      const residual = Number(result.data.assessment.residual_value);
-      expect(residual).toBeGreaterThan(0);
-      expect(residual).toBeLessThanOrEqual(450);
+      expect(result.data.assessment.residual_value).toBe('450.00');
+      expect(result.data.assessment.residual_method).toBe('FULLY_UNUSED');
+      expect(Number(result.data.assessment.change_fee)).toBeGreaterThan(0);
+    });
+
+    it('fail-closed when partially used without residual valuation method', async () => {
+      const result = await agent.execute({
+        data: makeInput({ ticket_usage: 'PARTIALLY_USED' }),
+      });
+      expect(result.data).toMatchObject({ status: 'DOMAIN_INPUT_REQUIRED' });
+      if (!('missing' in result.data)) throw new Error('expected domain sentinel');
+      expect(result.data.missing).toContain('residual_valuation');
+    });
+
+    it('uses PUBLISHED_FARE unused base when residual_valuation supplied', async () => {
+      const result = await agent.execute({
+        data: makeInput({
+          ticket_usage: 'PARTIALLY_USED',
+          residual_valuation: {
+            method: 'PUBLISHED_FARE',
+            unused_base_fare: '320.00',
+            flown_base_fare: '480.00',
+            unused_taxes: [{ code: 'GB', amount: '40.00', currency: 'USD' }],
+          },
+        }),
+      });
+      if ('status' in result.data) throw new Error('unexpected domain sentinel');
+      expect(result.data.assessment.residual_value).toBe('320.00');
+      expect(result.data.assessment.residual_method).toBe('PUBLISHED_FARE');
     });
 
     it('sets action to REISSUE for fare change', async () => {

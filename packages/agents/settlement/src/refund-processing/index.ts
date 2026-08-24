@@ -4,12 +4,19 @@
  * ATPCO Category 33 refund processing: penalty application,
  * commission recall, BSP/ARC reporting, conjunction ticket handling.
  *
+ * Partial residual: Cat 33 + THB — see
+ * docs/knowledge-base/partial-refund-residual-value.md (issue #150).
+ *
  * Implements the base Agent interface from @otaip/core.
  */
 
 import type { Agent, AgentInput, AgentOutput, AgentHealthStatus } from '@otaip/core';
-import { AgentNotInitializedError, AgentInputValidationError } from '@otaip/core';
-import type { RefundProcessingInput, RefundProcessingOutput } from './types.js';
+import {
+  AgentNotInitializedError,
+  AgentInputValidationError,
+  isDomainInputRequired,
+} from '@otaip/core';
+import type { RefundProcessingInput, RefundProcessingResult } from './types.js';
 import { processRefund, assertRefundWaiverInput } from './refund-engine.js';
 
 const TICKET_NUMBER_RE = /^\d{13}$/;
@@ -18,8 +25,9 @@ const PASSENGER_NAME_RE = /^[A-Z][A-Z' -]+\/[A-Z][A-Z' -]+$/;
 const RECORD_LOCATOR_RE = /^[A-Z0-9]{6}$/;
 const VALID_REFUND_TYPES = new Set(['FULL', 'PARTIAL', 'TAX_ONLY']);
 const VALID_SETTLEMENT = new Set(['BSP', 'ARC']);
+const VALID_PARTIAL_METHODS = new Set(['PUBLISHED_FARE', 'CARRIER_SPECIFIC']);
 
-export class RefundProcessing implements Agent<RefundProcessingInput, RefundProcessingOutput> {
+export class RefundProcessing implements Agent<RefundProcessingInput, RefundProcessingResult> {
   readonly id = '6.1';
   readonly name = 'Refund Processing';
   readonly version = '0.1.0';
@@ -32,7 +40,7 @@ export class RefundProcessing implements Agent<RefundProcessingInput, RefundProc
 
   async execute(
     input: AgentInput<RefundProcessingInput>,
-  ): Promise<AgentOutput<RefundProcessingOutput>> {
+  ): Promise<AgentOutput<RefundProcessingResult>> {
     if (!this.initialized) {
       throw new AgentNotInitializedError(this.id);
     }
@@ -40,6 +48,24 @@ export class RefundProcessing implements Agent<RefundProcessingInput, RefundProc
     this.validateInput(input.data);
 
     const result = processRefund(input.data);
+
+    if (isDomainInputRequired(result)) {
+      return {
+        data: result,
+        confidence: 0,
+        warnings: [
+          `DOMAIN_INPUT_REQUIRED: ${result.description}`,
+          ...result.missing.map((m) => `missing: ${m}`),
+        ],
+        metadata: {
+          agent_id: this.id,
+          agent_version: this.version,
+          ticket_number: input.data.ticket_number,
+          refund_type: input.data.refund_type,
+          status: 'DOMAIN_INPUT_REQUIRED',
+        },
+      };
+    }
 
     const warnings: string[] = [];
     if (result.refund.penalty_applied !== '0.00') {
@@ -73,6 +99,7 @@ export class RefundProcessing implements Agent<RefundProcessingInput, RefundProc
         net_refund: result.net_refund_amount,
         penalty: result.refund.penalty_applied,
         settlement_system: input.data.settlement_system,
+        residual_method: result.refund.audit.residual_method,
       },
     };
   }
@@ -140,6 +167,30 @@ export class RefundProcessing implements Agent<RefundProcessingInput, RefundProc
         'Required for PARTIAL refund.',
       );
     }
+    if (data.partial_valuation) {
+      const v = data.partial_valuation;
+      if (!VALID_PARTIAL_METHODS.has(v.method)) {
+        throw new AgentInputValidationError(
+          this.id,
+          'partial_valuation.method',
+          'Must be PUBLISHED_FARE or CARRIER_SPECIFIC. MPA-P / original−used / coupon-ratio are rejected.',
+        );
+      }
+      if (!v.unused_base_fare || isNaN(Number(v.unused_base_fare))) {
+        throw new AgentInputValidationError(
+          this.id,
+          'partial_valuation.unused_base_fare',
+          'Must be a valid decimal string.',
+        );
+      }
+      if (!v.unused_taxes || !Array.isArray(v.unused_taxes)) {
+        throw new AgentInputValidationError(
+          this.id,
+          'partial_valuation.unused_taxes',
+          'Unused tax breakdown is required (no coupon-ratio tax invention).',
+        );
+      }
+    }
     if (data.conjunction_tickets) {
       for (const ct of data.conjunction_tickets) {
         if (!TICKET_NUMBER_RE.test(ct)) {
@@ -166,6 +217,7 @@ export class RefundProcessing implements Agent<RefundProcessingInput, RefundProc
 export type {
   RefundProcessingInput,
   RefundProcessingOutput,
+  RefundProcessingResult,
   RefundRecord,
   RefundAuditTrail,
   RefundType,

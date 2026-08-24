@@ -8,11 +8,13 @@ export { ChangeManagement } from './change-management/index.js';
 export type {
   ChangeManagementInput,
   ChangeManagementOutput,
+  ChangeManagementResult,
   ChangeAssessment,
   OriginalTicketSummary,
   RequestedItinerary,
   ChangeFeeRule,
   ChangeAction,
+  TicketUsage,
   UsDot24HourRemedy,
   UsDot24HourBookingChannel,
   UsDot24HourIneligibilityReason,
@@ -36,6 +38,7 @@ export {
 export type {
   ExchangeReissueInput,
   ExchangeReissueOutput,
+  ExchangeReissueResult,
   ReissueRecord,
   ReissuedCoupon,
   ExchangeAuditTrail,

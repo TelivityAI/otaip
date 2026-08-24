@@ -10,9 +10,18 @@
  * Waiver typology: docs/knowledge-base/waiver-typology.md
  * - No Cat 31 data / no match → free change (ATPCO default; not fail-closed).
  * - Bare waiver_code without waiver_effect → fail closed (≠ skip penalty).
+ *
+ * Residual value: docs/knowledge-base/partial-refund-residual-value.md (issue #150)
+ * - Never residual = original − change fee; partials require PUBLISHED_FARE or
+ *   CARRIER_SPECIFIC valuation (MPA-P is not passenger residual).
  */
 
+import type { DomainInputRequired, PassengerPartialValuation } from '@otaip/core';
+
 export type ChangeAction = 'REISSUE' | 'REBOOK' | 'REJECT';
+
+/** Whether any coupon has been flown. */
+export type TicketUsage = 'FULLY_UNUSED' | 'PARTIALLY_USED';
 
 /**
  * Carrier election under 14 CFR §259.5(b)(4).
@@ -227,8 +236,15 @@ export interface ChangeAssessment {
   fare_difference: string;
   /** Additional collection required (decimal string, "0.00" if none) */
   additional_collection: string;
-  /** Residual value: original fare minus penalty, available for reissue (decimal string) */
+  /**
+   * Residual value available for reissue (decimal string).
+   * Fully unused: ticketed base fare (change fee is separate).
+   * Partially used: unused base from PUBLISHED_FARE / CARRIER_SPECIFIC valuation.
+   * Never original − change fee.
+   */
   residual_value: string;
+  /** Valuation method used for residual_value */
+  residual_method: 'FULLY_UNUSED' | 'PUBLISHED_FARE' | 'CARRIER_SPECIFIC';
   /** Forfeited amount on non-refundable downgrade (decimal string, "0.00" if none) */
   forfeited_amount: string;
   /** Tax difference (decimal string) */
@@ -319,6 +335,16 @@ export interface ChangeManagementInput {
    * See docs/knowledge-base/us-dot-24-hour-reservation.md.
    */
   us_dot_24h?: UsDot24HourContext;
+  /**
+   * Ticket usage. Defaults to FULLY_UNUSED when omitted.
+   * PARTIALLY_USED requires `residual_valuation` (PUBLISHED_FARE or carrier).
+   */
+  ticket_usage?: TicketUsage;
+  /**
+   * Unused residual after published-fare / carrier valuation.
+   * Required when ticket_usage is PARTIALLY_USED. See KB issue #150.
+   */
+  residual_valuation?: PassengerPartialValuation;
 }
 
 export interface ChangeManagementOutput {
@@ -330,3 +356,6 @@ export interface ChangeManagementOutput {
    */
   us_dot_24h: UsDot24HourAssessment;
 }
+
+/** Successful assessment or fail-closed domain sentinel. */
+export type ChangeManagementResult = ChangeManagementOutput | DomainInputRequired;

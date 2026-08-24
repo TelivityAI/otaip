@@ -7,7 +7,14 @@
  * Waiver typology: docs/knowledge-base/waiver-typology.md
  * - No Cat 33 data / no match → free refund (ATPCO default; not fail-closed).
  * - Bare waiver_code without waiver_effect → fail closed (≠ skip penalty).
+ *
+ * Partial refunds: Cat 33 + IATA Ticketing Handbook (THB) practice, with
+ * explicit PUBLISHED_FARE or CARRIER_SPECIFIC valuation — never
+ * original−used / coupon-ratio / MPA-P. See
+ * docs/knowledge-base/partial-refund-residual-value.md (issue #150).
  */
+
+import type { DomainInputRequired, PassengerPartialValuation } from '@otaip/core';
 
 export type RefundType = 'FULL' | 'PARTIAL' | 'TAX_ONLY';
 
@@ -155,6 +162,10 @@ export interface RefundAuditTrail {
   commission_recalled: string;
   /** Coupons refunded */
   coupons_refunded: number[];
+  /** Residual valuation method for PARTIAL refunds */
+  residual_method?: 'PUBLISHED_FARE' | 'CARRIER_SPECIFIC';
+  /** Flown base fare when PUBLISHED_FARE valuation supplied */
+  flown_base_fare?: string;
 }
 
 export interface RefundRecord {
@@ -261,6 +272,11 @@ export interface RefundProcessingInput {
    * full refund). The engine never invents a penalty amount.
    */
   cat33_rules?: Cat33Rules;
+  /**
+   * Explicit passenger residual for PARTIAL refunds (PUBLISHED_FARE or
+   * CARRIER_SPECIFIC). Required for PARTIAL — no coupon-ratio fallback.
+   */
+  partial_valuation?: PassengerPartialValuation;
 }
 
 export interface RefundProcessingOutput {
@@ -271,3 +287,6 @@ export interface RefundProcessingOutput {
   /** Commission recalled (decimal string) */
   commission_recalled: string;
 }
+
+/** Successful refund or fail-closed domain sentinel. */
+export type RefundProcessingResult = RefundProcessingOutput | DomainInputRequired;

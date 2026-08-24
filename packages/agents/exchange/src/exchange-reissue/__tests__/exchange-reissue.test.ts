@@ -108,7 +108,8 @@ function makeInput(overrides: Partial<ExchangeReissueInput> = {}): ExchangeReiss
     record_locator: 'ABC123',
     original_base_fare: '450.00',
     change_fee: '200.00',
-    residual_value: '250.00',
+    residual_value: '450.00',
+    residual_method: 'FULLY_UNUSED',
     new_segments: [
       {
         carrier: 'BA',
@@ -143,7 +144,8 @@ describe('Exchange/Reissue', () => {
   describe('Residual value application', () => {
     it('applies residual value to new fare', async () => {
       const result = await agent.execute({ data: makeInput() });
-      expect(result.data.reissue.exchange_audit.residual_applied).toBe('250.00');
+      expect(result.data.reissue.exchange_audit.residual_applied).toBe('450.00');
+      expect(result.data.reissue.exchange_audit.residual_method).toBe('FULLY_UNUSED');
     });
 
     it('calculates additional collection (new fare - residual + change fee + new taxes)', async () => {

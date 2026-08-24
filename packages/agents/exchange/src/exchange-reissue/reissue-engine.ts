@@ -4,12 +4,16 @@
  * Tax carryforward: per-tax CARRY | RECALCULATE | FORFEIT.
  * See docs/knowledge-base/tax-carryforward-reissue.md
  * Same O&D boolean is not used for tax decisions. IROE ≠ ICER (no FX here).
+ *
+ * Residual is applied as supplied with an explicit residual_method.
+ * Never recomputes residual as original − change fee (issue #150).
  */
 
 import Decimal from 'decimal.js';
+import { domainInputRequired } from '@otaip/core';
 import type {
   ExchangeReissueInput,
-  ExchangeReissueOutput,
+  ExchangeReissueResult,
   ReissueRecord,
   ReissuedCoupon,
   TaxItem,
@@ -254,7 +258,35 @@ function buildExchangeCommands(
 // Main engine
 // ---------------------------------------------------------------------------
 
-export function processReissue(input: ExchangeReissueInput): ExchangeReissueOutput {
+export function processReissue(input: ExchangeReissueInput): ExchangeReissueResult {
+  if (!input.residual_method) {
+    return domainInputRequired({
+      missing: ['residual_method'],
+      description:
+        'Exchange/reissue requires residual_method (FULLY_UNUSED, PUBLISHED_FARE, or CARRIER_SPECIFIC). Residual must not be invented as original − change fee. MPA-P is not passenger residual.',
+      references: [
+        'docs/knowledge-base/partial-refund-residual-value.md',
+        'GitHub issue #150',
+      ],
+    });
+  }
+
+  if (
+    input.residual_method !== 'FULLY_UNUSED' &&
+    input.residual_method !== 'PUBLISHED_FARE' &&
+    input.residual_method !== 'CARRIER_SPECIFIC'
+  ) {
+    return domainInputRequired({
+      missing: ['residual_method'],
+      description:
+        'residual_method must be FULLY_UNUSED, PUBLISHED_FARE, or CARRIER_SPECIFIC. Rejected: original−change-fee, MPA-P, haversine, coupon-ratio.',
+      references: [
+        'docs/knowledge-base/partial-refund-residual-value.md',
+        'GitHub issue #150',
+      ],
+    });
+  }
+
   const prefix = resolvePrefix(input);
   const issueDate = input.issue_date ?? new Date().toISOString().slice(0, 10);
   const serial = generateSerial(input.record_locator, input.passenger_name);
@@ -309,6 +341,7 @@ export function processReissue(input: ExchangeReissueInput): ExchangeReissueOutp
     exchange_indicator: 'E',
     change_fee_paid: changeFee.toFixed(2),
     residual_applied: residualValue.toFixed(2),
+    residual_method: input.residual_method,
     additional_collection: additionalCollection.toFixed(2),
     taxes_carried_forward: carriedForward,
     taxes_new: newTaxes,

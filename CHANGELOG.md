@@ -2,6 +2,17 @@
 
 > **Versioning policy:** Pre-v1.0, every release is a patch bump (`0.6.0 → 0.6.1 → 0.6.2 → …`). See [VERSIONING.md](VERSIONING.md) for the full policy and an explanation of the early-history version jumps (0.3.4 → 0.5.0 → 0.5.1 → 0.6.0) that predate this rule. v0.6.4 → v0.7.0 is the one post-policy exception — see VERSIONING.md.
 
+## Unreleased
+
+### Domain — partial refund / residual value ([#150](https://github.com/TelivityAI/otaip/issues/150))
+
+- New KB: `docs/knowledge-base/partial-refund-residual-value.md` — passenger residual = **Cat 33 + IATA Ticketing Handbook (THB)**; **MPA-P is interline only**; reject original−used / original−change-fee / coupon-ratio / haversine; conjunction all-or-none; worked examples.
+- **THB** = IATA Ticketing Handbook (cite by name only — never invent alternate acronym expansions).
+- Same split as [#153](https://github.com/TelivityAI/otaip/pull/153): **no Cat 33 data / unmatched provision → free** refund; **bare waiver / unspecified proration method ≠ free** (fail closed).
+- Agents **5.1 / 5.2 / 6.1**: explicit `PUBLISHED_FARE` | `CARRIER_SPECIFIC` valuation on partials; `DOMAIN_INPUT_REQUIRED` when method unspecified or bare `waiver_code` without typed effect.
+- Removed invented residual = original − change fee (5.1) and coupon-ratio partial proration (6.1).
+- `@otaip/core`: export `PassengerResidualMethod`, `PassengerPartialValuation`, `REJECTED_PASSENGER_RESIDUAL_METHODS`.
+
 ## 0.7.4 — Duffel order enrichment + activity/transfer agents
 
 Workspace-wide patch bump `0.7.3 → 0.7.4` so npm picks up [#123](https://github.com/TelivityAI/otaip/pull/123).

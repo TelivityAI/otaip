@@ -19,16 +19,21 @@
  *    Presence of a waiver code ≠ skip penalty.
  * See docs/knowledge-base/waiver-typology.md.
  *
+ * Partial refunds (issue #150 / KB partial-refund-residual-value.md):
+ * - Require `partial_valuation` with PUBLISHED_FARE or CARRIER_SPECIFIC
+ * - Passenger path = Cat 33 penalty + THB unused base/taxes
+ * - NEVER original−used, coupon-ratio, MPA-P, or haversine
+ *
  * // DOMAIN_QUESTION: per-carrier ATPCO Cat33 data ingestion pipeline.
  * // DOMAIN_QUESTION: DQ-W1 — map free-text waiver codes → WaiverEffect
  * //   (only when a waiver_code is present; not when Cat 33 data is absent).
  */
 
 import Decimal from 'decimal.js';
-import { AgentInputValidationError } from '@otaip/core';
+import { AgentInputValidationError, domainInputRequired } from '@otaip/core';
 import type {
   RefundProcessingInput,
-  RefundProcessingOutput,
+  RefundProcessingResult,
   RefundRecord,
   RefundAuditTrail,
   RefundPenaltyRule,
@@ -314,7 +319,7 @@ function resolveVoluntaryPenalty(
   return { baseFareRefund, penalty, forfeited: false };
 }
 
-export function processRefund(input: RefundProcessingInput): RefundProcessingOutput {
+export function processRefund(input: RefundProcessingInput): RefundProcessingResult {
   assertRefundWaiverInput(input);
 
   const originalBase = new Decimal(input.base_fare);
@@ -326,6 +331,8 @@ export function processRefund(input: RefundProcessingInput): RefundProcessingOut
   let taxBreakdown: TaxItem[];
   let penalty: Decimal;
   let couponsRefunded: number[];
+  let residualMethod: 'PUBLISHED_FARE' | 'CARRIER_SPECIFIC' | undefined;
+  let flownBaseFare: string | undefined;
 
   switch (input.refund_type) {
     case 'FULL': {
@@ -346,23 +353,45 @@ export function processRefund(input: RefundProcessingInput): RefundProcessingOut
     }
 
     case 'PARTIAL': {
-      const refundableCoupons = (input.coupons_to_refund ?? []).filter((c) => c.refundable);
-      const couponRatio =
-        input.total_coupons > 0
-          ? new Decimal(refundableCoupons.length).dividedBy(input.total_coupons)
-          : new Decimal(0);
+      const valuation = input.partial_valuation;
+      if (!valuation) {
+        return domainInputRequired({
+          missing: [
+            'partial_valuation',
+            'published_fare_or_carrier_residual_amounts',
+          ],
+          description:
+            'PARTIAL refund requires explicit PUBLISHED_FARE or CARRIER_SPECIFIC unused base/taxes. Rejected: original−used without method, coupon-count ratio, MPA-P interline proration, and haversine through-fare splits. Absence of Cat 33 data means free Cat 33 penalty once amounts are supplied — it does not invent a proration method. THB = IATA Ticketing Handbook (cite by name only).',
+          references: [
+            'docs/knowledge-base/partial-refund-residual-value.md',
+            'IATA Ticketing Handbook (THB) — cite by name only',
+            'GitHub issue #150',
+          ],
+        });
+      }
 
-      const proratedBase = originalBase.times(couponRatio).toDecimalPlaces(2);
-      const resolved = resolveVoluntaryPenalty(input, rule, proratedBase);
+      if (valuation.method !== 'PUBLISHED_FARE' && valuation.method !== 'CARRIER_SPECIFIC') {
+        return domainInputRequired({
+          missing: ['partial_valuation.method'],
+          description:
+            'partial_valuation.method must be PUBLISHED_FARE or CARRIER_SPECIFIC. MPA-P is airline interline settlement, not passenger residual.',
+          references: [
+            'docs/knowledge-base/partial-refund-residual-value.md',
+            'GitHub issue #150',
+          ],
+        });
+      }
+
+      const unusedBase = new Decimal(valuation.unused_base_fare);
+      const resolved = resolveVoluntaryPenalty(input, rule, unusedBase);
       baseFareRefund = resolved.baseFareRefund;
       penalty = resolved.penalty;
+      taxBreakdown = valuation.unused_taxes;
+      taxRefund = sumTaxes(taxBreakdown);
+      residualMethod = valuation.method;
+      flownBaseFare = valuation.flown_base_fare;
 
-      taxRefund = originalTax.times(couponRatio).toDecimalPlaces(2);
-      taxBreakdown = input.taxes.map((t) => ({
-        code: t.code,
-        amount: new Decimal(t.amount).times(couponRatio).toDecimalPlaces(2).toFixed(2),
-        currency: t.currency,
-      }));
+      const refundableCoupons = (input.coupons_to_refund ?? []).filter((c) => c.refundable);
       couponsRefunded = refundableCoupons.map((c) => c.coupon_number);
       break;
     }
@@ -402,6 +431,8 @@ export function processRefund(input: RefundProcessingInput): RefundProcessingOut
     tax_refunded: taxRefund.toFixed(2),
     commission_recalled: commissionRecalled.toFixed(2),
     coupons_refunded: couponsRefunded,
+    ...(residualMethod !== undefined ? { residual_method: residualMethod } : {}),
+    ...(flownBaseFare !== undefined ? { flown_base_fare: flownBaseFare } : {}),
   };
 
   // Settlement fields
