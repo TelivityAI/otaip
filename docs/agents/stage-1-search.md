@@ -15,6 +15,7 @@ Flight availability search, schedule lookup, connection validation, fare shoppin
 Queries distribution adapters in parallel, normalizes, deduplicates, filters, and sorts flight availability offers.
 
 **Input (`AvailabilitySearchInput`):**
+
 - `origin` -- origin airport/city IATA code
 - `destination` -- destination airport/city IATA code
 - `departure_date` -- ISO 8601 date
@@ -30,6 +31,7 @@ Queries distribution adapters in parallel, normalizes, deduplicates, filters, an
 - `sources?` -- specific adapter names to query
 
 **Output (`AvailabilitySearchOutput`):**
+
 - `offers` -- deduplicated, filtered, sorted `SearchOffer[]`
 - `total_raw_offers` -- count before deduplication
 - `source_status` -- per-adapter query status (success, count, error, response time)
@@ -48,6 +50,7 @@ Queries distribution adapters in parallel, normalizes, deduplicates, filters, an
 Flight schedule lookup with SSIM operating day parsing, codeshare detection, and connection discovery.
 
 **Input (`ScheduleLookupInput`):**
+
 - `origin` -- airport IATA code
 - `destination` -- airport IATA code
 - `date` -- ISO 8601 date
@@ -57,6 +60,7 @@ Flight schedule lookup with SSIM operating day parsing, codeshare detection, and
 - `include_connections?` -- discover connecting options (default: false)
 
 **Output (`ScheduleLookupOutput`):**
+
 - `flights` -- `ScheduledFlight[]` (carrier, flight number, times, duration, schedule, codeshare info)
 - `connections` -- `ConnectionOption[]` (two-leg connections with timing)
 - `operates_on_date` -- whether any flights operate on the requested date
@@ -69,9 +73,12 @@ Flight schedule lookup with SSIM operating day parsing, codeshare detection, and
 **Class:** `ConnectionBuilder`
 **Status:** Implemented
 
-Validates connections against MCT (Minimum Connection Time) rules, scores connection quality, and checks interline agreements.
+Validates connections against MCT (Minimum Connecting Time) rules, scores connection quality, and checks interline agreements.
+
+MCT authority: **IATA SSIM Chapter 8** + **PSC Resolution 765** (`docs/knowledge-base/mct.md`). Curated rows live under `data/reference/mct/`. Resolution hierarchy: carrier override → airport+terminal → airport → **fail-closed** (no invented global/airport-constant table).
 
 **Input (`ConnectionBuilderInput`):**
+
 - `arriving_segment` -- `FlightSegment` (from `@otaip/core`)
 - `departing_segment` -- `FlightSegment`
 - `connection_airport` -- IATA 3-letter code
@@ -79,7 +86,8 @@ Validates connections against MCT (Minimum Connection Time) rules, scores connec
 - `is_interline?` -- different carriers
 
 **Output (`ConnectionBuilderOutput`):**
-- `validation` -- MCT check result (valid, available/required minutes, buffer, applied rule)
+
+- `validation` -- MCT check result (valid, available/required minutes or null when unavailable, buffer, applied rule)
 - `quality` -- connection quality score 0-1 with factor breakdown
 - `interline` -- interline agreement check (if different carriers)
 - `warnings` -- connection warnings
@@ -95,12 +103,14 @@ Validates connections against MCT (Minimum Connection Time) rules, scores connec
 Multi-source fare comparison with fare basis decoding, class mapping, branded fare family grouping, and passenger type pricing.
 
 **Input (`FareShoppingInput`):**
+
 - `origin`, `destination`, `departure_date`, `passengers` -- same as availability search
 - `cabin_class?`, `currency?`, `sources?` -- filters
 - `decode_fare_basis?` -- decode fare basis codes (default: true)
 - `group_by_fare_family?` -- group by basic/standard/flex/premium (default: true)
 
 **Output (`FareShoppingOutput`):**
+
 - `fares` -- `FareOffer[]` sorted by price, each with decoded fare basis, class info, fare family, passenger pricing
 - `fare_families` -- grouped by family with cheapest/most expensive
 - `total_fares` -- count
@@ -119,12 +129,14 @@ Multi-source fare comparison with fare basis decoding, class mapping, branded fa
 Searches for available ancillaries (baggage, seats, meals, lounge, Wi-Fi, priority) via an injectable adapter.
 
 **Input (`AncillaryShoppingInput`):**
+
 - `segments` -- flight segments (origin, destination, flight number, date, carrier)
 - `passengers` -- passenger references with type (ADT/CHD/INF)
 - `pnrRef?` -- PNR reference
 - `requestedCategories?` -- filter by category (BAGGAGE, SEAT, MEAL, etc.)
 
 **Output (`AncillaryShoppingOutput`):**
+
 - `ancillaries` -- `AncillaryOffer[]` with RFIC/RFISC codes, pricing, availability
 - `notSupportedByAdapter` -- true if no adapter configured
 - `currency` -- pricing currency
@@ -140,12 +152,14 @@ Searches for available ancillaries (baggage, seats, meals, lounge, Wi-Fi, priori
 Aggregates search results from multiple adapters with deduplication, price comparison, and ranking.
 
 **Input (`MultiSourceInput`):**
+
 - `results` -- `AdapterSearchResult[]` (adapter name, flights, errors, response time)
 - `deduplicationStrategy` -- `'keep_cheapest' | 'keep_all' | 'keep_first'`
 - `rankBy` -- `'price' | 'duration' | 'stops'`
 - `maxResults?` -- limit output count
 
 **Output (`MultiSourceOutput`):**
+
 - `flights` -- `NormalizedFlight[]` with sources, lowest price, all prices across adapters
 - `totalRaw` -- raw count before dedup
 - `totalAfterDedup` -- final count
@@ -164,11 +178,13 @@ Car rental search (and, pending a deferred car-only migration, hotel) via plugga
 **Routing ownership:** hotel search intent is owned by Hotel Search Aggregator (20.1) for all hotel queries -- standalone or within a trip. 1.7 owns car rental; it may compose with 20.1 for a combined hotel+car trip but does not own hotel intent. Route hotel queries to 20.1.
 
 **Input (`HotelCarSearchInput`):**
+
 - `operation` -- `'searchHotels' | 'searchCars'`
 - `hotel?` -- hotel search params (destination, dates, rooms, adults, star rating, max rate)
 - `car?` -- car search params (pickup/dropoff location and times, category, driver age)
 
 **Output (`HotelCarSearchOutput`):**
+
 - `hotelResults?` -- hotel offers with rate, room type, cancellation policy
 - `carResults?` -- car offers with category, supplier, daily/total rate, features
 
@@ -183,10 +199,12 @@ Car rental search (and, pending a deferred car-only migration, hotel) via plugga
 Natural language travel query understanding with injectable LLM provider. Parses user queries into structured search parameters.
 
 **Input (`TravelAdvisorInput`):**
+
 - `query` -- natural language travel query
 - `travelerContext?` -- preferences (cabin, budget, preferred airlines, passenger counts)
 
 **Output (`TravelAdvisorOutput`):**
+
 - `searchParameters` -- extracted origin, destination, dates, trip type, cabin, passengers, flexible dates
 - `summary` -- natural language summary of interpreted query
 - `intent` -- `'flight_search' | 'hotel_search' | 'destination_recommendation' | 'price_check' | 'trip_planning' | 'unknown'`
@@ -205,10 +223,12 @@ Natural language travel query understanding with injectable LLM provider. Parses
 Deterministic offer evaluation engine. Scores and ranks flight offers based on traveler profile, constraints, and configurable scoring weights.
 
 **Input (`OfferEvaluatorRequest`):**
+
 - `offers` -- `EvaluatorOffer[]` with price, itinerary (segments, duration, connections)
 - `constraints?` -- latest arrival, prefer direct, max connections, price ceiling, preferred/blacklisted carriers
 - `profile?` -- `'BUSINESS_TIME_CRITICAL' | 'BUSINESS_PRICE_CONSTRAINED' | 'LEISURE' | 'CORPORATE_POLICY' | 'CUSTOM'`
 - `weights?` -- custom scoring weights (time_buffer, price, connection_quality, journey_duration)
 
 **Output (`OfferEvaluatorResponse`):**
+
 - Scored and ranked offers with structured explanation for LLM translation

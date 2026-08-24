@@ -1,0 +1,7 @@
+{
+  "version": "0.1.0",
+  "description": "Airport / airport+terminal MCT rules from SSIM station filings. Empty until a real extract is curated — do not invent airport constants.",
+  "authority": ["IATA SSIM Chapter 8", "IATA PSC Resolution 765"],
+  "hierarchy_levels": ["airport_terminal", "airport"],
+  "rules": []
+}
