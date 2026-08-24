@@ -1,5 +1,9 @@
 /**
  * Exchange/Reissue Engine — residual value, tax carryforward, GDS commands.
+ *
+ * Tax carryforward: per-tax CARRY | RECALCULATE | FORFEIT.
+ * See docs/knowledge-base/tax-carryforward-reissue.md
+ * Same O&D boolean is not used for tax decisions. IROE ≠ ICER (no FX here).
  */
 
 import Decimal from 'decimal.js';
@@ -11,7 +15,9 @@ import type {
   TaxItem,
   ExchangeCommand,
   ExchangeAuditTrail,
+  TaxCarryforwardDecision,
 } from './types.js';
+import { decideAllTaxCarryforwards } from './tax-carryforward.js';
 
 const airlinePrefixes: Record<string, string> = {
   AA: '001',
@@ -59,73 +65,110 @@ function sumTaxes(taxes: TaxItem[]): Decimal {
 }
 
 // ---------------------------------------------------------------------------
-// Tax carryforward logic
+// Tax carryforward — per-code decisions (not same_origin_destination)
 // ---------------------------------------------------------------------------
+
+function applyTaxDecisions(
+  input: ExchangeReissueInput,
+  decisions: TaxCarryforwardDecision[],
+): {
+  taxes: TaxItem[];
+  carriedForward: TaxItem[];
+  newTaxes: TaxItem[];
+  totalTax: Decimal;
+} {
+  const decisionMap = new Map(decisions.map((d) => [d.tax_code, d]));
+  const origMap = new Map<string, TaxItem>();
+  for (const t of input.original_taxes) {
+    origMap.set(t.code, t);
+  }
+  const newMap = new Map<string, TaxItem>();
+  for (const t of input.new_taxes) {
+    newMap.set(t.code, t);
+  }
+
+  const carriedForward: TaxItem[] = [];
+  const newTaxes: TaxItem[] = [];
+  const finalTaxes: TaxItem[] = [];
+
+  const allCodes = new Set([...origMap.keys(), ...newMap.keys()]);
+
+  for (const code of allCodes) {
+    const decision = decisionMap.get(code);
+    if (!decision) {
+      // decideAllTaxCarryforwards always covers all codes; defensive
+      throw new Error(`Missing tax decision for ${code}`);
+    }
+
+    const orig = origMap.get(code);
+    const nt = newMap.get(code);
+
+    switch (decision.action) {
+      case 'CARRY': {
+        if (orig && nt) {
+          const origAmt = new Decimal(orig.amount);
+          const newAmt = new Decimal(nt.amount);
+          carriedForward.push(orig);
+          if (newAmt.greaterThan(origAmt)) {
+            const delta = newAmt.minus(origAmt);
+            newTaxes.push({ code, amount: delta.toFixed(2), currency: nt.currency });
+            finalTaxes.push({ code, amount: newAmt.toFixed(2), currency: nt.currency });
+          } else {
+            finalTaxes.push({ code, amount: origAmt.toFixed(2), currency: orig.currency });
+          }
+        } else if (orig && !nt) {
+          // Original code not on new assessment — carry amount already paid
+          carriedForward.push(orig);
+          finalTaxes.push(orig);
+        } else if (nt) {
+          // New code with CARRY but no original — collect full new amount
+          newTaxes.push(nt);
+          finalTaxes.push(nt);
+        }
+        break;
+      }
+      case 'RECALCULATE': {
+        if (nt) {
+          newTaxes.push(nt);
+          finalTaxes.push(nt);
+        }
+        // No original amount carried; original without new line drops
+        break;
+      }
+      case 'FORFEIT': {
+        // Original not credited; apply new assessment if present
+        if (nt) {
+          newTaxes.push(nt);
+          finalTaxes.push(nt);
+        }
+        break;
+      }
+    }
+  }
+
+  return {
+    taxes: finalTaxes,
+    carriedForward,
+    newTaxes,
+    totalTax: sumTaxes(finalTaxes),
+  };
+}
 
 function computeTaxes(input: ExchangeReissueInput): {
   taxes: TaxItem[];
   carriedForward: TaxItem[];
   newTaxes: TaxItem[];
   totalTax: Decimal;
+  decisions: TaxCarryforwardDecision[];
 } {
-  if (input.same_origin_destination) {
-    // Carry forward: for matching tax codes, use the max of original and new
-    // For new codes not in original, collect the new amount
-    // For original codes not in new, carry forward (already paid)
-    const origMap = new Map<string, TaxItem>();
-    for (const t of input.original_taxes) {
-      origMap.set(t.code, t);
-    }
-
-    const carriedForward: TaxItem[] = [];
-    const newTaxes: TaxItem[] = [];
-    const finalTaxes: TaxItem[] = [];
-
-    for (const nt of input.new_taxes) {
-      const orig = origMap.get(nt.code);
-      if (orig) {
-        const origAmt = new Decimal(orig.amount);
-        const newAmt = new Decimal(nt.amount);
-        // Carry forward the original amount
-        carriedForward.push(orig);
-        if (newAmt.greaterThan(origAmt)) {
-          // Collect the delta
-          const delta = newAmt.minus(origAmt);
-          newTaxes.push({ code: nt.code, amount: delta.toFixed(2), currency: nt.currency });
-          finalTaxes.push({ code: nt.code, amount: newAmt.toFixed(2), currency: nt.currency });
-        } else {
-          // Already paid enough
-          finalTaxes.push({ code: nt.code, amount: origAmt.toFixed(2), currency: nt.currency });
-        }
-        origMap.delete(nt.code);
-      } else {
-        // New tax code — collect fully
-        newTaxes.push(nt);
-        finalTaxes.push(nt);
-      }
-    }
-
-    // Original taxes not in new itinerary — still show on ticket (carried forward)
-    for (const [, orig] of origMap) {
-      carriedForward.push(orig);
-      finalTaxes.push(orig);
-    }
-
-    return {
-      taxes: finalTaxes,
-      carriedForward,
-      newTaxes,
-      totalTax: sumTaxes(finalTaxes),
-    };
-  }
-
-  // Different O/D: use new taxes entirely
-  return {
-    taxes: input.new_taxes,
-    carriedForward: [],
-    newTaxes: input.new_taxes,
-    totalTax: sumTaxes(input.new_taxes),
-  };
+  const decisions = decideAllTaxCarryforwards(
+    input.original_taxes,
+    input.new_taxes,
+    input.tax_carryforward_rules,
+    input.tax_carryforward_context,
+  );
+  const applied = applyTaxDecisions(input, decisions);
+  return { ...applied, decisions };
 }
 
 // ---------------------------------------------------------------------------
@@ -234,8 +277,8 @@ export function processReissue(input: ExchangeReissueInput): ExchangeReissueOutp
     additionalCollection = changeFee; // Still owe the change fee
   }
 
-  // Tax computation
-  const { taxes, carriedForward, newTaxes, totalTax } = computeTaxes(input);
+  // Tax computation — per-code decisions (not boolean same O&D)
+  const { taxes, carriedForward, newTaxes, totalTax, decisions } = computeTaxes(input);
 
   // Add new tax collection to additional collection
   const newTaxTotal = sumTaxes(newTaxes);
@@ -269,6 +312,7 @@ export function processReissue(input: ExchangeReissueInput): ExchangeReissueOutp
     additional_collection: additionalCollection.toFixed(2),
     taxes_carried_forward: carriedForward,
     taxes_new: newTaxes,
+    tax_decisions: decisions,
     waiver_code: input.waiver_code,
   };
 
@@ -297,5 +341,6 @@ export function processReissue(input: ExchangeReissueInput): ExchangeReissueOutp
     reissue,
     additional_collection: additionalCollection.toFixed(2),
     credit_amount: creditAmount.toFixed(2),
+    tax_decisions: decisions,
   };
 }
