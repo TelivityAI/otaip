@@ -7,143 +7,143 @@
 
 ## Stage 0 -- Reference (7 agents)
 
-| ID  | Class                       | Name                           | Description                                                                                                                                                             | Contract |
-| --- | --------------------------- | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| 0.1 | `AirportCodeResolver`       | Airport/City Code Resolver     | Resolves IATA/ICAO airport and city codes to canonical airport records with multi-airport city awareness and historical code handling                                   | &#10003; |
-| 0.2 | `AirlineCodeMapper`         | Airline Code & Alliance Mapper | Resolves IATA/ICAO airline designator codes to canonical airline records with alliance membership mapping and codeshare partner networks                                | &#10003; |
-| 0.3 | `FareBasisDecoder`          | Fare Basis Code Decoder        | Decodes ATPCO-standard fare basis codes into human-readable components including cabin class, fare restrictions, advance purchase requirements, and penalty information | &#10003; |
-| 0.4 | `ClassOfServiceMapper`      | Class of Service Mapper        | Maps single-letter booking class codes to cabin class, fare family, upgrade eligibility, and loyalty program earning rates                                              | --       |
-| 0.5 | `EquipmentTypeResolver`     | Equipment Type Resolver        | Resolves IATA aircraft equipment codes to structured equipment data                                                                                                     | --       |
-| 0.6 | `CurrencyTaxResolver`       | Currency & Tax Code Resolver   | Resolves ISO 4217 currency codes and IATA tax/surcharge codes used in airline pricing and ticketing                                                                     | --       |
-| 0.7 | `CountryRegulatoryResolver` | Country Regulatory Resolver    | APIS requirements, visa requirements, restriction levels. Static dataset -- must NOT be used as legal travel advice                                                     | --       |
+| ID | Class | Name | Description | Contract |
+|----|-------|------|-------------|----------|
+| 0.1 | `AirportCodeResolver` | Airport/City Code Resolver | Resolves IATA/ICAO airport and city codes to canonical airport records with multi-airport city awareness and historical code handling | &#10003; |
+| 0.2 | `AirlineCodeMapper` | Airline Code & Alliance Mapper | Resolves IATA/ICAO airline designator codes to canonical airline records with alliance membership mapping and codeshare partner networks | &#10003; |
+| 0.3 | `FareBasisDecoder` | Fare Basis Code Decoder | Decodes ATPCO-standard fare basis codes into human-readable components including cabin class, fare restrictions, advance purchase requirements, and penalty information | &#10003; |
+| 0.4 | `ClassOfServiceMapper` | Class of Service Mapper | Maps single-letter booking class codes to cabin class, fare family, upgrade eligibility, and loyalty program earning rates | -- |
+| 0.5 | `EquipmentTypeResolver` | Equipment Type Resolver | Resolves IATA aircraft equipment codes to structured equipment data | -- |
+| 0.6 | `CurrencyTaxResolver` | Currency & Tax Code Resolver | Resolves ISO 4217 currency codes and IATA tax/surcharge codes used in airline pricing and ticketing | -- |
+| 0.7 | `CountryRegulatoryResolver` | Country Regulatory Resolver | APIS requirements, visa requirements, restriction levels. Static dataset -- must NOT be used as legal travel advice | -- |
 
 ## Stage 1 -- Search (9 agents)
 
-| ID  | Class                        | Name                    | Description                                                                                                                                           | Contract |
-| --- | ---------------------------- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| 1.1 | `AvailabilitySearch`         | Availability Search     | Queries distribution adapters in parallel, normalizes, deduplicates, filters, and sorts flight availability offers                                    | &#10003; |
-| 1.2 | `ScheduleLookup`             | Schedule Lookup         | Looks up flight schedules with SSIM operating day parsing, codeshare detection, and connection discovery                                              | --       |
-| 1.3 | `ConnectionBuilder`          | Connection Builder      | Validates connections against MCT rules, scores connection quality, and checks interline agreements                                                   | --       |
-| 1.4 | `FareShopping`               | Fare Shopping           | Multi-source fare comparison with fare basis decoding, class mapping, branded fare family grouping, and passenger type pricing                        | --       |
-| 1.5 | `AncillaryShoppingAgent`     | Ancillary Shopping      | Searches ancillary offers (seats, bags, meals) across distribution adapters                                                                           | --       |
-| 1.6 | `MultiSourceAggregatorAgent` | Multi-Source Aggregator | Deduplicates and normalizes flight results from multiple adapter sources                                                                              | --       |
-| 1.7 | `HotelCarSearchAgent`        | Hotel & Car Search      | Stub agent for hotel and car rental search via distribution adapters                                                                                  | --       |
-| 1.8 | `AITravelAdvisorAgent`       | AI Travel Advisor       | Natural language travel query understanding with injectable LLM provider; parses user queries into structured search parameters                       | --       |
-| 1.9 | `OfferEvaluatorAgent`        | Offer Evaluator         | Stateless, deterministic scoring engine for flight offers with multi-dimensional scoring, hard filtering, and full audit trail (lives in @otaip/core) | --       |
+| ID | Class | Name | Description | Contract |
+|----|-------|------|-------------|----------|
+| 1.1 | `AvailabilitySearch` | Availability Search | Queries distribution adapters in parallel, normalizes, deduplicates, filters, and sorts flight availability offers | &#10003; |
+| 1.2 | `ScheduleLookup` | Schedule Lookup | Looks up flight schedules with SSIM operating day parsing, codeshare detection, and connection discovery | -- |
+| 1.3 | `ConnectionBuilder` | Connection Builder | Validates connections against MCT rules, scores connection quality, and checks interline agreements | -- |
+| 1.4 | `FareShopping` | Fare Shopping | Multi-source fare comparison with fare basis decoding, class mapping, branded fare family grouping, and passenger type pricing | -- |
+| 1.5 | `AncillaryShoppingAgent` | Ancillary Shopping | Searches ancillary offers (seats, bags, meals) across distribution adapters | -- |
+| 1.6 | `MultiSourceAggregatorAgent` | Multi-Source Aggregator | Deduplicates and normalizes flight results from multiple adapter sources | -- |
+| 1.7 | `HotelCarSearchAgent` | Hotel & Car Search | Stub agent for hotel and car rental search via distribution adapters | -- |
+| 1.8 | `AITravelAdvisorAgent` | AI Travel Advisor | Natural language travel query understanding with injectable LLM provider; parses user queries into structured search parameters | -- |
+| 1.9 | `OfferEvaluatorAgent` | Offer Evaluator | Stateless, deterministic scoring engine for flight offers with multi-dimensional scoring, hard filtering, and full audit trail (lives in @otaip/core) | -- |
 
 ## Stage 2 -- Pricing (7 agents)
 
-| ID  | Class                            | Name                        | Description                                                                                                                                | Contract |
-| --- | -------------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | -------- |
-| 2.1 | `FareRuleAgent`                  | Fare Rule Agent             | Parses ATPCO fare rules (categories 1-20) into human-readable structured format using curated tariff snapshot data                         | &#10003; |
-| 2.2 | `FareConstruction`               | Fare Construction           | NUC x ROE fare construction with mileage validation, HIP/BHC/CTM checks, surcharges, and IATA rounding. All financial math uses decimal.js | --       |
-| 2.3 | `TaxCalculation`                 | Tax Calculation             | Per-segment tax computation with exemption engine, ~30 countries, ~50 tax codes, currency conversion. All financial math uses decimal.js   | --       |
-| 2.4 | `OfferBuilderAgent`              | Offer Builder               | Builds priced offers with TTL management and optional persistence adapter                                                                  | &#10003; |
-| 2.5 | `CorporatePolicyValidationAgent` | Corporate Policy Validation | Validates flight offers against corporate travel policies (cabin, budget, advance purchase)                                                | --       |
-| 2.6 | `DynamicPricingAgent`            | Dynamic Pricing             | Placeholder -- not yet implemented. Requires revenue management integration                                                                | --       |
-| 2.7 | `RevenueManagementAgent`         | Revenue Management          | Placeholder -- not yet implemented. Requires revenue management integration                                                                | --       |
+| ID | Class | Name | Description | Contract |
+|----|-------|------|-------------|----------|
+| 2.1 | `FareRuleAgent` | Fare Rule Agent | Parses ATPCO fare rules (categories 1-20) into human-readable structured format using curated tariff snapshot data | &#10003; |
+| 2.2 | `FareConstruction` | Fare Construction | NUC x ROE fare construction with mileage validation, HIP/BHC/CTM checks, surcharges, and IATA rounding. All financial math uses decimal.js | -- |
+| 2.3 | `TaxCalculation` | Tax Calculation | Per-segment tax computation with exemption engine, ~30 countries, ~50 tax codes, currency conversion. All financial math uses decimal.js | -- |
+| 2.4 | `OfferBuilderAgent` | Offer Builder | Builds priced offers with TTL management and optional persistence adapter | &#10003; |
+| 2.5 | `CorporatePolicyValidationAgent` | Corporate Policy Validation | Validates flight offers against corporate travel policies (cabin, budget, advance purchase) | -- |
+| 2.6 | `DynamicPricingAgent` | Dynamic Pricing | Placeholder -- not yet implemented. Requires revenue management integration | -- |
+| 2.7 | `RevenueManagementAgent` | Revenue Management | Placeholder -- not yet implemented. Requires revenue management integration | -- |
 
 ## Stage 3 -- Booking (8 agents + 1 utility)
 
-| ID  | Class                  | Name               | Description                                                                                                                                         | Contract |
-| --- | ---------------------- | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| 3.1 | `GdsNdcRouter`         | GDS/NDC Router     | Routes booking requests to the correct distribution channel based on carrier config, codeshare rules, and NDC capability                            | &#10003; |
-| 3.2 | `PnrBuilder`           | PNR Builder        | Constructs GDS-ready PNR commands from normalized booking data. Supports Amadeus, Sabre, and Travelport syntax                                      | &#10003; |
-| 3.3 | `PnrValidation`        | PNR Validation     | Pre-ticketing validation -- 13 checks to catch errors before ADMs                                                                                   | --       |
-| 3.4 | `QueueManagement`      | Queue Management   | GDS queue monitoring and processing -- priority assignment, categorization, action routing, and queue command generation                            | --       |
-| 3.5 | `ApiAbstraction`       | API Abstraction    | Universal HTTP client with circuit breaker, retry logic, timeout handling, rate limiting, and IATA error normalization                              | --       |
-| 3.6 | `OrderManagement`      | Order Management   | Travel order lifecycle management -- create, modify, cancel, retrieve, and list orders with status tracking and transition validation               | --       |
-| 3.7 | `PaymentProcessing`    | Payment Processing | PCI-safe payment instruction builder and transaction recorder. Validates forms of payment, builds GDS FOP strings -- never handles raw card numbers | --       |
-| 3.8 | `PnrRetrieval`         | PNR Retrieval      | Retrieves an existing PNR/booking by record locator across distribution adapters. Read-only -- no side effects                                      | &#10003; |
-| --  | `executeFallbackChain` | Fallback Chain     | Utility module (not an agent) -- executes a channel fallback chain with circuit breaker integration                                                 | --       |
+| ID | Class | Name | Description | Contract |
+|----|-------|------|-------------|----------|
+| 3.1 | `GdsNdcRouter` | GDS/NDC Router | Routes booking requests to the correct distribution channel based on carrier config, codeshare rules, and NDC capability | &#10003; |
+| 3.2 | `PnrBuilder` | PNR Builder | Constructs GDS-ready PNR commands from normalized booking data. Supports Amadeus, Sabre, and Travelport syntax | &#10003; |
+| 3.3 | `PnrValidation` | PNR Validation | Pre-ticketing validation -- 13 checks to catch errors before ADMs | -- |
+| 3.4 | `QueueManagement` | Queue Management | GDS queue monitoring and processing -- priority assignment, categorization, action routing, and queue command generation | -- |
+| 3.5 | `ApiAbstraction` | API Abstraction | Universal HTTP client with circuit breaker, retry logic, timeout handling, rate limiting, and IATA error normalization | -- |
+| 3.6 | `OrderManagement` | Order Management | Travel order lifecycle management -- create, modify, cancel, retrieve, and list orders with status tracking and transition validation | -- |
+| 3.7 | `PaymentProcessing` | Payment Processing | PCI-safe payment instruction builder and transaction recorder. Validates forms of payment, builds GDS FOP strings -- never handles raw card numbers | -- |
+| 3.8 | `PnrRetrieval` | PNR Retrieval | Retrieves an existing PNR/booking by record locator across distribution adapters. Read-only -- no side effects | &#10003; |
+| -- | `executeFallbackChain` | Fallback Chain | Utility module (not an agent) -- executes a channel fallback chain with circuit breaker integration | -- |
 
 ## Stage 4 -- Ticketing (5 agents)
 
-| ID  | Class                  | Name                  | Description                                                                                        | Contract |
-| --- | ---------------------- | --------------------- | -------------------------------------------------------------------------------------------------- | -------- |
-| 4.1 | `TicketIssuance`       | Ticket Issuance       | ETR generation with conjunction ticket support, BSP reporting, and commission handling             | &#10003; |
-| 4.2 | `EmdManagement`        | EMD Management        | EMD-A (associated) and EMD-S (standalone) issuance, RFIC/RFISC handling, coupon lifecycle          | --       |
-| 4.3 | `VoidAgent`            | Void Agent            | Ticket/EMD void processing -- coupon status check, carrier void window, BSP/ARC cut-off validation | --       |
-| 4.4 | `ItineraryDelivery`    | Itinerary Delivery    | Multi-channel itinerary rendering: Email (HTML+plain), SMS, WhatsApp. Carrier-neutral templates    | --       |
-| 4.5 | `DocumentVerification` | Document Verification | APIS validation, passport validity, visa check (stub for Agent 0.7)                                | --       |
+| ID | Class | Name | Description | Contract |
+|----|-------|------|-------------|----------|
+| 4.1 | `TicketIssuance` | Ticket Issuance | ETR generation with conjunction ticket support, BSP reporting, and commission handling | &#10003; |
+| 4.2 | `EmdManagement` | EMD Management | EMD-A (associated) and EMD-S (standalone) issuance, RFIC/RFISC handling, coupon lifecycle | -- |
+| 4.3 | `VoidAgent` | Void Agent | Ticket/EMD void processing -- coupon status check, carrier void window, BSP/ARC cut-off validation | -- |
+| 4.4 | `ItineraryDelivery` | Itinerary Delivery | Multi-channel itinerary rendering: Email (HTML+plain), SMS, WhatsApp. Carrier-neutral templates | -- |
+| 4.5 | `DocumentVerification` | Document Verification | APIS validation, passport validity, visa check (stub for Agent 0.7) | -- |
 
 ## Stage 5 -- Exchange (6 agents)
 
-| ID  | Class                       | Name                   | Description                                                                                                                                         | Contract |
-| --- | --------------------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| 5.1 | `ChangeManagement`          | Change Management      | ATPCO Category 31 voluntary change assessment: change fees, fare difference, residual value, waiver codes                                           | --       |
-| 5.2 | `ExchangeReissue`           | Exchange/Reissue       | Ticket reissue with residual value, per-tax TFC carryforward (CARRY\|RECALCULATE\|FORFEIT), GDS exchange command stubs, conjunction ticket handling | --       |
-| 5.3 | `InvoluntaryRebook`         | Involuntary Rebook     | Carrier-initiated schedule change handling: trigger assessment, airline protection logic, regulatory entitlements (EU261, US DOT)                   | --       |
-| 5.4 | `DisruptionResponseAgent`   | Disruption Response    | Placeholder -- not yet implemented. Requires domain input on disruption priority rules                                                              | --       |
-| 5.5 | `SelfServiceRebookingAgent` | Self-Service Rebooking | Placeholder -- not yet implemented. Requires domain input on change fee structures                                                                  | --       |
-| 5.6 | `WaitlistManagementAgent`   | Waitlist Management    | Placeholder -- not yet implemented. Requires domain input on waitlist priority scoring                                                              | --       |
+| ID | Class | Name | Description | Contract |
+|----|-------|------|-------------|----------|
+| 5.1 | `ChangeManagement` | Change Management | ATPCO Category 31 voluntary change assessment: change fees, fare difference, residual value, waiver codes | -- |
+| 5.2 | `ExchangeReissue` | Exchange/Reissue | Ticket reissue with residual value, per-tax TFC carryforward (CARRY\|RECALCULATE\|FORFEIT), GDS exchange command stubs, conjunction ticket handling | -- |
+| 5.3 | `InvoluntaryRebook` | Involuntary Rebook | Carrier-initiated schedule change handling: trigger assessment, airline protection logic, regulatory entitlements (EU261, US DOT) | -- |
+| 5.4 | `DisruptionResponseAgent` | Disruption Response | Placeholder -- not yet implemented. Requires domain input on disruption priority rules | -- |
+| 5.5 | `SelfServiceRebookingAgent` | Self-Service Rebooking | Placeholder -- not yet implemented. Requires domain input on change fee structures | -- |
+| 5.6 | `WaitlistManagementAgent` | Waitlist Management | Placeholder -- not yet implemented. Requires domain input on waitlist priority scoring | -- |
 
 ## Stage 6 -- Settlement (6 agents)
 
-| ID  | Class                    | Name                   | Description                                                                                                                                | Contract |
-| --- | ------------------------ | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | -------- |
-| 6.1 | `RefundProcessing`       | Refund Processing      | ATPCO Category 33 refund processing: penalty application, commission recall, BSP/ARC reporting, conjunction ticket handling                | --       |
-| 6.2 | `ADMPrevention`          | ADM Prevention         | Pre-ticketing audit: 9 checks covering fare integrity, segment validity, and compliance to prevent Agency Debit Memos                      | --       |
-| 6.3 | `ADMACMProcessingAgent`  | ADM/ACM Processing     | Agency Debit Memo receipt, assessment, dispute, and Agency Credit Memo application workflows                                               | --       |
-| 6.4 | `CustomerCommunication`  | Customer Communication | Multi-channel customer notification generation for flight disruptions, refunds, and operational changes. 8 notification types x 4 channels | --       |
-| 6.5 | `FeedbackComplaintAgent` | Feedback & Complaint   | Complaint submission, EU261/US DOT compensation calculation, case management, and regulatory DOT record generation                         | --       |
-| 6.6 | `LoyaltyMileageAgent`    | Loyalty & Mileage      | Mileage accrual calculation, redemption eligibility, status benefits, and alliance status matching                                         | --       |
+| ID | Class | Name | Description | Contract |
+|----|-------|------|-------------|----------|
+| 6.1 | `RefundProcessing` | Refund Processing | ATPCO Category 33 refund processing: penalty application, commission recall, BSP/ARC reporting, conjunction ticket handling | -- |
+| 6.2 | `ADMPrevention` | ADM Prevention | Pre-ticketing audit: 9 checks covering fare integrity, segment validity, and compliance to prevent Agency Debit Memos | -- |
+| 6.3 | `ADMACMProcessingAgent` | ADM/ACM Processing | Agency Debit Memo receipt, assessment, dispute, and Agency Credit Memo application workflows | -- |
+| 6.4 | `CustomerCommunication` | Customer Communication | Multi-channel customer notification generation for flight disruptions, refunds, and operational changes. 8 notification types x 4 channels | -- |
+| 6.5 | `FeedbackComplaintAgent` | Feedback & Complaint | Complaint submission, EU261/US DOT compensation calculation, case management, and regulatory DOT record generation | -- |
+| 6.6 | `LoyaltyMileageAgent` | Loyalty & Mileage | Mileage accrual calculation, redemption eligibility, status benefits, and alliance status matching | -- |
 
 ## Stage 7 -- Reconciliation (6 agents)
 
-| ID  | Class                       | Name                  | Description                                                                                                                                   | Contract |
-| --- | --------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| 7.1 | `BSPReconciliation`         | BSP Reconciliation    | Matches agency booking records against BSP HOT files, validates commission, identifies discrepancies, flags issues before remittance deadline | --       |
-| 7.2 | `ARCReconciliation`         | ARC Reconciliation    | Processes ARC IAR weekly billing, validates commission rates against airline contracts, flags pricing/commission errors                       | --       |
-| 7.3 | `CommissionManagementAgent` | Commission Management | Commission agreement management, rate validation, incentive calculation                                                                       | --       |
-| 7.4 | `InterlineSettlementAgent`  | Interline Settlement  | Placeholder -- not yet implemented. Requires domain input on interline prorate methodology                                                    | --       |
-| 7.5 | `FinancialReportingAgent`   | Financial Reporting   | Aggregates transaction data into reports (revenue by route, margin analysis, unused tickets, etc.)                                            | --       |
-| 7.6 | `RevenueAccountingAgent`    | Revenue Accounting    | Coupon lift recording, revenue recognition, uplift/deferred revenue reporting                                                                 | --       |
+| ID | Class | Name | Description | Contract |
+|----|-------|------|-------------|----------|
+| 7.1 | `BSPReconciliation` | BSP Reconciliation | Matches agency booking records against BSP HOT files, validates commission, identifies discrepancies, flags issues before remittance deadline | -- |
+| 7.2 | `ARCReconciliation` | ARC Reconciliation | Processes ARC IAR weekly billing, validates commission rates against airline contracts, flags pricing/commission errors | -- |
+| 7.3 | `CommissionManagementAgent` | Commission Management | Commission agreement management, rate validation, incentive calculation | -- |
+| 7.4 | `InterlineSettlementAgent` | Interline Settlement | Placeholder -- not yet implemented. Requires domain input on interline prorate methodology | -- |
+| 7.5 | `FinancialReportingAgent` | Financial Reporting | Aggregates transaction data into reports (revenue by route, margin analysis, unused tickets, etc.) | -- |
+| 7.6 | `RevenueAccountingAgent` | Revenue Accounting | Coupon lift recording, revenue recognition, uplift/deferred revenue reporting | -- |
 
 ## Stage 8 -- TMC Operations (5 agents)
 
-| ID  | Class                   | Name                  | Description                                                                                                    | Contract |
-| --- | ----------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------- | -------- |
-| 8.1 | `TravelerProfileAgent`  | Traveler Profile      | Stores/retrieves traveler preferences, documents, loyalty programs. Applies profiles to PNRs via SSR injection | --       |
-| 8.2 | `CorporateAccountAgent` | Corporate Account     | Corporate travel policy enforcement, negotiated fares, booking validation                                      | --       |
-| 8.3 | `MidOfficeAgent`        | Mid-Office Automation | PNR quality checks, ticketing deadline monitoring, duplicate/passive detection                                 | --       |
-| 8.4 | `ReportingAgent`        | Reporting & Analytics | Aggregates transaction data into reports (booking volume, revenue, top routes, policy compliance)              | --       |
-| 8.5 | `DutyCareAgent`         | Duty of Care          | Locates travelers in active itineraries during disruptions with destination risk assessment                    | --       |
+| ID | Class | Name | Description | Contract |
+|----|-------|------|-------------|----------|
+| 8.1 | `TravelerProfileAgent` | Traveler Profile | Stores/retrieves traveler preferences, documents, loyalty programs. Applies profiles to PNRs via SSR injection | -- |
+| 8.2 | `CorporateAccountAgent` | Corporate Account | Corporate travel policy enforcement, negotiated fares, booking validation | -- |
+| 8.3 | `MidOfficeAgent` | Mid-Office Automation | PNR quality checks, ticketing deadline monitoring, duplicate/passive detection | -- |
+| 8.4 | `ReportingAgent` | Reporting & Analytics | Aggregates transaction data into reports (booking volume, revenue, top routes, policy compliance) | -- |
+| 8.5 | `DutyCareAgent` | Duty of Care | Locates travelers in active itineraries during disruptions with destination risk assessment | -- |
 
 ## Stage 9 -- Platform (9 agents + 1 utility)
 
-| ID  | Class                      | Name                  | Description                                                                                                             | Contract |
-| --- | -------------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------- | -------- |
-| 9.1 | `OrchestratorAgent`        | Orchestrator          | Coordinates multi-agent workflows as a single callable pipeline (search_to_price, book_to_ticket, full_booking, etc.)   | --       |
-| 9.2 | `KnowledgeAgent`           | Knowledge Retrieval   | RAG over travel knowledge base with BM25 relevance scoring and optional hybrid scoring via injectable EmbeddingProvider | --       |
-| 9.3 | `MonitoringAgent`          | Monitoring & Alerting | Tracks agent health, API latency, error rates, SLA compliance                                                           | --       |
-| 9.4 | `AuditAgent`               | Audit & Compliance    | Audit trail, PII redaction, GDPR/PCI/IATA compliance                                                                    | --       |
-| 9.5 | `PluginManagerAgent`       | Plugin Manager        | Manages third-party agent extensions and capability discovery                                                           | --       |
-| 9.6 | `PerformanceAuditAgent`    | Performance Audit     | Aggregates agent execution metrics from the EventStore within a given time window. Identifies degraded agents           | &#10003; |
-| 9.7 | `RoutingAuditAgent`        | Routing Audit         | Analyses routing decisions and outcomes from the EventStore within a given time window                                  | &#10003; |
-| 9.8 | `RecommendationAgent`      | Recommendation        | Accepts performance and routing audit reports and produces deterministic recommendations                                | &#10003; |
-| 9.9 | `AlertAgent`               | Alert                 | Queries EventStore events, computes metrics against configurable thresholds, and produces alerts                        | &#10003; |
-| --  | `PlatformHealthAggregator` | Health Aggregator     | Checks health of all registered agents (utility class, not a standard agent)                                            | --       |
+| ID | Class | Name | Description | Contract |
+|----|-------|------|-------------|----------|
+| 9.1 | `OrchestratorAgent` | Orchestrator | Coordinates multi-agent workflows as a single callable pipeline (search_to_price, book_to_ticket, full_booking, etc.) | -- |
+| 9.2 | `KnowledgeAgent` | Knowledge Retrieval | RAG over travel knowledge base with BM25 relevance scoring and optional hybrid scoring via injectable EmbeddingProvider | -- |
+| 9.3 | `MonitoringAgent` | Monitoring & Alerting | Tracks agent health, API latency, error rates, SLA compliance | -- |
+| 9.4 | `AuditAgent` | Audit & Compliance | Audit trail, PII redaction, GDPR/PCI/IATA compliance | -- |
+| 9.5 | `PluginManagerAgent` | Plugin Manager | Manages third-party agent extensions and capability discovery | -- |
+| 9.6 | `PerformanceAuditAgent` | Performance Audit | Aggregates agent execution metrics from the EventStore within a given time window. Identifies degraded agents | &#10003; |
+| 9.7 | `RoutingAuditAgent` | Routing Audit | Analyses routing decisions and outcomes from the EventStore within a given time window | &#10003; |
+| 9.8 | `RecommendationAgent` | Recommendation | Accepts performance and routing audit reports and produces deterministic recommendations | &#10003; |
+| 9.9 | `AlertAgent` | Alert | Queries EventStore events, computes metrics against configurable thresholds, and produces alerts | &#10003; |
+| -- | `PlatformHealthAggregator` | Health Aggregator | Checks health of all registered agents (utility class, not a standard agent) | -- |
 
 ## Stage 20 -- Lodging (7 agents)
 
-| ID   | Class                           | Name                              | Description                                                                                                                        | Contract |
-| ---- | ------------------------------- | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| 20.1 | `HotelSearchAggregatorAgent`    | Hotel Search Aggregator           | Multi-source hotel availability search across GDS hotel segments, direct APIs, and channel manager feeds                           | --       |
-| 20.2 | `PropertyDeduplicationAgent`    | Property Deduplication            | Identifies duplicate properties from multi-source results and merges them into canonical records                                   | --       |
-| 20.3 | `ContentNormalizationAgent`     | Hotel Content Normalization       | Standardizes hotel content (room types, amenity names, descriptions, photos) into a consistent OTAIP taxonomy                      | --       |
-| 20.4 | `RateComparisonAgent`           | Hotel Rate Comparison             | Compares rates for the same canonical property across all sources, identifies best available rate, detects rate parity violations  | --       |
-| 20.5 | `HotelBookingAgent`             | Hotel Booking                     | Executes hotel bookings with three-layer confirmation code system (CRS, PMS, Channel)                                              | --       |
-| 20.6 | `HotelModificationAgent`        | Hotel Modification & Cancellation | Post-booking changes: free modifications, date changes (cancel/rebook), cancellations with penalty calculation, no-show processing | --       |
-| 20.7 | `ConfirmationVerificationAgent` | Confirmation Verification         | Cross-checks CRS-to-PMS booking data to detect discrepancies before guest arrival                                                  | --       |
+| ID | Class | Name | Description | Contract |
+|----|-------|------|-------------|----------|
+| 20.1 | `HotelSearchAggregatorAgent` | Hotel Search Aggregator | Multi-source hotel availability search across GDS hotel segments, direct APIs, and channel manager feeds | -- |
+| 20.2 | `PropertyDeduplicationAgent` | Property Deduplication | Identifies duplicate properties from multi-source results and merges them into canonical records | -- |
+| 20.3 | `ContentNormalizationAgent` | Hotel Content Normalization | Standardizes hotel content (room types, amenity names, descriptions, photos) into a consistent OTAIP taxonomy | -- |
+| 20.4 | `RateComparisonAgent` | Hotel Rate Comparison | Compares rates for the same canonical property across all sources, identifies best available rate, detects rate parity violations | -- |
+| 20.5 | `HotelBookingAgent` | Hotel Booking | Executes hotel bookings with three-layer confirmation code system (CRS, PMS, Channel) | -- |
+| 20.6 | `HotelModificationAgent` | Hotel Modification & Cancellation | Post-booking changes: free modifications, date changes (cancel/rebook), cancellations with penalty calculation, no-show processing | -- |
+| 20.7 | `ConfirmationVerificationAgent` | Confirmation Verification | Cross-checks CRS-to-PMS booking data to detect discrepancies before guest arrival | -- |
 
 ## Summary
 
-| Metric                             | Count        |
-| ---------------------------------- | ------------ |
-| Total agents                       | 75           |
-| Contracted (pipeline-validated)    | 14           |
-| Placeholder (pending domain input) | 5            |
-| Stages                             | 11 (0-9, 20) |
-| Tests                              | 2,881        |
-| Adapter tests                      | 456          |
+| Metric | Count |
+|--------|-------|
+| Total agents | 75 |
+| Contracted (pipeline-validated) | 14 |
+| Placeholder (pending domain input) | 5 |
+| Stages | 11 (0-9, 20) |
+| Tests | 2,881 |
+| Adapter tests | 456 |
