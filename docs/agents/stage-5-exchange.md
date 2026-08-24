@@ -15,12 +15,7 @@ Voluntary change assessment, ticket reissue, involuntary rebook, and (coming soo
 ATPCO Category 31 voluntary change assessment: change fees, fare difference, residual value, waiver codes, Cat 31 free-change window detection, and US DOT 14 CFR §259.5(b)(4) 24-hour reservation assessment (hold **or** cancel — carrier chooses; ≥7 days before departure). See `docs/knowledge-base/us-dot-24-hour-reservation.md`.
 
 **Input (`ChangeManagementInput`):**
-<<<<<<< HEAD
 - `original_ticket` -- ticket number, issuing carrier, passenger name, record locator, issue date, base fare, total tax, fare basis, refundable flag, booking date, `original_departure_date?` (for DOT 7-day check)
-=======
-
-- `original_ticket` -- ticket number, issuing carrier, passenger name, record locator, issue date, base fare, total tax, fare basis, refundable flag, booking date
->>>>>>> origin/main
 - `requested_itinerary` -- new segments (carrier, flight, origin, destination, date, class, fare basis), new fare, new taxes
 - `waiver_code?` -- airline-provided waiver code
 - `current_datetime?` -- ISO datetime
@@ -28,13 +23,8 @@ ATPCO Category 31 voluntary change assessment: change fees, fare difference, res
 - `us_dot_24h?` -- `part_259_applicable?`, `booking_channel?` (`airline_direct` | `agency` | `ndc` | `gds` | `unknown`)
 
 **Output (`ChangeManagementOutput`):**
-<<<<<<< HEAD
 - `assessment` -- action (`REISSUE | REBOOK | REJECT`), change fee, fare difference, additional collection, residual value, forfeited amount, tax difference, total due, Cat 31 `is_free_change` flag, summary
 - `us_dot_24h` -- carrier remedy (`cancel` | `hold` | `unknown`), eligibility, ineligibility reasons (including `departure_within_7_days`, `channel_coverage_unknown`), entitlement (`penalty_free_cancel` | `unpaid_fare_hold` | `none` | `unknown`). **Not** a free-change boolean. Channel coverage follows carrier disclosure — not a baked-in “third-party never qualifies” rule.
-=======
-
-- `assessment` -- action (`REISSUE | REBOOK | REJECT`), change fee, fare difference, additional collection, residual value, forfeited amount, tax difference, total due, free change flag, summary
->>>>>>> origin/main
 
 ---
 
