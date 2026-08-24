@@ -1,5 +1,6 @@
 /**
- * Change Management Engine — ATPCO Cat 31 voluntary change assessment.
+ * Change Management Engine — ATPCO Cat 31 voluntary change assessment
+ * plus US DOT 14 CFR §259.5(b)(4) 24-hour reservation assessment.
  *
  * No invented penalty amounts.
  *
@@ -9,6 +10,7 @@
  * - When `input.cat31_rules` is absent, the engine uses the ATPCO
  *   default per the project's domain spec: voluntary changes are
  *   PERMITTED AT NO CHARGE; involuntary changes have the fee waived.
+ * - DOT 24h is assessed separately and never sets `is_free_change`.
  *
  * The previous "$200 default" fallback was a CLAUDE.md violation and
  * has been removed. Carrier-specific rules MUST flow in via input.
@@ -25,6 +27,7 @@ import type {
   ChangeAction,
   Cat31Rules,
 } from './types.js';
+import { assessUsDot24Hour } from './us-dot-24h.js';
 
 function currentTime(input: ChangeManagementInput): Date {
   return input.current_datetime ? new Date(input.current_datetime) : new Date();
@@ -63,6 +66,8 @@ export function assessChange(input: ChangeManagementInput): ChangeManagementOutp
   const currency = orig.base_fare_currency;
   const isInvoluntary = input.is_involuntary === true;
 
+  const usDot24h = assessUsDot24Hour(input, now);
+
   // Reject path applies only when filed rules say so.
   if (isRejectFare(input.cat31_rules, orig.fare_basis)) {
     const assessment: ChangeAssessment = {
@@ -81,7 +86,7 @@ export function assessChange(input: ChangeManagementInput): ChangeManagementOutp
       summary: `Change not permitted for fare basis ${orig.fare_basis}. This fare type does not allow voluntary changes (filed Cat31 rejection).`,
       is_free_change: false,
     };
-    return { assessment };
+    return { assessment, us_dot_24h: usDot24h };
   }
 
   const rule = input.cat31_rules
@@ -97,7 +102,7 @@ export function assessChange(input: ChangeManagementInput): ChangeManagementOutp
   const freeChangeHours = rule?.free_change_hours ?? 0;
   const forfeitOnDowngrade = rule?.forfeit_difference_on_downgrade ?? false;
 
-  // Check free change window
+  // Cat 31 filed free-change window ONLY — not US DOT 24h (§259.5(b)(4)).
   const isFreeChange = isWithinFreeChangeWindow(orig.booking_date, now, freeChangeHours);
 
   // Check waiver code
@@ -180,5 +185,5 @@ export function assessChange(input: ChangeManagementInput): ChangeManagementOutp
     is_free_change: isFreeChange,
   };
 
-  return { assessment };
+  return { assessment, us_dot_24h: usDot24h };
 }

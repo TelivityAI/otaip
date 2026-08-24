@@ -13,6 +13,13 @@ export type {
   RequestedItinerary,
   ChangeFeeRule,
   ChangeAction,
+  UsDot24HourRemedy,
+  UsDot24HourBookingChannel,
+  UsDot24HourIneligibilityReason,
+  UsDot24HourEntitlement,
+  UsDot24HourContext,
+  UsDot24HourAssessment,
+  UsDot24HourCarrierRemedyRow,
 } from './change-management/index.js';
 
 export { ExchangeReissue } from './exchange-reissue/index.js';

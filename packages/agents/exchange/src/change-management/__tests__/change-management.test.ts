@@ -1,12 +1,15 @@
 /**
  * Change Management — Unit Tests
  *
- * Agent 5.1: ATPCO Cat 31 voluntary change assessment.
+ * Agent 5.1: ATPCO Cat 31 voluntary change assessment +
+ * US DOT 14 CFR §259.5(b)(4) 24-hour reservation assessment.
  *
  * Tests pass Cat31 rules in via input.cat31_rules using the test fixture
  * to exercise the apply-as-filed branch. Tests of the no-rules branch
  * verify the ATPCO default (permitted at no charge / fee waived for
  * involuntary changes).
+ *
+ * DOT 24h tests must NOT invent carrier policies — unknown stays unknown.
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
@@ -18,6 +21,7 @@ import type {
   OriginalTicketSummary,
   RequestedItinerary,
 } from '../types.js';
+import { assessUsDot24Hour, lookupCarrierRemedy, meetsSevenDayAdvance } from '../us-dot-24h.js';
 
 const require = createRequire(import.meta.url);
 const TEST_CAT31_RULES = require('./fixtures/test-cat31-rules.json') as Cat31Rules;
@@ -47,6 +51,7 @@ function makeOriginal(overrides: Partial<OriginalTicketSummary> = {}): OriginalT
     fare_basis: 'HOWUS',
     is_refundable: false,
     booking_date: '2026-03-01T10:00:00Z',
+    original_departure_date: '2026-07-01T15:00:00Z',
     ...overrides,
   };
 }
@@ -187,7 +192,7 @@ describe('Change Management', () => {
     });
   });
 
-  describe('Free change window (per filed rule)', () => {
+  describe('Free change window (per filed Cat31 rule — not DOT)', () => {
     it('free change within 24h of booking', async () => {
       const input = makeInput({
         original_ticket: makeOriginal({ booking_date: '2026-03-15T10:00:00Z' }),
@@ -222,6 +227,127 @@ describe('Change Management', () => {
       });
       const result = await agent.execute({ data: input });
       expect(result.data.assessment.change_fee).toBe('0.00');
+    });
+  });
+
+  describe('US DOT 14 CFR §259.5(b)(4) — 24h hold OR cancel', () => {
+    it('marks departure inside 7 days as ineligible', async () => {
+      const input = makeInput({
+        original_ticket: makeOriginal({
+          issuing_carrier: 'AA',
+          booking_date: '2026-03-15T10:00:00Z',
+          // 3 days later — inside 7-day floor
+          original_departure_date: '2026-03-18T15:00:00Z',
+        }),
+        current_datetime: '2026-03-15T12:00:00Z',
+        us_dot_24h: {
+          part_259_applicable: true,
+          booking_channel: 'airline_direct',
+        },
+      });
+      const result = await agent.execute({ data: input });
+      expect(result.data.us_dot_24h.eligible).toBe(false);
+      expect(result.data.us_dot_24h.ineligibility_reasons).toContain('departure_within_7_days');
+      expect(result.data.us_dot_24h.entitlement).toBe('none');
+      // Cat 31 free-change must not be inferred from DOT ineligibility
+      expect(result.data.assessment.is_free_change).toBe(true); // within Cat31 24h window
+    });
+
+    it('exactly 6 days 23h before departure is ineligible', () => {
+      expect(meetsSevenDayAdvance('2026-03-15T10:00:00Z', '2026-03-22T09:00:00Z')).toBe(false);
+    });
+
+    it('exactly 7 days before departure meets the floor', () => {
+      expect(meetsSevenDayAdvance('2026-03-15T10:00:00Z', '2026-03-22T10:00:00Z')).toBe(true);
+    });
+
+    it('eligible cancel path for AA when all DOT gates pass', async () => {
+      const input = makeInput({
+        original_ticket: makeOriginal({
+          issuing_carrier: 'AA',
+          booking_date: '2026-03-15T10:00:00Z',
+          original_departure_date: '2026-04-15T15:00:00Z',
+        }),
+        current_datetime: '2026-03-15T12:00:00Z',
+        us_dot_24h: {
+          part_259_applicable: true,
+          booking_channel: 'airline_direct',
+        },
+      });
+      const result = await agent.execute({ data: input });
+      expect(result.data.us_dot_24h.carrier_remedy).toBe('cancel');
+      expect(result.data.us_dot_24h.eligible).toBe(true);
+      expect(result.data.us_dot_24h.entitlement).toBe('penalty_free_cancel');
+      expect(result.data.us_dot_24h.ineligibility_reasons).toEqual([]);
+      expect(result.data.us_dot_24h.carrier_remedy).not.toBe('hold');
+    });
+
+    it('DOT eligibility does not zero a Cat31 change fee outside the filed free window', async () => {
+      const input = makeInput({
+        original_ticket: makeOriginal({
+          issuing_carrier: 'AA',
+          booking_date: '2026-03-01T10:00:00Z',
+          original_departure_date: '2026-07-01T15:00:00Z',
+        }),
+        current_datetime: '2026-03-15T12:00:00Z',
+        us_dot_24h: {
+          part_259_applicable: true,
+          booking_channel: 'airline_direct',
+        },
+      });
+      const result = await agent.execute({ data: input });
+      expect(result.data.us_dot_24h.eligible).toBe(false);
+      expect(result.data.us_dot_24h.ineligibility_reasons).toContain('outside_24_hour_window');
+      expect(result.data.assessment.is_free_change).toBe(false);
+      expect(Number(result.data.assessment.change_fee)).toBeGreaterThan(0);
+    });
+
+    it('third-party booking is outside airline DOT mandate', async () => {
+      const input = makeInput({
+        original_ticket: makeOriginal({
+          issuing_carrier: 'AA',
+          booking_date: '2026-03-15T10:00:00Z',
+          original_departure_date: '2026-04-15T15:00:00Z',
+        }),
+        current_datetime: '2026-03-15T12:00:00Z',
+        us_dot_24h: {
+          part_259_applicable: true,
+          booking_channel: 'third_party',
+        },
+      });
+      const result = await agent.execute({ data: input });
+      expect(result.data.us_dot_24h.eligible).toBe(false);
+      expect(result.data.us_dot_24h.ineligibility_reasons).toContain('third_party_booking');
+    });
+
+    it('unknown carrier remedy stays unknown (no invention)', () => {
+      const row = lookupCarrierRemedy('UA');
+      expect(row.remedy).toBe('unknown');
+      const assessment = assessUsDot24Hour(
+        makeInput({
+          original_ticket: makeOriginal({
+            issuing_carrier: 'UA',
+            booking_date: '2026-03-15T10:00:00Z',
+            original_departure_date: '2026-04-15T15:00:00Z',
+          }),
+          current_datetime: '2026-03-15T12:00:00Z',
+          us_dot_24h: {
+            part_259_applicable: true,
+            booking_channel: 'airline_direct',
+          },
+        }),
+        new Date('2026-03-15T12:00:00Z'),
+      );
+      expect(assessment.carrier_remedy).toBe('unknown');
+      expect(assessment.eligible).toBe(false);
+      expect(assessment.ineligibility_reasons).toContain('carrier_remedy_unknown');
+      expect(assessment.entitlement).toBe('none');
+    });
+
+    it('always returns us_dot_24h on output', async () => {
+      const result = await agent.execute({ data: makeInput() });
+      expect(result.data.us_dot_24h).toBeDefined();
+      expect(result.data.us_dot_24h.regulation).toBe('14_CFR_259_5_b_4');
     });
   });
 

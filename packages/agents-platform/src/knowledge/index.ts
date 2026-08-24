@@ -439,7 +439,7 @@ const SEED_DOCUMENTS: Omit<KnowledgeDocument, 'indexed_at'>[] = [
     title: 'US DOT 24-Hour Cancellation Rule',
     topic: 'regulations',
     content:
-      'The US Department of Transportation requires airlines to offer either a 24-hour free cancellation window or a 24-hour fare hold for bookings made seven or more days before departure. The carrier chooses which option to provide. This applies to flights to, from, or within the United States.',
+      '14 CFR §259.5(b)(4): covered airlines must allow reservations to be held at the quoted fare without payment OR cancelled without penalty for at least 24 hours after the reservation is made, if the reservation is made one week or more prior to departure. Carrier chooses one path — not both. Obligation is on airlines (not OTAs). Does not require free itinerary changes. See docs/knowledge-base/us-dot-24-hour-reservation.md.',
     tags: ['usdot', '24-hour', 'cancellation'],
   },
   {

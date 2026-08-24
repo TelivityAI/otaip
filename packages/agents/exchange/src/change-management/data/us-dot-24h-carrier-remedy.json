@@ -1,0 +1,70 @@
+{
+  "description": "US DOT 14 CFR §259.5(b)(4) carrier remedy election: cancel OR hold (not both). Mark unknown unless verified from a public carrier or DOT primary page. See docs/knowledge-base/us-dot-24-hour-reservation.md.",
+  "regulation": "14_CFR_259_5_b_4",
+  "source_pdf": "https://www.govinfo.gov/content/pkg/CFR-2025-title14-vol4/pdf/CFR-2025-title14-vol4-part259.pdf",
+  "carriers": [
+    {
+      "carrier_code": "AA",
+      "remedy": "cancel",
+      "last_verified": "2026-08-24",
+      "source_url": "https://www.aa.com/i18n/customer-service/support/customer-service-plan.html",
+      "notes": "CSP 24-hour refund: aa.com / AA Reservations, ≥7 days prior, cancel within 24h for refund."
+    },
+    {
+      "carrier_code": "DL",
+      "remedy": "cancel",
+      "last_verified": "2026-08-24",
+      "source_url": "https://www.delta.com/us/en/legal/customer-commitment",
+      "notes": "Customer Commitment Risk-Free Cancellation — cancel without penalty path."
+    },
+    {
+      "carrier_code": "WN",
+      "remedy": "cancel",
+      "last_verified": "2026-08-24",
+      "source_url": "https://www.southwest.com/swa-resources/pdfs/corporate-commitments/customer-service-plan.pdf",
+      "notes": "CSP: cancel without penalty within 24h if booked one week or more prior to departure."
+    },
+    {
+      "carrier_code": "UA",
+      "remedy": "unknown",
+      "last_verified": "2026-08-24",
+      "source_url": null,
+      "notes": "No primary united.com CSP text verified this pass — do not invent."
+    },
+    {
+      "carrier_code": "AS",
+      "remedy": "unknown",
+      "last_verified": "2026-08-24",
+      "source_url": null,
+      "notes": "Not verified from primary public page."
+    },
+    {
+      "carrier_code": "B6",
+      "remedy": "unknown",
+      "last_verified": "2026-08-24",
+      "source_url": null,
+      "notes": "Not verified from primary public page."
+    },
+    {
+      "carrier_code": "NK",
+      "remedy": "unknown",
+      "last_verified": "2026-08-24",
+      "source_url": null,
+      "notes": "Not verified from primary public page."
+    },
+    {
+      "carrier_code": "F9",
+      "remedy": "unknown",
+      "last_verified": "2026-08-24",
+      "source_url": null,
+      "notes": "Not verified from primary public page."
+    },
+    {
+      "carrier_code": "HA",
+      "remedy": "unknown",
+      "last_verified": "2026-08-24",
+      "source_url": null,
+      "notes": "Not verified from primary public page."
+    }
+  ]
+}
