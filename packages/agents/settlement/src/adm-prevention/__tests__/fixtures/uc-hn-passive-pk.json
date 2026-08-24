@@ -1,0 +1,47 @@
+{
+  "_comment": "SCARY FALSE NEGATIVE: UC + HN + PK — beyond HX/UN/NO. Passive entry (PK) plus unable (UC) and pending need (HN).",
+  "gds": "AMADEUS",
+  "current_datetime": "2026-04-01T12:00:00Z",
+  "fare_basis": "HOWUS",
+  "booked_class": "H",
+  "endorsement": "NON-ENDO/NON-REF",
+  "booking": {
+    "record_locator": "UCPK01",
+    "passenger_name": "SMITH/JOHN",
+    "base_fare": "450.00",
+    "base_fare_currency": "USD",
+    "segments": [
+      {
+        "carrier": "AF",
+        "flight_number": "10",
+        "origin": "CDG",
+        "destination": "JFK",
+        "departure_date": "2026-08-01",
+        "status": "UC",
+        "booking_class": "H"
+      },
+      {
+        "carrier": "AF",
+        "flight_number": "11",
+        "origin": "JFK",
+        "destination": "CDG",
+        "departure_date": "2026-08-15",
+        "status": "HN",
+        "booking_class": "H"
+      },
+      {
+        "carrier": "AF",
+        "flight_number": "12",
+        "origin": "CDG",
+        "destination": "LYS",
+        "departure_date": "2026-08-16",
+        "status": "PK",
+        "booking_class": "H"
+      }
+    ]
+  },
+  "expect": {
+    "PASSIVE_SEGMENT": false,
+    "overall_pass": false
+  }
+}

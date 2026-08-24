@@ -1,5 +1,12 @@
 /**
- * ADM Prevention Engine — 9 pre-ticketing audit checks.
+ * ADM Prevention Engine — pre-ticketing audit checks.
+ *
+ * Domain source: docs/knowledge-base/adm-prevention.md
+ * - IATA Reso 850m = ADM memo windows/dispute (Agent 6.3), not status rules
+ * - Passive/UC/churn = carrier booking policy + host statuses (HX/UC/UN/NO/TK + extended)
+ * - Travelport: those statuses do not need a ticketing field
+ * - Churning requires segment history
+ * - No carrier-secret commission tables
  */
 
 import Decimal from 'decimal.js';
@@ -8,7 +15,15 @@ import type {
   ADMPreventionOutput,
   ADMPreventionResult,
   ADMCheck,
+  SegmentHistoryEvent,
 } from './types.js';
+import {
+  isBlockingSegmentStatus,
+  isCoreBlockingStatus,
+  isTravelportMarriageBreakStatus,
+  DEFAULT_CHURN_CYCLE_THRESHOLD,
+  DEFAULT_CHURN_WINDOW_HOURS,
+} from './status-codes.js';
 
 // Fare basis first-character to expected booking class mapping
 // This is a simplified mapping — real ATPCO mappings are far more complex
@@ -47,6 +62,29 @@ const UNRESTRICTED_CLASSES = new Set(['Y', 'C', 'D', 'J', 'F', 'A', 'P', 'R', 'I
 
 function currentTime(input: ADMPreventionInput): Date {
   return input.current_datetime ? new Date(input.current_datetime) : new Date();
+}
+
+function flightKey(carrier: string, flight: string, date: string): string {
+  return `${carrier.toUpperCase()}|${flight}|${date}`;
+}
+
+/**
+ * Calendar date (YYYY-MM-DD) in an IANA timezone for an instant.
+ * Used for deadline-day ADM risk — not a substitute for carrier TTL rules.
+ */
+function localCalendarDate(isoInstant: string, timeZone: string): string | null {
+  try {
+    const fmt = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    return fmt.format(new Date(isoInstant));
+  } catch {
+    // TODO: DOMAIN_QUESTION: invalid ttl_timezone handling — fail open vs block
+    return null;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -108,20 +146,98 @@ function checkFareClassMismatch(input: ADMPreventionInput): ADMCheck {
   return check;
 }
 
+/**
+ * Passive / unable / schedule-change / pending statuses.
+ * Core set HX/UC/UN/NO/TK from carrier booking policy + host practice.
+ * Travelport: status alone is enough — no ticketing field required.
+ */
 function checkPassiveSegments(input: ADMPreventionInput): ADMCheck {
   const check: ADMCheck = {
     check_id: 'PASSIVE_SEGMENT',
-    name: 'Passive Segment Abuse',
+    name: 'Passive / Unable / Risky Status',
     severity: 'blocking',
     passed: true,
-    reason: 'No passive segments found.',
+    reason: 'No passive, unable, or uncleared risky statuses found.',
   };
 
-  const passiveStatuses = new Set(['HX', 'UN', 'NO', 'UC']);
   for (const seg of input.booking.segments) {
-    if (passiveStatuses.has(seg.status)) {
+    if (!isBlockingSegmentStatus(seg.status)) continue;
+
+    const code = seg.status.toUpperCase();
+    const core = isCoreBlockingStatus(code);
+    const travelportNote =
+      input.gds === 'TRAVELPORT'
+        ? ' Travelport: status alone is sufficient (no ticketing field required).'
+        : '';
+
+    check.passed = false;
+    check.reason = core
+      ? `Risky host status: ${seg.carrier}${seg.flight_number} status ${code} (core set HX/UC/UN/NO/TK) — must be cleared before ticketing.${travelportNote}`
+      : `Risky host status: ${seg.carrier}${seg.flight_number} status ${code} — passive/pending/cancel residue must be removed before ticketing.${travelportNote}`;
+    return check;
+  }
+
+  return check;
+}
+
+/**
+ * Churning: book→cancel→rebook cycles. Requires segment_history.
+ * Current HK-only status is a classic false negative without history.
+ */
+function checkChurning(input: ADMPreventionInput): ADMCheck {
+  const check: ADMCheck = {
+    check_id: 'CHURNING',
+    name: 'Churning Detection',
+    severity: 'blocking',
+    passed: true,
+    reason: 'No churning pattern detected.',
+  };
+
+  const history = input.segment_history;
+  if (!history || history.length === 0) {
+    check.reason =
+      'No segment history provided — churning skipped (cannot detect from current status alone).';
+    return check;
+  }
+
+  const threshold = input.churn_cycle_threshold ?? DEFAULT_CHURN_CYCLE_THRESHOLD;
+  const windowHours = input.churn_window_hours ?? DEFAULT_CHURN_WINDOW_HOURS;
+  const windowMs = windowHours * 60 * 60 * 1000;
+
+  const byFlight = new Map<string, SegmentHistoryEvent[]>();
+  for (const event of history) {
+    const key = flightKey(event.carrier, event.flight_number, event.departure_date);
+    const list = byFlight.get(key) ?? [];
+    list.push(event);
+    byFlight.set(key, list);
+  }
+
+  for (const [key, events] of byFlight) {
+    const sorted = [...events].sort(
+      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+    );
+
+    let cycles = 0;
+    let lastCancelAt: number | null = null;
+
+    for (const event of sorted) {
+      const t = new Date(event.timestamp).getTime();
+      if (event.action === 'CANCELLED') {
+        lastCancelAt = t;
+      } else if (
+        (event.action === 'REBOOKED' || event.action === 'BOOKED') &&
+        lastCancelAt != null &&
+        t - lastCancelAt <= windowMs &&
+        t >= lastCancelAt
+      ) {
+        cycles += 1;
+        lastCancelAt = null;
+      }
+    }
+
+    if (cycles >= threshold) {
       check.passed = false;
-      check.reason = `Passive segment: ${seg.carrier}${seg.flight_number} status ${seg.status} — must be removed before ticketing.`;
+      check.reason = `Churning: ${cycles} cancel→rebook cycles on ${key.replace(/\|/g, ' ')} within ${windowHours}h (threshold ${threshold}). Current status alone is insufficient — history required.`;
       return check;
     }
   }
@@ -138,20 +254,44 @@ function checkMarriedSegments(input: ADMPreventionInput): ADMCheck {
     reason: 'Married segments are consistent.',
   };
 
-  const groups = new Map<string, string[]>();
-  for (const seg of input.booking.segments) {
-    if (seg.married_group) {
-      const statuses = groups.get(seg.married_group) ?? [];
-      statuses.push(seg.status);
-      groups.set(seg.married_group, statuses);
+  // Travelport-specific: DX is a broken-marriage / marriage-integrity signal
+  // (public Travelport status table). No separate ticketing field required.
+  if (input.gds === 'TRAVELPORT') {
+    for (const seg of input.booking.segments) {
+      if (isTravelportMarriageBreakStatus(seg.status)) {
+        check.passed = false;
+        check.reason = `Travelport DX on ${seg.carrier}${seg.flight_number}: broken marriage / marriage-integrity risk — do not ticket until marriage is restored or properly authorized.`;
+        return check;
+      }
     }
   }
 
-  for (const [group, statuses] of groups) {
-    const unique = new Set(statuses);
-    if (unique.size > 1) {
+  const groups = new Map<string, typeof input.booking.segments>();
+  for (const seg of input.booking.segments) {
+    if (seg.married_group) {
+      const list = groups.get(seg.married_group) ?? [];
+      list.push(seg);
+      groups.set(seg.married_group, list);
+    }
+  }
+
+  if (groups.size === 0) {
+    check.reason =
+      'No married_group markers on segments — skipped. (Sabre MSI / Amadeus marriage / Travelport group must be mapped by the adapter.)';
+    return check;
+  }
+
+  for (const [group, segs] of groups) {
+    if (segs.length < 2) {
       check.passed = false;
-      check.reason = `Married group ${group} has mixed statuses: ${[...unique].join(', ')} — must be identical.`;
+      check.reason = `Married group ${group} has only ${segs.length} segment — incomplete marriage (possible break).`;
+      return check;
+    }
+
+    const statuses = new Set(segs.map((s) => s.status.toUpperCase()));
+    if (statuses.size > 1) {
+      check.passed = false;
+      check.reason = `Married group ${group} has mixed statuses: ${[...statuses].join(', ')} — must be identical (GDS marriage integrity).`;
       return check;
     }
   }
@@ -176,13 +316,29 @@ function checkTtlExpired(input: ADMPreventionInput): ADMCheck {
   const now = currentTime(input);
   const deadline = new Date(input.ttl_deadline);
   const minutesRemaining = (deadline.getTime() - now.getTime()) / (1000 * 60);
+  const sourceNote = input.ttl_source ? ` (TTL source: ${input.ttl_source})` : '';
 
   if (minutesRemaining < 0) {
     check.passed = false;
-    check.reason = `TTL expired at ${input.ttl_deadline} — cannot ticket.`;
-  } else if (minutesRemaining < TTL_BUFFER_MINUTES) {
+    check.reason = `TTL expired at ${input.ttl_deadline}${sourceNote} — cannot ticket.`;
+    return check;
+  }
+
+  // Deadline-day risk: same local calendar date as deadline is ADM-prone
+  // even when UTC still shows remaining hours.
+  if (input.ttl_timezone && input.current_datetime) {
+    const nowLocal = localCalendarDate(input.current_datetime, input.ttl_timezone);
+    const deadlineLocal = localCalendarDate(input.ttl_deadline, input.ttl_timezone);
+    if (nowLocal && deadlineLocal && nowLocal === deadlineLocal) {
+      check.passed = false;
+      check.reason = `TTL deadline-day risk: current local date ${nowLocal} in ${input.ttl_timezone} equals deadline date — carriers commonly ADM same-day-of-deadline issuance${sourceNote}.`;
+      return check;
+    }
+  }
+
+  if (minutesRemaining < TTL_BUFFER_MINUTES) {
     check.passed = false;
-    check.reason = `TTL expires in ${Math.round(minutesRemaining)} minutes (< ${TTL_BUFFER_MINUTES}min buffer) — risk of expiry during ticketing.`;
+    check.reason = `TTL expires in ${Math.round(minutesRemaining)} minutes (< ${TTL_BUFFER_MINUTES}min buffer) — risk of expiry during ticketing${sourceNote}.`;
   }
 
   return check;
@@ -197,8 +353,10 @@ function checkCommissionRate(input: ADMPreventionInput): ADMCheck {
     reason: 'Commission rate is within contracted limits.',
   };
 
+  // No carrier-secret commission tables in-repo — caller must supply both rates.
   if (input.commission_rate == null || input.carrier_contracted_rate == null) {
-    check.reason = 'Commission rate or contracted rate not provided — skipped.';
+    check.reason =
+      'Commission rate or contracted rate not provided — skipped (no embedded carrier commission tables).';
     return check;
   }
 
@@ -287,11 +445,15 @@ function checkNetRemit(input: ADMPreventionInput): ADMCheck {
 // Main engine
 // ---------------------------------------------------------------------------
 
+/** Number of audit checks run by Agent 6.2 (includes CHURNING). */
+export const ADM_CHECK_COUNT = 10;
+
 export function runAudit(input: ADMPreventionInput): ADMPreventionOutput {
   const checks: ADMCheck[] = [
     checkDuplicateBooking(input),
     checkFareClassMismatch(input),
     checkPassiveSegments(input),
+    checkChurning(input),
     checkMarriedSegments(input),
     checkTtlExpired(input),
     checkCommissionRate(input),

@@ -1,0 +1,88 @@
+{
+  "_comment": "SCARY FALSE NEGATIVE: all current statuses HK — HX/UN/NO-only scanners pass. History shows 3 cancel→rebook cycles (churning).",
+  "gds": "AMADEUS",
+  "current_datetime": "2026-04-01T12:00:00Z",
+  "fare_basis": "HOWUS",
+  "booked_class": "H",
+  "endorsement": "NON-ENDO/NON-REF",
+  "booking": {
+    "record_locator": "CHURN1",
+    "passenger_name": "SMITH/JOHN",
+    "base_fare": "450.00",
+    "base_fare_currency": "USD",
+    "segments": [
+      {
+        "carrier": "BA",
+        "flight_number": "115",
+        "origin": "LHR",
+        "destination": "JFK",
+        "departure_date": "2026-06-15",
+        "status": "HK",
+        "booking_class": "H"
+      }
+    ]
+  },
+  "segment_history": [
+    {
+      "timestamp": "2026-03-28T08:00:00Z",
+      "action": "BOOKED",
+      "carrier": "BA",
+      "flight_number": "115",
+      "departure_date": "2026-06-15",
+      "status": "HK"
+    },
+    {
+      "timestamp": "2026-03-28T10:00:00Z",
+      "action": "CANCELLED",
+      "carrier": "BA",
+      "flight_number": "115",
+      "departure_date": "2026-06-15",
+      "status": "XX"
+    },
+    {
+      "timestamp": "2026-03-28T10:05:00Z",
+      "action": "REBOOKED",
+      "carrier": "BA",
+      "flight_number": "115",
+      "departure_date": "2026-06-15",
+      "status": "HK"
+    },
+    {
+      "timestamp": "2026-03-29T09:00:00Z",
+      "action": "CANCELLED",
+      "carrier": "BA",
+      "flight_number": "115",
+      "departure_date": "2026-06-15",
+      "status": "XX"
+    },
+    {
+      "timestamp": "2026-03-29T09:10:00Z",
+      "action": "REBOOKED",
+      "carrier": "BA",
+      "flight_number": "115",
+      "departure_date": "2026-06-15",
+      "status": "HK"
+    },
+    {
+      "timestamp": "2026-03-30T11:00:00Z",
+      "action": "CANCELLED",
+      "carrier": "BA",
+      "flight_number": "115",
+      "departure_date": "2026-06-15",
+      "status": "XX"
+    },
+    {
+      "timestamp": "2026-03-30T11:15:00Z",
+      "action": "REBOOKED",
+      "carrier": "BA",
+      "flight_number": "115",
+      "departure_date": "2026-06-15",
+      "status": "HK"
+    }
+  ],
+  "expect": {
+    "CHURNING": false,
+    "PASSIVE_SEGMENT": true,
+    "overall_pass": false
+  }
+}
