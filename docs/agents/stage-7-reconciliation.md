@@ -12,14 +12,18 @@ BSP/ARC reconciliation, commission management, interline settlement, financial r
 **Class:** `BSPReconciliation`
 **Status:** Implemented
 
-Matches agency booking records against BSP HOT files, validates commission rates, identifies discrepancies (missing records, duplicates, amount/commission/currency mismatches, unmatched ADM/ACM), and flags issues before remittance deadline.
+Matches agency booking records against BSP HOT files (DISH Rev 23), validates commission rates, identifies discrepancies (missing records, duplicates, amount/commission/currency mismatches, unmatched ADM/ACM, exchange/conjunction cross-refs), and flags issues before remittance deadline.
+
+**Domain knowledge:** [`docs/knowledge-base/bsp-hot-reconciliation.md`](../knowledge-base/bsp-hot-reconciliation.md) — HOT is DISH fixed-width (generic X12 parsers miss sections); **do not assume single-currency HOT**; transaction `CUTP` vs reporting/`BOH03` currency; **IROE ≠ ICER**; conjunction / exchange / EMD / ADM are separate; synthetic fixtures only (no live HOT dumps).
 
 **Input (`BSPReconciliationInput`):**
-- `hot_records` -- BSP HOT file records (ticket number, passenger, origin/destination, airline, amounts, commission, transaction type, billing period)
-- `agency_records` -- agency-side booking records for comparison
+- `hot_records` -- BSP HOT file records (ticket number, passenger, origin/destination, airline, amounts, commission, transaction type / DISH TRNC, **transaction currency CUTP**, optional reporting currency, billing period, ORIT / RTDN / conjunction set)
+- `agency_records` -- agency-side booking records for comparison (optional `original_ticket_number`, `related_ticket_number`, `conjunction_ticket_numbers`)
 
 **Output (`BSPReconciliationOutput`):**
-- Matched records, unmatched records, discrepancies with severity and type, commission validation results
+- Discrepancies with severity and type (includes `UNMATCHED_EXCHANGE`, `CONJUNCTION_SET_MISMATCH`)
+- Summary with `currencies_present` (multi-currency HOT awareness)
+- Commission / amount compares only when agency and HOT transaction currencies match (no silent IROE/ICER FX)
 
 ---
 
