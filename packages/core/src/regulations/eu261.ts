@@ -88,7 +88,9 @@ function bandFor(distanceKm: number): (typeof EU261_BANDS)[number] {
  * Apply EU261/2004 to a single passenger journey.
  *
  * Pure function: callers are responsible for determining EU jurisdiction
- * (departure from EU/EEA, or EU carrier inbound to EU/EEA).
+ * (Art.3(1): departure from EU/EEA, or Community carrier inbound to EU/EEA).
+ *
+ * Distance inputs MUST be great-circle kilometres (Art.7(4)) — never TPM/MPM.
  */
 export function applyEU261(input: EU261Input): EU261Result {
   const band = bandFor(input.distanceKm);

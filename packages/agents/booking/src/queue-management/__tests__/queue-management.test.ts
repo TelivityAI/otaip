@@ -257,7 +257,7 @@ describe('Queue Management', () => {
       expect(result.data.commands!.some((c) => c.command === 'QD/100')).toBe(true);
     });
 
-    it('generates Travelport queue commands', async () => {
+    it('generates Travelport queue commands without host (shared only)', async () => {
       const input = makeInput({
         entries: [makeEntry({ gds: 'TRAVELPORT', queue_number: 7 })],
         gds: 'TRAVELPORT',
@@ -266,6 +266,68 @@ describe('Queue Management', () => {
       const result = await agent.execute({ data: input });
       expect(result.data.commands).toBeDefined();
       expect(result.data.commands!.some((c) => c.command === 'Q/7')).toBe(true);
+      expect(result.data.commands!.some((c) => c.command === 'QR')).toBe(true);
+      // Place/list require an explicit host — must not invent Galileo/Apollo.
+      expect(result.data.commands!.some((c) => c.command.startsWith('QEB/'))).toBe(false);
+      expect(result.data.commands!.some((c) => c.command.startsWith('QEP/'))).toBe(false);
+    });
+
+    it('generates Apollo place/list/remove commands', async () => {
+      const input = makeInput({
+        entries: [makeEntry({ gds: 'TRAVELPORT', queue_number: 40 })],
+        gds: 'TRAVELPORT',
+        queue_number: 40,
+        travelport_host: 'APOLLO',
+      });
+      const result = await agent.execute({ data: input });
+      const cmds = result.data.commands!.map((c) => c.command);
+      expect(cmds).toContain('QEP/40');
+      expect(cmds).toContain('QW');
+      expect(cmds).toContain('QR');
+      expect(cmds).toContain('QC/40');
+      expect(cmds).toContain('QXI');
+    });
+
+    it('generates Galileo (Travelport+) place/list/remove commands', async () => {
+      const input = makeInput({
+        entries: [makeEntry({ gds: 'TRAVELPORT', queue_number: 40 })],
+        gds: 'TRAVELPORT',
+        queue_number: 40,
+        travelport_host: 'GALILEO',
+      });
+      const result = await agent.execute({ data: input });
+      const cmds = result.data.commands!.map((c) => c.command);
+      expect(cmds).toContain('QEB/40');
+      expect(cmds).toContain('QW');
+      expect(cmds).toContain('QR');
+      expect(cmds).toContain('QCB/40');
+      expect(cmds).toContain('QXI');
+    });
+
+    it('generates Worldspan place/remove without QW or disputed sign-out', async () => {
+      const input = makeInput({
+        entries: [makeEntry({ gds: 'TRAVELPORT', queue_number: 40 })],
+        gds: 'TRAVELPORT',
+        queue_number: 40,
+        travelport_host: 'WORLDSPAN',
+      });
+      const result = await agent.execute({ data: input });
+      const cmds = result.data.commands!.map((c) => c.command);
+      expect(cmds).toContain('QEP/40');
+      expect(cmds).toContain('QR');
+      expect(cmds).toContain('QC/40');
+      expect(cmds).not.toContain('QW');
+      // DQ-TQ1: omit Worldspan sign-out until glyph conflict resolved
+      expect(cmds.some((c) => c.startsWith('QX'))).toBe(false);
+    });
+
+    it('assigns urgent on Zulu deadline day for TTL queue items', async () => {
+      const input = makeInput({
+        entries: [makeEntry({ deadline: '2026-03-30T23:59:00Z', entry_type: 'TTL_DEADLINE' })],
+        current_time: '2026-03-30T01:00:00Z', // same Zulu day, many hours remain
+      });
+      const result = await agent.execute({ data: input });
+      expect(result.data.results[0]!.priority).toBe('urgent');
     });
 
     it('omits commands when gds/queue_number not provided', async () => {

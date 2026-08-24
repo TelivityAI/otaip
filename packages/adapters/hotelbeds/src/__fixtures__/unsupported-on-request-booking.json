@@ -1,0 +1,8 @@
+{
+  "_comment": "Unsupported ON_REQUEST wire sample — retained only to assert the mapper rejects it. Official Activities/Transfers confirm docs do not list ON_REQUEST (DQ-A3 / DQ-T6 CLOSED).",
+  "booking": {
+    "reference": "LEGACY-ONREQ-001",
+    "clientReference": "SHOULD-REJECT",
+    "status": "ON_REQUEST"
+  }
+}

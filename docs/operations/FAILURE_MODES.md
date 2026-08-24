@@ -42,7 +42,7 @@ Expected failure scenarios, what the agents return, and what consuming applicati
 | Failure | Agent behavior | Consumer action |
 |---------|---------------|----------------|
 | No reissue fare available | Returns error with fare eligibility details | Inform user, suggest alternative dates |
-| Waiver code invalid | Processes without waiver (standard penalty applies) | Confirm penalty with user before proceeding |
+| Waiver code without typed effect | Fails closed (`waiver_effect` required) | Supply `waiver_effect` per docs/knowledge-base/waiver-typology.md |
 | Involuntary rebook — no flights available | Returns empty reprotection options | Escalate to manual reprotection |
 
 ## Stage 6 — Settlement
