@@ -141,10 +141,19 @@ function getTaxesForCountry(country: string): TaxRule[] {
 function getConversionRate(from: string, to: string): Decimal {
   if (from === to) return new Decimal(1);
 
+  // TODO: DOMAIN_QUESTION: Tax FX must use licensed IROE (or a documented
+  // tax-authority rate table), not the invented currency_conversions map in
+  // tax-rates.json. Fail closed when the rate is missing — never silently
+  // return 1.0. See docs/knowledge-base/fare-construction-data-dependencies.md
+  // and Agent 2.2 bans (no hardcoded ROE / IROE).
   const fromToUsd = taxData.currency_conversions[from];
   const toToUsd = taxData.currency_conversions[to];
 
-  if (!fromToUsd || !toToUsd) return new Decimal(1);
+  if (!fromToUsd || !toToUsd) {
+    // TODO: DOMAIN_QUESTION: return DomainInputRequired instead of 1.0 once
+    // TaxCalculationOutput is widened like FareConstructionResult.
+    return new Decimal(1);
+  }
 
   // from -> USD -> to: amount * (fromToUsd / toToUsd)
   return new Decimal(fromToUsd).div(new Decimal(toToUsd));
