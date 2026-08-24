@@ -1,0 +1,357 @@
+{
+  "_comment": "Seed from docs/knowledge-base/gds-ndc-capability-matrix.csv — KB markdown is authoritative. Per (carrier, vendor, transaction). Res 787 is the process standard, not a parity matrix. No invented NDC versions.",
+  "_version": "0.1.0",
+  "_source": "docs/knowledge-base/gds-ndc-capability-matrix.csv",
+  "rows": [
+    {
+      "carrier": "ANON-NDC-AGG",
+      "vendor": "duffel",
+      "transaction": "Shop",
+      "channel": "NDC",
+      "ndc_version_notes": "unknown (Duffel API version header != IATA NDC schema)",
+      "fallback": "GDS",
+      "source": "docs/adapters/duffel.md",
+      "confidence": "adapter_doc"
+    },
+    {
+      "carrier": "ANON-NDC-AGG",
+      "vendor": "duffel",
+      "transaction": "OrderCreate",
+      "channel": "NDC",
+      "ndc_version_notes": "unknown",
+      "fallback": "GDS",
+      "source": "docs/adapters/duffel.md",
+      "confidence": "adapter_doc"
+    },
+    {
+      "carrier": "ANON-NDC-AGG",
+      "vendor": "duffel",
+      "transaction": "OrderChange",
+      "channel": "unknown",
+      "ndc_version_notes": "unknown",
+      "fallback": "GDS",
+      "source": "docs/adapters/duffel.md (exchange not implemented)",
+      "confidence": "adapter_doc"
+    },
+    {
+      "carrier": "ANON-NDC-AGG",
+      "vendor": "duffel",
+      "transaction": "OrderCancel",
+      "channel": "unknown",
+      "ndc_version_notes": "unknown",
+      "fallback": "GDS",
+      "source": "docs/adapters/duffel.md + docs/architecture/ADAPTER_STATUS.md (flight cancel not implemented)",
+      "confidence": "adapter_doc"
+    },
+    {
+      "carrier": "ANON-NDC-AGG",
+      "vendor": "duffel",
+      "transaction": "Servicing",
+      "channel": "GDS",
+      "ndc_version_notes": "n/a",
+      "fallback": "none",
+      "source": "docs/adapters/duffel.md (shop!=servicing: post-booking not on Duffel adapter path)",
+      "confidence": "adapter_doc"
+    },
+    {
+      "carrier": "ANON-NDC-AGG",
+      "vendor": "duffel",
+      "transaction": "Groups",
+      "channel": "unknown",
+      "ndc_version_notes": "unknown",
+      "fallback": "GDS",
+      "source": "no public evidence",
+      "confidence": "unknown"
+    },
+    {
+      "carrier": "ANON-NDC-AGG",
+      "vendor": "duffel",
+      "transaction": "Corporate",
+      "channel": "unknown",
+      "ndc_version_notes": "unknown",
+      "fallback": "GDS",
+      "source": "no public evidence",
+      "confidence": "unknown"
+    },
+    {
+      "carrier": "ANON-SABRE-OO",
+      "vendor": "sabre",
+      "transaction": "Shop",
+      "channel": "Either",
+      "ndc_version_notes": "unknown (BFM may return NDC + ATPCO; schema per airline unknown)",
+      "fallback": "GDS",
+      "source": "https://developer.sabre.com/guide/ndc/ndc.html + docs/adapters/sabre.md",
+      "confidence": "vendor_public"
+    },
+    {
+      "carrier": "ANON-SABRE-OO",
+      "vendor": "sabre",
+      "transaction": "OrderCreate",
+      "channel": "NDC",
+      "ndc_version_notes": "unknown",
+      "fallback": "GDS",
+      "source": "https://developer.sabre.com/guide/ndc/ndc.html (v1/orders/create)",
+      "confidence": "vendor_public"
+    },
+    {
+      "carrier": "ANON-SABRE-OO",
+      "vendor": "sabre",
+      "transaction": "OrderChange",
+      "channel": "NDC",
+      "ndc_version_notes": "unknown",
+      "fallback": "GDS",
+      "source": "https://developer.sabre.com/guide/ndc/ndc.html (v1/orders/change)",
+      "confidence": "vendor_public"
+    },
+    {
+      "carrier": "ANON-SABRE-OO",
+      "vendor": "sabre",
+      "transaction": "OrderCancel",
+      "channel": "NDC",
+      "ndc_version_notes": "unknown",
+      "fallback": "GDS",
+      "source": "https://developer.sabre.com/guide/ndc/ndc.html (v1/orders/cancel)",
+      "confidence": "vendor_public"
+    },
+    {
+      "carrier": "ANON-SABRE-OO",
+      "vendor": "sabre",
+      "transaction": "Servicing",
+      "channel": "NDC",
+      "ndc_version_notes": "unknown",
+      "fallback": "GDS",
+      "source": "https://developer.sabre.com/guide/ndc/ndc.html (view/reshop/sync)",
+      "confidence": "vendor_public"
+    },
+    {
+      "carrier": "ANON-SABRE-OO",
+      "vendor": "sabre",
+      "transaction": "Groups",
+      "channel": "unknown",
+      "ndc_version_notes": "unknown",
+      "fallback": "GDS",
+      "source": "no public evidence — often still classic GDS",
+      "confidence": "unknown"
+    },
+    {
+      "carrier": "ANON-SABRE-OO",
+      "vendor": "sabre",
+      "transaction": "Corporate",
+      "channel": "unknown",
+      "ndc_version_notes": "unknown",
+      "fallback": "GDS",
+      "source": "no public evidence",
+      "confidence": "unknown"
+    },
+    {
+      "carrier": "ANON-GDS-SS",
+      "vendor": "amadeus",
+      "transaction": "Shop",
+      "channel": "GDS",
+      "ndc_version_notes": "n/a",
+      "fallback": "none",
+      "source": "docs/adapters/amadeus.md",
+      "confidence": "adapter_doc"
+    },
+    {
+      "carrier": "ANON-GDS-SS",
+      "vendor": "amadeus",
+      "transaction": "OrderCreate",
+      "channel": "GDS",
+      "ndc_version_notes": "n/a",
+      "fallback": "none",
+      "source": "docs/adapters/amadeus.md",
+      "confidence": "adapter_doc"
+    },
+    {
+      "carrier": "ANON-GDS-SS",
+      "vendor": "amadeus",
+      "transaction": "OrderChange",
+      "channel": "unknown",
+      "ndc_version_notes": "n/a",
+      "fallback": "none",
+      "source": "docs/adapters/amadeus.md (exchange not in Self-Service)",
+      "confidence": "adapter_doc"
+    },
+    {
+      "carrier": "ANON-GDS-SS",
+      "vendor": "amadeus",
+      "transaction": "OrderCancel",
+      "channel": "GDS",
+      "ndc_version_notes": "n/a",
+      "fallback": "none",
+      "source": "docs/adapters/amadeus.md",
+      "confidence": "adapter_doc"
+    },
+    {
+      "carrier": "ANON-GDS-SS",
+      "vendor": "amadeus",
+      "transaction": "Servicing",
+      "channel": "unknown",
+      "ndc_version_notes": "n/a",
+      "fallback": "none",
+      "source": "docs/adapters/amadeus.md (refund/exchange not in Self-Service)",
+      "confidence": "adapter_doc"
+    },
+    {
+      "carrier": "ANON-GDS-SS",
+      "vendor": "amadeus",
+      "transaction": "Groups",
+      "channel": "unknown",
+      "ndc_version_notes": "n/a",
+      "fallback": "none",
+      "source": "no public evidence",
+      "confidence": "unknown"
+    },
+    {
+      "carrier": "ANON-GDS-SS",
+      "vendor": "amadeus",
+      "transaction": "Corporate",
+      "channel": "unknown",
+      "ndc_version_notes": "n/a",
+      "fallback": "none",
+      "source": "no public evidence",
+      "confidence": "unknown"
+    },
+    {
+      "carrier": "ANON-LCC-DIRECT",
+      "vendor": "navitaire",
+      "transaction": "Shop",
+      "channel": "Direct/API",
+      "ndc_version_notes": "n/a (AIDM order model not classic NDC XML version)",
+      "fallback": "none",
+      "source": "docs/adapters/navitaire.md + docs/adapters/oosd-navitaire.md",
+      "confidence": "adapter_doc"
+    },
+    {
+      "carrier": "ANON-LCC-DIRECT",
+      "vendor": "navitaire",
+      "transaction": "OrderCreate",
+      "channel": "Direct/API",
+      "ndc_version_notes": "n/a",
+      "fallback": "none",
+      "source": "docs/adapters/oosd-navitaire.md",
+      "confidence": "adapter_doc"
+    },
+    {
+      "carrier": "ANON-LCC-DIRECT",
+      "vendor": "navitaire",
+      "transaction": "OrderChange",
+      "channel": "Direct/API",
+      "ndc_version_notes": "n/a",
+      "fallback": "none",
+      "source": "docs/adapters/oosd-navitaire.md",
+      "confidence": "adapter_doc"
+    },
+    {
+      "carrier": "ANON-LCC-DIRECT",
+      "vendor": "navitaire",
+      "transaction": "OrderCancel",
+      "channel": "Direct/API",
+      "ndc_version_notes": "n/a",
+      "fallback": "none",
+      "source": "docs/adapters/navitaire.md + oosd-navitaire.md",
+      "confidence": "adapter_doc"
+    },
+    {
+      "carrier": "ANON-LCC-DIRECT",
+      "vendor": "navitaire",
+      "transaction": "Servicing",
+      "channel": "Direct/API",
+      "ndc_version_notes": "n/a",
+      "fallback": "none",
+      "source": "docs/adapters/oosd-navitaire.md",
+      "confidence": "adapter_doc"
+    },
+    {
+      "carrier": "ANON-LCC-DIRECT",
+      "vendor": "navitaire",
+      "transaction": "Groups",
+      "channel": "unknown",
+      "ndc_version_notes": "n/a",
+      "fallback": "none",
+      "source": "no public evidence",
+      "confidence": "unknown"
+    },
+    {
+      "carrier": "ANON-LCC-DIRECT",
+      "vendor": "navitaire",
+      "transaction": "Corporate",
+      "channel": "unknown",
+      "ndc_version_notes": "n/a",
+      "fallback": "none",
+      "source": "no public evidence",
+      "confidence": "unknown"
+    },
+    {
+      "carrier": "ANON-AGG-DUAL",
+      "vendor": "trippro",
+      "transaction": "Shop",
+      "channel": "Either",
+      "ndc_version_notes": "unknown (upstream may be GDS or NDC)",
+      "fallback": "GDS",
+      "source": "docs/adapters/trippro.md",
+      "confidence": "adapter_doc"
+    },
+    {
+      "carrier": "ANON-AGG-DUAL",
+      "vendor": "trippro",
+      "transaction": "OrderCreate",
+      "channel": "Either",
+      "ndc_version_notes": "unknown",
+      "fallback": "GDS",
+      "source": "docs/adapters/trippro.md",
+      "confidence": "adapter_doc"
+    },
+    {
+      "carrier": "ANON-AGG-DUAL",
+      "vendor": "trippro",
+      "transaction": "OrderChange",
+      "channel": "unknown",
+      "ndc_version_notes": "unknown",
+      "fallback": "GDS",
+      "source": "docs/adapters/trippro.md (exchange not implemented)",
+      "confidence": "adapter_doc"
+    },
+    {
+      "carrier": "ANON-AGG-DUAL",
+      "vendor": "trippro",
+      "transaction": "OrderCancel",
+      "channel": "GDS",
+      "ndc_version_notes": "n/a",
+      "fallback": "none",
+      "source": "docs/adapters/trippro.md (SOAP CancelPNR)",
+      "confidence": "adapter_doc"
+    },
+    {
+      "carrier": "ANON-AGG-DUAL",
+      "vendor": "trippro",
+      "transaction": "Servicing",
+      "channel": "GDS",
+      "ndc_version_notes": "n/a",
+      "fallback": "none",
+      "source": "docs/adapters/trippro.md (SOAP ReadPNR/OrderTicket; shop!=servicing)",
+      "confidence": "adapter_doc"
+    },
+    {
+      "carrier": "ANON-AGG-DUAL",
+      "vendor": "trippro",
+      "transaction": "Groups",
+      "channel": "unknown",
+      "ndc_version_notes": "unknown",
+      "fallback": "GDS",
+      "source": "no public evidence",
+      "confidence": "unknown"
+    },
+    {
+      "carrier": "ANON-AGG-DUAL",
+      "vendor": "trippro",
+      "transaction": "Corporate",
+      "channel": "unknown",
+      "ndc_version_notes": "unknown",
+      "fallback": "GDS",
+      "source": "no public evidence",
+      "confidence": "unknown"
+    }
+  ]
+}

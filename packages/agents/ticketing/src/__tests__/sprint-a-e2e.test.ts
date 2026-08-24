@@ -426,6 +426,7 @@ describe('Sprint A end-to-end pipeline', () => {
       segments: [
         { marketing_carrier: 'BA', origin: 'JFK', destination: 'LHR' },
       ],
+      transaction_type: 'shopping',
       include_fallbacks: true,
     });
     expect(r4.ok).toBe(true);
