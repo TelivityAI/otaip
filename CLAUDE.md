@@ -119,8 +119,8 @@ When building agents, Claude Code will attempt to rationalize inventing domain l
 
 | Rationalization | Required response |
 |---|---|
-| "Airline X supports NDC, so I'll route all bookings through NDC" | STOP. Airlines have varying NDC adoption levels by transaction type and market. Some support NDC for shopping only. Some require NDC for certain fare types but GDS for others. Check KB for the carrier's NDC capability matrix. |
-| "NDC version 21.3 is widely supported, I'll default to that" | STOP. NDC versions are NOT backward compatible in all cases. Carriers implement specific versions with carrier-specific extensions. Check KB for which version the specific carrier supports. |
+| "Airline X supports NDC, so I'll route all bookings through NDC" | STOP. Airlines have varying NDC adoption levels by transaction type and vendor. Some support NDC for shopping only. Some require NDC for certain fare types but GDS for others. Check `docs/knowledge-base/gds-ndc-capability-matrix.md` for the carrier×vendor×transaction matrix. Res 787 is the Offer/Order process standard — not a channel parity checklist. |
+| "NDC version 21.3 is widely supported, I'll default to that" | STOP. NDC versions are NOT backward compatible in all cases. Carriers implement specific versions with carrier-specific extensions. Check the matrix `ndc_version_notes` for the specific carrier×vendor. Never invent a version. |
 | "Codeshare flights route through the marketing carrier's channel" | STOP. Codeshare routing depends on ticketing arrangement, inventory control (free-sale vs blocked space), and plating carrier. Some require dual-channel booking. Check KB for the codeshare agreement's booking rules. |
 | "I'll map each airline to either GDS or NDC as their primary channel" | STOP. Most NDC airlines still require GDS for specific scenarios (groups, tours, corporate fares, post-booking servicing). The routing decision must be PER-TRANSACTION, not per-airline. Check KB for channel capability per transaction type. |
 

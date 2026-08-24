@@ -1,6 +1,6 @@
 {
-  "_comment": "Airline-to-distribution-channel mapping for top 30 airlines. channel_priority is ordered preference.",
-  "_version": "0.1.0",
+  "_comment": "SHOPPING/BOOKING HINTS ONLY — not a per-airline channel map for all transactions. Authoritative routing is (carrier, vendor, transaction) via docs/knowledge-base/gds-ndc-capability-matrix.md. ndc_version values here are historical seeds — do NOT treat as proven; never invent 21.3 for new rows. channel_priority is ordered preference for shopping|booking only.",
+  "_version": "0.1.1",
   "carriers": {
     "AA": { "name": "American Airlines", "channels": ["NDC", "GDS"], "channel_priority": ["NDC", "GDS"], "ndc_version": "21.3", "gds_preference": "SABRE", "ndc_capable": true, "ndc_provider_id": "NDC_AA" },
     "BA": { "name": "British Airways", "channels": ["NDC", "GDS"], "channel_priority": ["NDC", "GDS"], "ndc_version": "21.3", "gds_preference": "AMADEUS", "ndc_capable": true, "ndc_provider_id": "NDC_BA" },

@@ -1,0 +1,36 @@
+carrier,vendor,transaction,channel,ndc_version_notes,fallback,source,confidence
+ANON-NDC-AGG,duffel,Shop,NDC,unknown (Duffel API version header != IATA NDC schema),GDS,docs/adapters/duffel.md,adapter_doc
+ANON-NDC-AGG,duffel,OrderCreate,NDC,unknown,GDS,docs/adapters/duffel.md,adapter_doc
+ANON-NDC-AGG,duffel,OrderChange,unknown,unknown,GDS,docs/adapters/duffel.md (exchange not implemented),adapter_doc
+ANON-NDC-AGG,duffel,OrderCancel,unknown,unknown,GDS,docs/adapters/duffel.md + docs/architecture/ADAPTER_STATUS.md (flight cancel not implemented),adapter_doc
+ANON-NDC-AGG,duffel,Servicing,GDS,n/a,none,docs/adapters/duffel.md (shop!=servicing: post-booking not on Duffel adapter path),adapter_doc
+ANON-NDC-AGG,duffel,Groups,unknown,unknown,GDS,no public evidence,unknown
+ANON-NDC-AGG,duffel,Corporate,unknown,unknown,GDS,no public evidence,unknown
+ANON-SABRE-OO,sabre,Shop,Either,unknown (BFM may return NDC + ATPCO; schema per airline unknown),GDS,https://developer.sabre.com/guide/ndc/ndc.html + docs/adapters/sabre.md,vendor_public
+ANON-SABRE-OO,sabre,OrderCreate,NDC,unknown,GDS,https://developer.sabre.com/guide/ndc/ndc.html (v1/orders/create),vendor_public
+ANON-SABRE-OO,sabre,OrderChange,NDC,unknown,GDS,https://developer.sabre.com/guide/ndc/ndc.html (v1/orders/change),vendor_public
+ANON-SABRE-OO,sabre,OrderCancel,NDC,unknown,GDS,https://developer.sabre.com/guide/ndc/ndc.html (v1/orders/cancel),vendor_public
+ANON-SABRE-OO,sabre,Servicing,NDC,unknown,GDS,https://developer.sabre.com/guide/ndc/ndc.html (view/reshop/sync),vendor_public
+ANON-SABRE-OO,sabre,Groups,unknown,unknown,GDS,no public evidence — often still classic GDS,unknown
+ANON-SABRE-OO,sabre,Corporate,unknown,unknown,GDS,no public evidence,unknown
+ANON-GDS-SS,amadeus,Shop,GDS,n/a,none,docs/adapters/amadeus.md,adapter_doc
+ANON-GDS-SS,amadeus,OrderCreate,GDS,n/a,none,docs/adapters/amadeus.md,adapter_doc
+ANON-GDS-SS,amadeus,OrderChange,unknown,n/a,none,docs/adapters/amadeus.md (exchange not in Self-Service),adapter_doc
+ANON-GDS-SS,amadeus,OrderCancel,GDS,n/a,none,docs/adapters/amadeus.md,adapter_doc
+ANON-GDS-SS,amadeus,Servicing,unknown,n/a,none,docs/adapters/amadeus.md (refund/exchange not in Self-Service),adapter_doc
+ANON-GDS-SS,amadeus,Groups,unknown,n/a,none,no public evidence,unknown
+ANON-GDS-SS,amadeus,Corporate,unknown,n/a,none,no public evidence,unknown
+ANON-LCC-DIRECT,navitaire,Shop,Direct/API,n/a (AIDM order model not classic NDC XML version),none,docs/adapters/navitaire.md + docs/adapters/oosd-navitaire.md,adapter_doc
+ANON-LCC-DIRECT,navitaire,OrderCreate,Direct/API,n/a,none,docs/adapters/oosd-navitaire.md,adapter_doc
+ANON-LCC-DIRECT,navitaire,OrderChange,Direct/API,n/a,none,docs/adapters/oosd-navitaire.md,adapter_doc
+ANON-LCC-DIRECT,navitaire,OrderCancel,Direct/API,n/a,none,docs/adapters/navitaire.md + oosd-navitaire.md,adapter_doc
+ANON-LCC-DIRECT,navitaire,Servicing,Direct/API,n/a,none,docs/adapters/oosd-navitaire.md,adapter_doc
+ANON-LCC-DIRECT,navitaire,Groups,unknown,n/a,none,no public evidence,unknown
+ANON-LCC-DIRECT,navitaire,Corporate,unknown,n/a,none,no public evidence,unknown
+ANON-AGG-DUAL,trippro,Shop,Either,unknown (upstream may be GDS or NDC),GDS,docs/adapters/trippro.md,adapter_doc
+ANON-AGG-DUAL,trippro,OrderCreate,Either,unknown,GDS,docs/adapters/trippro.md,adapter_doc
+ANON-AGG-DUAL,trippro,OrderChange,unknown,unknown,GDS,docs/adapters/trippro.md (exchange not implemented),adapter_doc
+ANON-AGG-DUAL,trippro,OrderCancel,GDS,n/a,none,docs/adapters/trippro.md (SOAP CancelPNR),adapter_doc
+ANON-AGG-DUAL,trippro,Servicing,GDS,n/a,none,docs/adapters/trippro.md (SOAP ReadPNR/OrderTicket; shop!=servicing),adapter_doc
+ANON-AGG-DUAL,trippro,Groups,unknown,unknown,GDS,no public evidence,unknown
+ANON-AGG-DUAL,trippro,Corporate,unknown,unknown,GDS,no public evidence,unknown
