@@ -344,7 +344,7 @@ describe('HotelbedsAdapter.bookTransfer', () => {
     });
   });
 
-  it('rejects unsupported ON_REQUEST confirm status (DQ-T6 CLOSED)', async () => {
+  it('preserves ON_REQUEST when present (DQ-T6 OPEN — Transfers-specific)', async () => {
     captureFetch([
       {
         status: 200,
@@ -358,17 +358,16 @@ describe('HotelbedsAdapter.bookTransfer', () => {
         },
       },
     ]);
-    await expect(
-      adapter.bookTransfer({
-        transferCode: 'trf-onreq',
-        holder: { name: 'Jane', surname: 'Doe' },
-        passengers: [{ type: 'ADULT', name: 'Jane', surname: 'Doe' }],
-        clientReference: 'AVR-TRF-002',
-      }),
-    ).rejects.toThrow(/ON_REQUEST|unsupported status/i);
+    const result = await adapter.bookTransfer({
+      transferCode: 'trf-onreq',
+      holder: { name: 'Jane', surname: 'Doe' },
+      passengers: [{ type: 'ADULT', name: 'Jane', surname: 'Doe' }],
+      clientReference: 'AVR-TRF-002',
+    });
+    expect(result.status).toBe('ON_REQUEST');
   });
 
-  it('accepts MODIFIED booking status from official enum', async () => {
+  it('accepts MODIFIED booking status from official Transfers enum', async () => {
     captureFetch([
       {
         status: 200,

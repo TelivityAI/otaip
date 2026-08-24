@@ -142,10 +142,11 @@ describe('Transfers fixtures — cancellation policies + pricing (DQ-T4/T5/T6/T7
     expect(result.pickupDetails.time).toBe('10:00:00');
   });
 
-  it('rejects unsupported ON_REQUEST on Transfers confirm (DQ-T6 CLOSED)', () => {
+  it('preserves ON_REQUEST on Transfers when present (DQ-T6 OPEN)', () => {
     const raw = loadJson<HotelbedsTransfersBookingResponse>(
       'unsupported-on-request-booking.json',
     );
-    expect(() => mapTransferBookingResponse(raw)).toThrow(/ON_REQUEST|unsupported status/i);
+    // Same fixture file: Activities rejects ON_REQUEST; Transfers passes it through.
+    expect(mapTransferBookingResponse(raw).status).toBe('ON_REQUEST');
   });
 });

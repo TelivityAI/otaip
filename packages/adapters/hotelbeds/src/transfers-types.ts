@@ -91,10 +91,11 @@ export interface TransferBookRequest {
 }
 
 /**
- * Official booking statuses: CONFIRMED | CANCELLED | MODIFIED.
- * DQ-T6 CLOSED: Transfers confirm has no OnRequest.
+ * Documented Transfers response statuses include CONFIRMED | CANCELLED | MODIFIED.
+ * Vendor brief also listed ON_REQUEST — DQ-T6 remains OPEN (do not infer from
+ * Activities “no OnRequest” marketing). Adapter passes ON_REQUEST through.
  */
-export type TransferBookingStatus = 'CONFIRMED' | 'CANCELLED' | 'MODIFIED';
+export type TransferBookingStatus = 'CONFIRMED' | 'CANCELLED' | 'MODIFIED' | 'ON_REQUEST';
 
 export interface TransferBookResponse {
   bookingReference: string;

@@ -91,7 +91,11 @@ export interface TransfersChannelCapability {
   supportedMarkets: string[];
   supportedFunctions: Array<'availability' | 'book' | 'cancel'>;
   setsRetailPrice: false;
-  /** Hotelbeds Transfers does **not** return ON_REQUEST — DQ-T6 CLOSED. */
+  /**
+   * Whether this surface may return `'ON_REQUEST'` (vendor brief).
+   * DQ-T6 remains OPEN for Transfers — do not copy Activities “no OnRequest”
+   * marketing onto this flag.
+   */
   supportsOnRequest: boolean;
   /** Official Availability Simple documents inbound; adapter surface is one-way (DQ-T8). */
   supportsRoundTrip: boolean;
@@ -116,7 +120,7 @@ export const hotelbedsTransfersCapabilities: TransfersChannelCapability = {
   supportedMarkets: ['*'],
   supportedFunctions: ['availability', 'book', 'cancel'],
   setsRetailPrice: false,
-  supportsOnRequest: false,
+  supportsOnRequest: true,
   supportsRoundTrip: false,
   testEnvDailyRequestLimit: 50,
   updatedAt: '2026-08-24',

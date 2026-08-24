@@ -27,6 +27,7 @@ const KNOWN_BOOKING_STATUSES: ReadonlySet<TransferBookingStatus> = new Set([
   'CONFIRMED',
   'CANCELLED',
   'MODIFIED',
+  'ON_REQUEST',
 ]);
 
 function toMoney(amount: string | number | undefined | null, currency: string | undefined): Money {
@@ -143,12 +144,9 @@ function normalizeTransferBookingStatus(raw: string | undefined): TransferBookin
   if (raw && KNOWN_BOOKING_STATUSES.has(raw as TransferBookingStatus)) {
     return raw as TransferBookingStatus;
   }
-  // DQ-T6 CLOSED: official confirm has no ON_REQUEST.
-  throw new Error(
-    `Hotelbeds Transfers booking returned unsupported status ${JSON.stringify(raw)}. ` +
-      'Official statuses are CONFIRMED | CANCELLED | MODIFIED (no ON_REQUEST). ' +
-      'See docs/knowledge-base/transfers.md DQ-T6.',
-  );
+  // DQ-T6 OPEN: do not invent Transfers ON_REQUEST semantics from Activities docs.
+  // Unknown values fall back to CONFIRMED (prior adapter behavior).
+  return 'CONFIRMED';
 }
 
 export function mapTransferBookingResponse(

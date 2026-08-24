@@ -72,16 +72,16 @@ Cited Availability Simple response parameters + published response sample:
 Cited: https://developer.hotelbeds.com/documentation/transfers/booking-api/booking-post-booking/booking-request/
 and Booking Detail / Booking List / Booking Cancellation docs.
 
-Booking / transfer status restricted values: **`CONFIRMED` | `CANCELLED` |
-`MODIFIED`**.
+Documented booking / transfer status values in those Transfers pages:
+**`CONFIRMED` | `CANCELLED` | `MODIFIED`**.
 
-Hotelbeds Transfers product marketing (developer portal): *"100% of our product
-guaranteed on confirmation: No OnRequest or pending stages."*
-
-**`ON_REQUEST` is not a Hotelbeds Transfers confirm status.**
+The vendor brief also listed `'ON_REQUEST'`. Whether Transfers confirm can
+return `ON_REQUEST`, and what retrieval/poll cadence applies if so, is **not
+closed from Transfers-specific docs** — see DQ-T6 (do not infer from Activities
+portal marketing copy).
 
 Retrieval: `GET .../bookings/{language}/reference/{booking_reference}`
-(Booking Detail) — not an ON_REQUEST poll.
+(Booking Detail).
 
 ## Cancellation
 
@@ -122,21 +122,26 @@ OTAIP method: `cancelTransfer(bookingReference, options?)` →
   uses `"time": "10:00:00"` (HH:mm:ss) alongside separate `date`. Request Simple
   path uses ISO-like `YYYY-MM-DDTHH:mm:ss` outbound dateTime. Adapter still passes
   brief `{ date, time }` through unchanged.
-- **DQ-T6** — `ON_REQUEST` confirmation flow. Evidence: booking status enum
-  CONFIRMED|CANCELLED|MODIFIED; “No OnRequest”; Booking Detail for retrieval.
 - **DQ-T7** — Net vs selling rate. Evidence: `price.netAmount` + `price.totalAmount`
   (not Hotels `sellingRate`). Adapter prefers `netAmount` when present, else
   `totalAmount` / brief `amount`.
 
-### Partially closed / still open
+### Still open
 
 - **DQ-T3** — `outbound.time` timezone (local at `from` vs UTC).
-  **Closed for cancellation policy timing:** destination local time (cited above).
+  **Closed for cancellation policy timing only:** destination local time (cited
+  under Cancellation / availability `cancellationPolicies.from` — Transfers lock).
   **Still open for the availability request clock:** official Simple examples use
   `2021-08-17T12:15:00` with no `Z`/offset. Pickup-time KB maps request time to
   flight/train arrival or departure depending on direction — not an explicit
   “UTC vs local-at-from” rule for the request field. Adapter passes through
   unchanged.
+- **DQ-T6** — `'ON_REQUEST'` confirmation / poll cadence on **Transfers**.
+  Transfers booking docs list `CONFIRMED` | `CANCELLED` | `MODIFIED`. The vendor
+  brief also listed `ON_REQUEST`. Closing “no OnRequest on confirm” requires
+  Transfers-specific evidence — **do not copy** the Activities portal “No
+  OnRequest or pending stages” marketing line onto Transfers. Adapter passes
+  `ON_REQUEST` through when present; caller decides follow-up until closed.
 - **DQ-T8** — Round-trip / inbound leg. Official Availability Simple documents
   optional `inbound` dateTime for round-trip. Adapter surface remains one-way
   this session; modeling `inbound` symmetrically is future work.
