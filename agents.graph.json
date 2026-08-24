@@ -394,7 +394,7 @@
       "id": "6.2",
       "name": "ADM Prevention",
       "stage": "settlement",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "contract_status": "active",
       "has_contract": false,
       "source_path": "packages/agents/settlement/src/adm-prevention/index.ts"
