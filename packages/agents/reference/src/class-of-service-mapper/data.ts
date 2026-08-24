@@ -249,7 +249,7 @@ const AA_CLASSES = classMap([
     },
   ],
   [
-    ['Y', 'B', 'M'],
+    ['Y', 'M'],
     {
       cabin_class: 'economy',
       cabin_brand_name: null,
@@ -264,7 +264,7 @@ const AA_CLASSES = classMap([
     },
   ],
   [
-    ['H', 'Q', 'V', 'K', 'L', 'S', 'N'],
+    ['H', 'Q', 'V', 'K', 'L', 'S', 'N', 'O'],
     {
       cabin_class: 'economy',
       cabin_brand_name: null,
@@ -278,9 +278,11 @@ const AA_CLASSES = classMap([
       priority: 'standard',
     },
   ],
-  // TODO: [NEEDS DOMAIN INPUT] AA 'B' on some routes maps to Basic Economy
+  // Verified 2026-08-24: AA Basic Economy books in B on AA-operated flights
+  // (AA SalesLink Basic Economy; aa.com AAdvantage special-fares chart lists Basic Economy (B)).
+  // Codeshare Basic Economy may use a different RBD — verify fare rules per market.
   [
-    ['O'],
+    ['B'],
     {
       cabin_class: 'economy',
       cabin_brand_name: null,
@@ -557,7 +559,13 @@ const LH_CLASSES = classMap([
 // ---------------------------------------------------------------------------
 // Air France (AF)
 // ---------------------------------------------------------------------------
-// TODO: [NEEDS DOMAIN INPUT] AF class maps need validation against current GDS filings
+// Verified 2026-08-24: No current public AF commercial merchandising map (RBD→cabin)
+// found on airfrance.com / flyingblue.com. Flying Blue earn is spend-based for AF-marketed
+// flights (not RBD tables). Partner earn charts (e.g. Qantas) are NOT authoritative for
+// AF inventory cabin mapping.
+// TODO: [NEEDS DOMAIN INPUT] Validate AF RBD→cabin against current GDS/ATPCO filings or
+// an official AF trade fare-family document. Do not invent from partner earn tables.
+// Re-verify: quarterly, or when AF announces branded-fare / cabin RBD changes.
 const AF_CLASSES = classMap([
   [
     ['F', 'A'],
@@ -639,7 +647,14 @@ const AF_CLASSES = classMap([
 // ---------------------------------------------------------------------------
 // Emirates (EK)
 // ---------------------------------------------------------------------------
-// TODO: [NEEDS DOMAIN INPUT] EK class maps need validation against current GDS filings
+// Verified 2026-08-24: No current public EK commercial merchandising map (RBD→cabin)
+// found on emirates.com. Optional-services pages list some Economy seat-selection RBDs
+// but not a full cabin merchandising matrix; Skywards calculator does not publish a
+// static RBD→cabin table. Partner earn charts are NOT authoritative for EK cabin mapping
+// (e.g. Qantas notes W/E earn as Flex Economy while receiving Premium Economy product).
+// TODO: [NEEDS DOMAIN INPUT] Validate EK RBD→cabin against current GDS/ATPCO filings or
+// an official Emirates trade fare-family document. Do not invent.
+// Re-verify: quarterly, or when EK announces fare-family / Premium Economy RBD changes.
 const EK_CLASSES = classMap([
   [
     ['F', 'A'],
@@ -721,14 +736,26 @@ const EK_CLASSES = classMap([
 // ---------------------------------------------------------------------------
 // Singapore Airlines (SQ)
 // ---------------------------------------------------------------------------
-// TODO: [NEEDS DOMAIN INPUT] SQ class maps need validation against current GDS filings
+// Verified 2026-08-24 against:
+// - Live commercial fare-types page (singaporeair.com …/flying-withus/fare-types/):
+//   Economy Lite V,K | Value Q,N | Standard M,H,W | Flexi Y,B,E;
+//   PE Lite R | Standard L,P | Flexi S,T;
+//   Business Lite D | Standard U | Flexi Z,C,J;
+//   First/Suites F,A.
+// - KrisFlyer earn FAQ (same date): Suites/First A,F; Business Z,C,J / D,U;
+//   PE S,T / R,L,P; Economy B,E,Y / M,H,W / Q,N,V,K,G.
+// - Dated trade PDF (issued 13 Apr 2021, eff. 22 Apr 2021): same RBD sets in Annex A
+//   (developer.singaporeair.com Trade_Comms_Fare_Family_Changes-Economy_Class_eff_22_Apr_2021.pdf).
+// TODO: [NEEDS DOMAIN INPUT] RBD O (and any award/group codes beyond G) — not on live
+// fare-types or KrisFlyer cabin table.
+// Re-verify: quarterly, or when SQ publishes fare-family trade updates.
 const SQ_CLASSES = classMap([
   [
     ['F', 'A'],
     {
       cabin_class: 'first',
       cabin_brand_name: 'Suites / First',
-      fare_family: 'First',
+      fare_family: 'First / Suites',
       upgrade_eligible: false,
       upgrade_type: null,
       same_day_change: true,
@@ -739,11 +766,11 @@ const SQ_CLASSES = classMap([
     },
   ],
   [
-    ['J', 'C', 'D', 'Z'],
+    ['Z', 'C', 'J'],
     {
       cabin_class: 'business',
       cabin_brand_name: 'Business',
-      fare_family: 'Business',
+      fare_family: 'Business Flexi',
       upgrade_eligible: false,
       upgrade_type: null,
       same_day_change: true,
@@ -754,11 +781,41 @@ const SQ_CLASSES = classMap([
     },
   ],
   [
-    ['W', 'R'],
+    ['U'],
+    {
+      cabin_class: 'business',
+      cabin_brand_name: 'Business',
+      fare_family: 'Business Standard',
+      upgrade_eligible: false,
+      upgrade_type: null,
+      same_day_change: true,
+      seat_selection: 'included',
+      changes_allowed: true,
+      refundable: false,
+      priority: 'premium',
+    },
+  ],
+  [
+    ['D'],
+    {
+      cabin_class: 'business',
+      cabin_brand_name: 'Business',
+      fare_family: 'Business Lite',
+      upgrade_eligible: false,
+      upgrade_type: null,
+      same_day_change: true,
+      seat_selection: 'included',
+      changes_allowed: true,
+      refundable: false,
+      priority: 'premium',
+    },
+  ],
+  [
+    ['S', 'T'],
     {
       cabin_class: 'premium_economy',
       cabin_brand_name: 'Premium Economy',
-      fare_family: 'Premium Economy',
+      fare_family: 'Premium Economy Flexi',
       upgrade_eligible: true,
       upgrade_type: 'mileage',
       same_day_change: true,
@@ -769,11 +826,41 @@ const SQ_CLASSES = classMap([
     },
   ],
   [
-    ['Y', 'B', 'M', 'H'],
+    ['L', 'P'],
+    {
+      cabin_class: 'premium_economy',
+      cabin_brand_name: 'Premium Economy',
+      fare_family: 'Premium Economy Standard',
+      upgrade_eligible: true,
+      upgrade_type: 'mileage',
+      same_day_change: true,
+      seat_selection: 'included',
+      changes_allowed: true,
+      refundable: false,
+      priority: 'preferred',
+    },
+  ],
+  [
+    ['R'],
+    {
+      cabin_class: 'premium_economy',
+      cabin_brand_name: 'Premium Economy',
+      fare_family: 'Premium Economy Lite',
+      upgrade_eligible: true,
+      upgrade_type: 'mileage',
+      same_day_change: true,
+      seat_selection: 'included',
+      changes_allowed: false,
+      refundable: false,
+      priority: 'preferred',
+    },
+  ],
+  [
+    ['Y', 'B', 'E'],
     {
       cabin_class: 'economy',
       cabin_brand_name: null,
-      fare_family: 'Economy (Flexible)',
+      fare_family: 'Economy Flexi',
       upgrade_eligible: true,
       upgrade_type: 'mileage',
       same_day_change: true,
@@ -784,11 +871,41 @@ const SQ_CLASSES = classMap([
     },
   ],
   [
-    ['Q', 'V', 'K', 'L', 'S', 'N', 'T', 'G', 'E', 'O'],
+    ['M', 'H', 'W'],
     {
       cabin_class: 'economy',
       cabin_brand_name: null,
-      fare_family: 'Economy (Restricted)',
+      fare_family: 'Economy Standard',
+      upgrade_eligible: true,
+      upgrade_type: 'mileage',
+      same_day_change: true,
+      seat_selection: 'included',
+      changes_allowed: true,
+      refundable: false,
+      priority: 'standard',
+    },
+  ],
+  [
+    ['Q', 'N'],
+    {
+      cabin_class: 'economy',
+      cabin_brand_name: null,
+      fare_family: 'Economy Value',
+      upgrade_eligible: false,
+      upgrade_type: 'not_eligible',
+      same_day_change: false,
+      seat_selection: 'paid',
+      changes_allowed: true,
+      refundable: false,
+      priority: 'standard',
+    },
+  ],
+  [
+    ['V', 'K', 'G'],
+    {
+      cabin_class: 'economy',
+      cabin_brand_name: null,
+      fare_family: 'Economy Lite / Group',
       upgrade_eligible: false,
       upgrade_type: 'not_eligible',
       same_day_change: false,
@@ -803,14 +920,23 @@ const SQ_CLASSES = classMap([
 // ---------------------------------------------------------------------------
 // Qantas (QF)
 // ---------------------------------------------------------------------------
-// TODO: [NEEDS DOMAIN INPUT] QF class maps need validation against current GDS filings
+// Verified 2026-08-24 against Qantas Frequent Flyer Earn Category tables
+// (qantas.com …/earn-points/airline-earning-tables/earn-category-tables.html)
+// for QF International revenue classes:
+//   First AF | Business Flex CJ | Business Saver D | Business Sale I |
+//   PE Flex W | PE Saver R | PE Sale T |
+//   Economy Flex BHY | Economy Saver GKLMSV | Economy Sale ENOQ.
+// Domestic Red e-Deal / Flex sets differ (e.g. K is Flex domestic, Saver international).
+// TODO: [NEEDS DOMAIN INPUT] Classic Flight Reward RBDs (X economy, Z PE, U business, P first)
+// and domestic vs international dual-use of K — map only when award/domestic path is known.
+// Re-verify: quarterly, or when Qantas updates Earn Category tables.
 const QF_CLASSES = classMap([
   [
     ['F', 'A'],
     {
       cabin_class: 'first',
       cabin_brand_name: 'Qantas First',
-      fare_family: 'First',
+      fare_family: 'First Sale / Saver / Flex',
       upgrade_eligible: false,
       upgrade_type: null,
       same_day_change: true,
@@ -821,11 +947,11 @@ const QF_CLASSES = classMap([
     },
   ],
   [
-    ['J', 'C', 'D', 'I', 'Z'],
+    ['C', 'J'],
     {
       cabin_class: 'business',
       cabin_brand_name: 'Qantas Business',
-      fare_family: 'Business',
+      fare_family: 'Business Flex',
       upgrade_eligible: false,
       upgrade_type: null,
       same_day_change: true,
@@ -836,11 +962,41 @@ const QF_CLASSES = classMap([
     },
   ],
   [
-    ['W', 'R'],
+    ['D'],
+    {
+      cabin_class: 'business',
+      cabin_brand_name: 'Qantas Business',
+      fare_family: 'Business Saver',
+      upgrade_eligible: false,
+      upgrade_type: null,
+      same_day_change: true,
+      seat_selection: 'included',
+      changes_allowed: true,
+      refundable: false,
+      priority: 'premium',
+    },
+  ],
+  [
+    ['I'],
+    {
+      cabin_class: 'business',
+      cabin_brand_name: 'Qantas Business',
+      fare_family: 'Business Sale',
+      upgrade_eligible: false,
+      upgrade_type: null,
+      same_day_change: true,
+      seat_selection: 'included',
+      changes_allowed: true,
+      refundable: false,
+      priority: 'premium',
+    },
+  ],
+  [
+    ['W'],
     {
       cabin_class: 'premium_economy',
       cabin_brand_name: 'Premium Economy',
-      fare_family: 'Premium Economy',
+      fare_family: 'Premium Economy Flex',
       upgrade_eligible: true,
       upgrade_type: 'mileage',
       same_day_change: true,
@@ -851,11 +1007,41 @@ const QF_CLASSES = classMap([
     },
   ],
   [
-    ['Y', 'B', 'M', 'H'],
+    ['R'],
+    {
+      cabin_class: 'premium_economy',
+      cabin_brand_name: 'Premium Economy',
+      fare_family: 'Premium Economy Saver',
+      upgrade_eligible: true,
+      upgrade_type: 'mileage',
+      same_day_change: true,
+      seat_selection: 'included',
+      changes_allowed: true,
+      refundable: false,
+      priority: 'preferred',
+    },
+  ],
+  [
+    ['T'],
+    {
+      cabin_class: 'premium_economy',
+      cabin_brand_name: 'Premium Economy',
+      fare_family: 'Premium Economy Sale',
+      upgrade_eligible: true,
+      upgrade_type: 'mileage',
+      same_day_change: true,
+      seat_selection: 'included',
+      changes_allowed: false,
+      refundable: false,
+      priority: 'preferred',
+    },
+  ],
+  [
+    ['B', 'H', 'Y'],
     {
       cabin_class: 'economy',
       cabin_brand_name: null,
-      fare_family: 'Economy (Flexible)',
+      fare_family: 'Economy Flex',
       upgrade_eligible: true,
       upgrade_type: 'mileage',
       same_day_change: true,
@@ -866,11 +1052,26 @@ const QF_CLASSES = classMap([
     },
   ],
   [
-    ['Q', 'V', 'K', 'L', 'S', 'N', 'T', 'G', 'E', 'O'],
+    ['G', 'K', 'L', 'M', 'S', 'V'],
     {
       cabin_class: 'economy',
       cabin_brand_name: null,
-      fare_family: 'Economy (Restricted)',
+      fare_family: 'Economy Saver',
+      upgrade_eligible: false,
+      upgrade_type: 'not_eligible',
+      same_day_change: false,
+      seat_selection: 'paid',
+      changes_allowed: true,
+      refundable: false,
+      priority: 'standard',
+    },
+  ],
+  [
+    ['E', 'N', 'O', 'Q'],
+    {
+      cabin_class: 'economy',
+      cabin_brand_name: null,
+      fare_family: 'Economy Sale',
       upgrade_eligible: false,
       upgrade_type: 'not_eligible',
       same_day_change: false,
@@ -885,7 +1086,15 @@ const QF_CLASSES = classMap([
 // ---------------------------------------------------------------------------
 // All Nippon Airways (NH)
 // ---------------------------------------------------------------------------
-// TODO: [NEEDS DOMAIN INPUT] NH class maps need validation against current GDS filings
+// Verified 2026-08-24 against:
+// - ANA Mileage Club international accrual (ana.co.jp …/amc/flightmile/int/):
+//   First F,A; Business J / C,D,Z / P; Premium Economy G,E / N;
+//   Economy Y,B,M / U,H,Q / V,W,S,T / L,K; not eligible O,I,R,X.
+// - ANA branded-fare page (ana.co.jp …/branded-fare/): cabin labels F / C / PY / Y;
+//   Economy advance-seat note uses booking-class ranges Y–Q free, V–K partly paid
+//   (consistent with Economy RBD set above; does not remap PE/Business letters).
+// TODO: [NEEDS DOMAIN INPUT] Domestic Japan RBD sets and award inventory (O,I,R,X).
+// Re-verify: quarterly, or when ANA updates branded fares / Mileage Club accrual.
 const NH_CLASSES = classMap([
   [
     ['F', 'A'],
@@ -903,7 +1112,7 @@ const NH_CLASSES = classMap([
     },
   ],
   [
-    ['J', 'C', 'D', 'Z'],
+    ['J'],
     {
       cabin_class: 'business',
       cabin_brand_name: 'ANA Business (THE Room)',
@@ -918,7 +1127,37 @@ const NH_CLASSES = classMap([
     },
   ],
   [
-    ['W', 'R', 'E'],
+    ['C', 'D', 'Z'],
+    {
+      cabin_class: 'business',
+      cabin_brand_name: 'ANA Business (THE Room)',
+      fare_family: 'Business (Discounted)',
+      upgrade_eligible: false,
+      upgrade_type: null,
+      same_day_change: true,
+      seat_selection: 'included',
+      changes_allowed: true,
+      refundable: false,
+      priority: 'premium',
+    },
+  ],
+  [
+    ['P'],
+    {
+      cabin_class: 'business',
+      cabin_brand_name: 'ANA Business (THE Room)',
+      fare_family: 'Business (Deep Discount)',
+      upgrade_eligible: false,
+      upgrade_type: null,
+      same_day_change: true,
+      seat_selection: 'included',
+      changes_allowed: true,
+      refundable: false,
+      priority: 'premium',
+    },
+  ],
+  [
+    ['G', 'E'],
     {
       cabin_class: 'premium_economy',
       cabin_brand_name: 'Premium Economy',
@@ -933,7 +1172,22 @@ const NH_CLASSES = classMap([
     },
   ],
   [
-    ['Y', 'B', 'M', 'H'],
+    ['N'],
+    {
+      cabin_class: 'premium_economy',
+      cabin_brand_name: 'Premium Economy',
+      fare_family: 'Premium Economy (Discounted)',
+      upgrade_eligible: true,
+      upgrade_type: 'mileage',
+      same_day_change: true,
+      seat_selection: 'included',
+      changes_allowed: true,
+      refundable: false,
+      priority: 'preferred',
+    },
+  ],
+  [
+    ['Y', 'B', 'M'],
     {
       cabin_class: 'economy',
       cabin_brand_name: null,
@@ -948,11 +1202,41 @@ const NH_CLASSES = classMap([
     },
   ],
   [
-    ['Q', 'V', 'K', 'L', 'S', 'N', 'T', 'G', 'O'],
+    ['U', 'H', 'Q'],
+    {
+      cabin_class: 'economy',
+      cabin_brand_name: null,
+      fare_family: 'Economy',
+      upgrade_eligible: true,
+      upgrade_type: 'mileage',
+      same_day_change: true,
+      seat_selection: 'included',
+      changes_allowed: true,
+      refundable: false,
+      priority: 'standard',
+    },
+  ],
+  [
+    ['V', 'W', 'S', 'T'],
     {
       cabin_class: 'economy',
       cabin_brand_name: null,
       fare_family: 'Economy (Restricted)',
+      upgrade_eligible: false,
+      upgrade_type: 'not_eligible',
+      same_day_change: false,
+      seat_selection: 'paid',
+      changes_allowed: false,
+      refundable: false,
+      priority: 'standard',
+    },
+  ],
+  [
+    ['L', 'K'],
+    {
+      cabin_class: 'economy',
+      cabin_brand_name: null,
+      fare_family: 'Economy (Deep Discount)',
       upgrade_eligible: false,
       upgrade_type: 'not_eligible',
       same_day_change: false,
@@ -1180,7 +1464,7 @@ const AA_LOYALTY = loyaltyMap([
     },
   ],
   [
-    ['Y', 'B', 'M'],
+    ['Y', 'M'],
     {
       program_name: 'AAdvantage',
       rdm_percent: 100,
@@ -1200,7 +1484,7 @@ const AA_LOYALTY = loyaltyMap([
     },
   ],
   [
-    ['K', 'L', 'S', 'N'],
+    ['K', 'L', 'S', 'N', 'O'],
     {
       program_name: 'AAdvantage',
       rdm_percent: 25,
@@ -1210,7 +1494,7 @@ const AA_LOYALTY = loyaltyMap([
     },
   ],
   [
-    ['O'],
+    ['B'],
     {
       program_name: 'AAdvantage',
       rdm_percent: 0,

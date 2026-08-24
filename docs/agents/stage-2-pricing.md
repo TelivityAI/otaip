@@ -36,24 +36,22 @@ Parses ATPCO fare rules (categories 1-20) into human-readable structured format 
 **Class:** `FareConstruction`
 **Status:** Implemented
 
-NUC x ROE fare construction with mileage validation, HIP/BHC/CTM checks, surcharges, and IATA rounding. All financial math uses `decimal.js`.
+NUC × IROE construction with published TPM/MPM, Resolution **024d** (HX/NX) rounding, and fail-closed HIP/BHC/CTM hooks. All financial math uses `decimal.js`.
+
+Licensed IROE / 024d / TPM-MPM data are **not** shipped in the package. Pass them via `data_sources`. Missing IROE, TPM, or 024d → `DomainInputRequired`. Haversine-as-TPM and banker's rounding are banned.
+
+**KB:** `docs/knowledge-base/fare-construction-data-dependencies.md`
 
 **Input (`FareConstructionInput`):**
 - `journey_type` -- `'OW' | 'RT' | 'CT'` (one-way, round-trip, circle-trip)
 - `components` -- fare components (origin, destination, carrier, fare basis, NUC amount)
 - `selling_currency` -- ISO 4217 currency
-- `point_of_sale?` -- country for ROE selection
+- `point_of_sale?` -- country for IROE selection context
+- `data_sources?` -- licensed `{ iroe, rounding_024d, mileage }` (required for a constructed fare)
 
-**Output (`FareConstructionOutput`):**
-- `total_nuc` -- sum of components + surcharges
-- `roe` -- ROE used for conversion
-- `local_amount` -- final amount after IATA rounding
-- `currency` -- selling currency
-- `mileage_checks` -- per-component TPM/MPM validation
-- `mileage_exceeded` -- whether total mileage exceeds MPM
-- `mileage_surcharge` -- surcharge details if applicable
-- `hip_check`, `bhc_check`, `ctm_check` -- mileage system checks
-- `audit_trail` -- full calculation audit
+**Output (`FareConstructionResult`):**
+- Success (`FareConstructionOutput`): `total_nuc`, `iroe` (alias `roe`), `local_amount` after 024d, `rounding_method` (`HX`|`NX`), published `mileage_checks`, HIP/BHC/CTM sketches, `audit_trail`
+- Or `DomainInputRequired` when licensed data is missing
 
 ---
 
@@ -64,6 +62,8 @@ NUC x ROE fare construction with mileage validation, HIP/BHC/CTM checks, surchar
 **Status:** Implemented
 
 Per-segment tax computation with exemption engine, ~30 countries, ~50 tax codes, currency conversion. All financial math uses `decimal.js`.
+
+**FX note:** Ticket-tax / payment currency conversion must use licensed **ICER** (IATA Consolidated Exchange Rate, daily) — **not** IROE. IROE is fare construction only (Res 024c / Agent 2.2). See [IATA Exchange Rates](https://www.iata.org/en/services/finance/xrates/) and `docs/knowledge-base/fare-construction-data-dependencies.md`. The bundled `currency_conversions` map is demo-only; production must fail closed on missing ICER.
 
 **Input (`TaxCalculationInput`):**
 - `segments` -- itinerary segments (origin/destination airports and countries, carrier, cabin class, base fare NUC)

@@ -16,11 +16,8 @@ import {
   AgentInputValidationError,
   isDomainInputRequired,
 } from '@otaip/core';
-import type {
-  ChangeManagementInput,
-  ChangeManagementResult,
-} from './types.js';
-import { assessChange } from './change-engine.js';
+import type { ChangeManagementInput, ChangeManagementResult } from './types.js';
+import { assessChange, assertChangeWaiverInput } from './change-engine.js';
 
 const TICKET_NUMBER_RE = /^\d{13}$/;
 const CARRIER_RE = /^[A-Z0-9]{2}$/;
@@ -90,6 +87,8 @@ export class ChangeManagement implements Agent<ChangeManagementInput, ChangeMana
         total_due: result.assessment.total_due,
         fee_waived: result.assessment.fee_waived,
         residual_method: result.assessment.residual_method,
+        us_dot_24h_eligible: result.us_dot_24h.eligible,
+        us_dot_24h_remedy: result.us_dot_24h.carrier_remedy,
       },
     };
   }
@@ -151,6 +150,8 @@ export class ChangeManagement implements Agent<ChangeManagementInput, ChangeMana
       throw new AgentInputValidationError(this.id, 'new_fare', 'Must be a valid decimal string.');
     }
 
+    assertChangeWaiverInput(data);
+
     if (data.ticket_usage !== undefined && !VALID_USAGE.has(data.ticket_usage)) {
       throw new AgentInputValidationError(
         this.id,
@@ -196,4 +197,18 @@ export type {
   ChangeFeeRule,
   ChangeAction,
   TicketUsage,
+  UsDot24HourRemedy,
+  UsDot24HourBookingChannel,
+  UsDot24HourIneligibilityReason,
+  UsDot24HourEntitlement,
+  UsDot24HourContext,
+  UsDot24HourAssessment,
+  UsDot24HourCarrierRemedyRow,
+  Cat31Rules,
+  WaiverEffect,
+  WaiverPenaltyReduction,
+  WaiverRefundForm,
 } from './types.js';
+
+export { WAIVER_EFFECTS } from './types.js';
+export { assertChangeWaiverInput } from './change-engine.js';

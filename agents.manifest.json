@@ -2334,7 +2334,7 @@
       "id": "2.2",
       "name": "Fare Construction",
       "stage": "pricing",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "contract_status": "active",
       "has_contract": false,
       "source_path": "packages/agents/pricing/src/fare-construction/index.ts"
@@ -2806,6 +2806,106 @@
               "additionalProperties": false
             }
           },
+          "transaction_type": {
+            "type": "string",
+            "enum": [
+              "shopping",
+              "booking",
+              "ticketing",
+              "servicing",
+              "group",
+              "corporate"
+            ]
+          },
+          "vendor": {
+            "type": "string",
+            "enum": [
+              "sabre",
+              "amadeus",
+              "duffel",
+              "navitaire",
+              "trippro",
+              "airline_direct",
+              "unknown"
+            ]
+          },
+          "plating_carrier": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 3
+          },
+          "capability_matrix": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "carrier": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "vendor": {
+                  "type": "string",
+                  "enum": [
+                    "sabre",
+                    "amadeus",
+                    "duffel",
+                    "navitaire",
+                    "trippro",
+                    "airline_direct",
+                    "unknown"
+                  ]
+                },
+                "transaction": {
+                  "type": "string",
+                  "enum": [
+                    "Shop",
+                    "OrderCreate",
+                    "OrderChange",
+                    "OrderCancel",
+                    "Servicing",
+                    "Groups",
+                    "Corporate"
+                  ]
+                },
+                "channel": {
+                  "type": "string",
+                  "enum": [
+                    "NDC",
+                    "GDS",
+                    "Direct/API",
+                    "Either",
+                    "unknown"
+                  ]
+                },
+                "ndc_version_notes": {
+                  "type": "string"
+                },
+                "fallback": {
+                  "type": "string"
+                },
+                "source": {
+                  "type": "string"
+                },
+                "confidence": {
+                  "type": "string",
+                  "enum": [
+                    "adapter_doc",
+                    "vendor_public",
+                    "unknown"
+                  ]
+                }
+              },
+              "required": [
+                "carrier",
+                "vendor",
+                "transaction",
+                "channel",
+                "ndc_version_notes",
+                "fallback"
+              ],
+              "additionalProperties": false
+            }
+          },
           "preferred_channel": {
             "type": "string",
             "enum": [
@@ -2828,6 +2928,7 @@
         },
         "required": [
           "segments",
+          "transaction_type",
           "include_fallbacks"
         ],
         "additionalProperties": false
@@ -2913,6 +3014,15 @@
                     "NDC_ORDER",
                     "DIRECT_API"
                   ]
+                },
+                "domain_input_required": {
+                  "type": "boolean"
+                },
+                "missing_inputs": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
                 }
               },
               "required": [
@@ -4349,7 +4459,7 @@
       "id": "5.2",
       "name": "Exchange/Reissue",
       "stage": "exchange",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "contract_status": "active",
       "has_contract": false,
       "source_path": "packages/agents/exchange/src/exchange-reissue/index.ts"
@@ -5357,7 +5467,7 @@
       "id": "6.2",
       "name": "ADM Prevention",
       "stage": "settlement",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "contract_status": "active",
       "has_contract": false,
       "source_path": "packages/agents/settlement/src/adm-prevention/index.ts"
@@ -5402,7 +5512,7 @@
       "id": "7.1",
       "name": "BSP Reconciliation",
       "stage": "reconciliation",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "contract_status": "active",
       "has_contract": false,
       "source_path": "packages/agents/reconciliation/src/bsp-reconciliation/index.ts"

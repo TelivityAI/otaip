@@ -1,0 +1,32 @@
+{
+  "_comment": "SCARY FALSE NEGATIVE: UTC still has ~8h until deadline, but local calendar date in America/New_York equals deadline day — same-day-of-deadline ADM risk.",
+  "gds": "SABRE",
+  "current_datetime": "2026-04-01T16:00:00Z",
+  "ttl_deadline": "2026-04-02T00:00:00Z",
+  "ttl_timezone": "America/New_York",
+  "ttl_source": "BOOKING",
+  "fare_basis": "HOWUS",
+  "booked_class": "H",
+  "endorsement": "NON-ENDO/NON-REF",
+  "booking": {
+    "record_locator": "TTLDAY",
+    "passenger_name": "SMITH/JOHN",
+    "base_fare": "450.00",
+    "base_fare_currency": "USD",
+    "segments": [
+      {
+        "carrier": "BA",
+        "flight_number": "115",
+        "origin": "LHR",
+        "destination": "JFK",
+        "departure_date": "2026-06-15",
+        "status": "HK",
+        "booking_class": "H"
+      }
+    ]
+  },
+  "expect": {
+    "TTL_EXPIRED": false,
+    "overall_pass": false
+  }
+}

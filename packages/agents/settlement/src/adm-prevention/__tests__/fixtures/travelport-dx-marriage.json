@@ -1,0 +1,41 @@
+{
+  "_comment": "SCARY FALSE NEGATIVE: Travelport DX broken-marriage signal. Status alone — no ticketing field required.",
+  "gds": "TRAVELPORT",
+  "current_datetime": "2026-04-01T12:00:00Z",
+  "fare_basis": "HOWUS",
+  "booked_class": "H",
+  "endorsement": "NON-ENDO/NON-REF",
+  "booking": {
+    "record_locator": "DXMARR",
+    "passenger_name": "SMITH/JOHN",
+    "base_fare": "450.00",
+    "base_fare_currency": "USD",
+    "segments": [
+      {
+        "carrier": "UA",
+        "flight_number": "900",
+        "origin": "ORD",
+        "destination": "LHR",
+        "departure_date": "2026-09-01",
+        "status": "DX",
+        "booking_class": "H",
+        "married_group": "M1"
+      },
+      {
+        "carrier": "UA",
+        "flight_number": "901",
+        "origin": "LHR",
+        "destination": "FRA",
+        "departure_date": "2026-09-01",
+        "status": "HK",
+        "booking_class": "H",
+        "married_group": "M1"
+      }
+    ]
+  },
+  "expect": {
+    "MARRIED_SEGMENT": false,
+    "PASSIVE_SEGMENT": false,
+    "overall_pass": false
+  }
+}

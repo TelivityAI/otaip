@@ -24,10 +24,20 @@ export {
   fareRuleOutputSchema,
 } from './fare-rule-agent/schema.js';
 
-export { FareConstruction } from './fare-construction/index.js';
+export {
+  FareConstruction,
+  constructFare,
+  apply024dRounding,
+  assertPublishedTpmSource,
+  HAVERSINE_AS_TPM_BANNED,
+  HARDCODED_IROE_BANNED,
+  BANKERS_ROUNDING_AS_IATA_BANNED,
+} from './fare-construction/index.js';
 export type {
   FareConstructionInput,
   FareConstructionOutput,
+  FareConstructionResult,
+  FareConstructionDataSources,
   FareComponent,
   JourneyType,
   MileageCheck,
@@ -36,6 +46,12 @@ export type {
   BhcCheck,
   CtmCheck,
   AuditStep,
+  Rounding024dMethod,
+  Rounding024dRule,
+  PublishedCityPairMileage,
+  HipCheckRequirements,
+  BhcCheckRequirements,
+  CtmCheckRequirements,
 } from './fare-construction/index.js';
 
 export { TaxCalculation } from './tax-calculation/index.js';

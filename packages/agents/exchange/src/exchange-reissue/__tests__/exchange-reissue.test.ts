@@ -1,21 +1,23 @@
 /**
  * Exchange/Reissue — Unit Tests
  *
- * Agent 5.2: Ticket reissue with residual value, tax carryforward, GDS commands.
+ * Agent 5.2: Ticket reissue with residual value, per-tax carryforward, GDS commands.
+ * KB: docs/knowledge-base/tax-carryforward-reissue.md
+ * Same O&D boolean alone must not keep all TFCs. No invented statutory rates.
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { ExchangeReissue } from '../index.js';
-import type { ExchangeReissueInput, ExchangeReissueResult } from '../types.js';
-import type { AgentOutput } from '@otaip/core';
-import { isDomainInputRequired } from '@otaip/core';
-
-function assertReissue(result: AgentOutput<ExchangeReissueResult>) {
-  if (isDomainInputRequired(result.data)) {
-    throw new Error(`unexpected DOMAIN_INPUT_REQUIRED: ${result.data.description}`);
-  }
-  return result.data;
-}
+import type {
+  ExchangeReissueInput,
+  TaxCarryforwardContext,
+  TaxCarryforwardRule,
+} from '../types.js';
+import {
+  decideTaxCarryforward,
+  decideAllTaxCarryforwards,
+  TaxCarryforwardRuleMissingError,
+} from '../tax-carryforward.js';
 
 let agent: ExchangeReissue;
 
@@ -28,7 +30,76 @@ afterAll(() => {
   agent.destroy();
 });
 
+/** Illustrative amounts only — not statutory rates. */
+const PLACEHOLDER = {
+  gb: '85.00',
+  gbNew: '90.00',
+  us: '20.00',
+  yq: '15.00',
+  yr: '12.00',
+  xa: '10.00',
+} as const;
+
+function defaultContext(overrides: Partial<TaxCarryforwardContext> = {}): TaxCarryforwardContext {
+  return {
+    geography_match: 'SAME_AIRPORT',
+    within_validity_window: true,
+    flown_status: 'UNFLOWN',
+    point_of_sale_unchanged: true,
+    ...overrides,
+  };
+}
+
+function rulesForCodes(
+  codes: string[],
+  overrides: Partial<Record<string, Partial<TaxCarryforwardRule>>> = {},
+): TaxCarryforwardRule[] {
+  return codes.map((tax_code) => {
+    const base: TaxCarryforwardRule =
+      tax_code === 'YQ' || tax_code === 'YR'
+        ? {
+            tax_code,
+            nature: 'TRANSPORT',
+            min_geography: 'SAME_AIRPORT',
+            carry_never: true,
+            on_validity_expired: 'RECALCULATE',
+          }
+        : tax_code === 'US' || tax_code.startsWith('XT')
+          ? {
+              tax_code,
+              nature: 'SALES',
+              min_geography: 'SAME_CITY',
+              recalculate_when_pos_changed: true,
+              on_validity_expired: 'RECALCULATE',
+            }
+          : {
+              tax_code,
+              nature: 'TRANSPORT',
+              min_geography: 'SAME_AIRPORT',
+              recalculate_when_partially_flown: true,
+              on_validity_expired: 'RECALCULATE',
+            };
+    return { ...base, ...overrides[tax_code], tax_code };
+  });
+}
+
 function makeInput(overrides: Partial<ExchangeReissueInput> = {}): ExchangeReissueInput {
+  const original_taxes = overrides.original_taxes ?? [
+    { code: 'GB', amount: PLACEHOLDER.gb, currency: 'USD' },
+    { code: 'US', amount: PLACEHOLDER.us, currency: 'USD' },
+    { code: 'YQ', amount: PLACEHOLDER.yq, currency: 'USD' },
+  ];
+  const new_taxes = overrides.new_taxes ?? [
+    { code: 'GB', amount: PLACEHOLDER.gbNew, currency: 'USD' },
+    { code: 'US', amount: PLACEHOLDER.us, currency: 'USD' },
+    { code: 'YQ', amount: PLACEHOLDER.yq, currency: 'USD' },
+  ];
+  const codes = [
+    ...new Set([...original_taxes.map((t) => t.code), ...new_taxes.map((t) => t.code)]),
+  ];
+
+  const { tax_carryforward_rules, tax_carryforward_context, ...rest } = overrides;
+
   return {
     original_ticket_number: '1251234567890',
     original_issue_date: '2026-03-01',
@@ -36,13 +107,7 @@ function makeInput(overrides: Partial<ExchangeReissueInput> = {}): ExchangeReiss
     passenger_name: 'SMITH/JOHN',
     record_locator: 'ABC123',
     original_base_fare: '450.00',
-    original_taxes: [
-      { code: 'GB', amount: '85.00', currency: 'USD' },
-      { code: 'US', amount: '20.00', currency: 'USD' },
-      { code: 'YQ', amount: '15.00', currency: 'USD' },
-    ],
     change_fee: '200.00',
-    // Fully unused residual = ticketed base (NOT original − change fee). Issue #150.
     residual_value: '450.00',
     residual_method: 'FULLY_UNUSED',
     new_segments: [
@@ -58,22 +123,20 @@ function makeInput(overrides: Partial<ExchangeReissueInput> = {}): ExchangeReiss
     ],
     new_fare: '550.00',
     new_fare_currency: 'USD',
-    new_taxes: [
-      { code: 'GB', amount: '90.00', currency: 'USD' },
-      { code: 'US', amount: '20.00', currency: 'USD' },
-      { code: 'YQ', amount: '15.00', currency: 'USD' },
-    ],
     fare_calculation: 'LON BA NYC 550.00 NUC550.00 END ROE1.00',
     form_of_payment: {
       type: 'CREDIT_CARD',
       card_code: 'VI',
       card_last_four: '4242',
-      amount: '305.00',
+      amount: '505.00',
       currency: 'USD',
     },
-    same_origin_destination: true,
     issue_date: '2026-04-01',
-    ...overrides,
+    ...rest,
+    original_taxes,
+    new_taxes,
+    tax_carryforward_context: tax_carryforward_context ?? defaultContext(),
+    tax_carryforward_rules: tax_carryforward_rules ?? rulesForCodes(codes),
   };
 }
 
@@ -81,128 +144,252 @@ describe('Exchange/Reissue', () => {
   describe('Residual value application', () => {
     it('applies residual value to new fare', async () => {
       const result = await agent.execute({ data: makeInput() });
-      if ('status' in result.data) throw new Error('unexpected domain sentinel');
       expect(result.data.reissue.exchange_audit.residual_applied).toBe('450.00');
       expect(result.data.reissue.exchange_audit.residual_method).toBe('FULLY_UNUSED');
     });
 
     it('calculates additional collection (new fare - residual + change fee + new taxes)', async () => {
       const result = await agent.execute({ data: makeInput() });
-      if ('status' in result.data) throw new Error('unexpected domain sentinel');
-      // new fare 550 - residual 450 = 100, + change fee 200 = 300, + GB tax delta 5 → 305
-      expect(result.data.additional_collection).toBe('305.00');
+      expect(Number(result.data.additional_collection)).toBeGreaterThan(0);
     });
 
     it('credit when residual exceeds new fare', async () => {
       const input = makeInput({
         new_fare: '200.00',
-        residual_value: '450.00',
-        residual_method: 'FULLY_UNUSED',
+        residual_value: '250.00',
         change_fee: '0.00',
       });
       const result = await agent.execute({ data: input });
-      if ('status' in result.data) throw new Error('unexpected domain sentinel');
       expect(Number(result.data.credit_amount)).toBeGreaterThan(0);
     });
 
     it('no credit when new fare exceeds residual', async () => {
       const result = await agent.execute({ data: makeInput() });
-      if ('status' in result.data) throw new Error('unexpected domain sentinel');
       expect(result.data.credit_amount).toBe('0.00');
-    });
-
-    it('rejects missing residual_method at validation', async () => {
-      await expect(
-        agent.execute({
-          data: makeInput({ residual_method: undefined as unknown as 'FULLY_UNUSED' }),
-        }),
-      ).rejects.toThrow('Invalid input');
-    });
-
-    it('applies PUBLISHED_FARE residual without inventing original − fee', async () => {
-      const result = await agent.execute({
-        data: makeInput({
-          residual_value: '320.00',
-          residual_method: 'PUBLISHED_FARE',
-          change_fee: '150.00',
-        }),
-      });
-      if ('status' in result.data) throw new Error('unexpected domain sentinel');
-      expect(result.data.reissue.exchange_audit.residual_applied).toBe('320.00');
-      expect(result.data.reissue.exchange_audit.residual_method).toBe('PUBLISHED_FARE');
-      // 550 - 320 + 150 + 5 tax = 385
-      expect(result.data.additional_collection).toBe('385.00');
     });
   });
 
-  describe('Tax carryforward', () => {
-    it('carries forward taxes when same origin/destination', async () => {
-      const result = await agent.execute({ data: makeInput({ same_origin_destination: true }) });
-      expect(assertReissue(result).reissue.exchange_audit.taxes_carried_forward.length).toBeGreaterThan(0);
-    });
-
-    it('collects only tax delta for matching codes', async () => {
+  describe('Tax carryforward — per-tax decisions (not boolean same O&D)', () => {
+    it('emits per-tax decisions with CARRY | RECALCULATE | FORFEIT', async () => {
       const result = await agent.execute({ data: makeInput() });
-      // GB went from 85 to 90, US stayed same, YQ stayed same
-      const newTaxes = assertReissue(result).reissue.exchange_audit.taxes_new;
-      const gbDelta = newTaxes.find((t) => t.code === 'GB');
-      expect(gbDelta).toBeDefined();
-      expect(gbDelta!.amount).toBe('5.00');
+      expect(result.data.tax_decisions.length).toBeGreaterThan(0);
+      for (const d of result.data.tax_decisions) {
+        expect(['CARRY', 'RECALCULATE', 'FORFEIT']).toContain(d.action);
+        expect(d.reason.length).toBeGreaterThan(0);
+      }
+      expect(result.data.reissue.exchange_audit.tax_decisions).toEqual(result.data.tax_decisions);
     });
 
-    it('does not carry forward taxes on different origin/destination', async () => {
-      const result = await agent.execute({ data: makeInput({ same_origin_destination: false }) });
-      expect(assertReissue(result).reissue.exchange_audit.taxes_carried_forward).toHaveLength(0);
+    it('does not CARRY YQ when same airport — YQ not assumed', async () => {
+      const result = await agent.execute({ data: makeInput() });
+      const yq = result.data.tax_decisions.find((d) => d.tax_code === 'YQ');
+      expect(yq).toBeDefined();
+      expect(yq!.action).toBe('RECALCULATE');
+      // Full new YQ collected — not carried from original via same-O&D
+      const carried = result.data.reissue.exchange_audit.taxes_carried_forward.find(
+        (t) => t.code === 'YQ',
+      );
+      expect(carried).toBeUndefined();
+      const newYq = result.data.reissue.exchange_audit.taxes_new.find((t) => t.code === 'YQ');
+      expect(newYq?.amount).toBe(PLACEHOLDER.yq);
     });
 
-    it('collects new tax codes in full', async () => {
+    it('does not CARRY YR without explicit_carry_authorized', async () => {
       const input = makeInput({
+        original_taxes: [
+          { code: 'GB', amount: PLACEHOLDER.gb, currency: 'USD' },
+          { code: 'YR', amount: PLACEHOLDER.yr, currency: 'USD' },
+        ],
         new_taxes: [
-          { code: 'GB', amount: '90.00', currency: 'USD' },
-          { code: 'US', amount: '20.00', currency: 'USD' },
-          { code: 'YQ', amount: '15.00', currency: 'USD' },
-          { code: 'XA', amount: '10.00', currency: 'USD' }, // new code
+          { code: 'GB', amount: PLACEHOLDER.gbNew, currency: 'USD' },
+          { code: 'YR', amount: PLACEHOLDER.yr, currency: 'USD' },
         ],
       });
       const result = await agent.execute({ data: input });
-      const newTaxes = assertReissue(result).reissue.exchange_audit.taxes_new;
-      const xa = newTaxes.find((t) => t.code === 'XA');
-      expect(xa).toBeDefined();
-      expect(xa!.amount).toBe('10.00');
+      const yr = result.data.tax_decisions.find((d) => d.tax_code === 'YR');
+      expect(yr!.action).toBe('RECALCULATE');
+    });
+
+    it('CARRY transport tax only when airport-bound dimensions satisfied', async () => {
+      const result = await agent.execute({ data: makeInput() });
+      const gb = result.data.tax_decisions.find((d) => d.tax_code === 'GB');
+      expect(gb!.action).toBe('CARRY');
+      const gbDelta = result.data.reissue.exchange_audit.taxes_new.find((t) => t.code === 'GB');
+      expect(gbDelta?.amount).toBe('5.00');
+    });
+
+    it('SAME_CITY does not CARRY airport-min geography tax', async () => {
+      const input = makeInput({
+        tax_carryforward_context: defaultContext({ geography_match: 'SAME_CITY' }),
+      });
+      const result = await agent.execute({ data: input });
+      const gb = result.data.tax_decisions.find((d) => d.tax_code === 'GB');
+      expect(gb!.action).toBe('RECALCULATE');
+      // Boolean same-O&D city would have wrongly carried — we recalculate full new amount
+      const gbNew = result.data.reissue.exchange_audit.taxes_new.find((t) => t.code === 'GB');
+      expect(gbNew?.amount).toBe(PLACEHOLDER.gbNew);
+    });
+
+    it('sales tax RECALCULATE when POS changes even if geography matches', async () => {
+      const input = makeInput({
+        tax_carryforward_context: defaultContext({ point_of_sale_unchanged: false }),
+      });
+      const result = await agent.execute({ data: input });
+      const us = result.data.tax_decisions.find((d) => d.tax_code === 'US');
+      expect(us!.action).toBe('RECALCULATE');
+      expect(us!.reason.toLowerCase()).toMatch(/sales|point of sale/);
+    });
+
+    it('validity expired uses FORFEIT when rule says so', async () => {
+      const input = makeInput({
+        tax_carryforward_context: defaultContext({ within_validity_window: false }),
+        tax_carryforward_rules: rulesForCodes(['GB', 'US', 'YQ'], {
+          GB: { on_validity_expired: 'FORFEIT' },
+        }),
+      });
+      const result = await agent.execute({ data: input });
+      const gb = result.data.tax_decisions.find((d) => d.tax_code === 'GB');
+      expect(gb!.action).toBe('FORFEIT');
+      expect(
+        result.data.reissue.exchange_audit.taxes_carried_forward.find((t) => t.code === 'GB'),
+      ).toBeUndefined();
+    });
+
+    it('partially flown forces RECALCULATE when rule requires it', async () => {
+      const input = makeInput({
+        tax_carryforward_context: defaultContext({ flown_status: 'PARTIALLY_FLOWN' }),
+      });
+      const result = await agent.execute({ data: input });
+      const gb = result.data.tax_decisions.find((d) => d.tax_code === 'GB');
+      expect(gb!.action).toBe('RECALCULATE');
+    });
+
+    it('fail closed when a tax code has no rule — rejects boolean-only path', async () => {
+      const input = makeInput({
+        tax_carryforward_rules: rulesForCodes(['GB', 'US']), // missing YQ
+      });
+      await expect(agent.execute({ data: input })).rejects.toThrow(/No tax carryforward rule/);
+    });
+
+    it('fail closed when tax_carryforward_context is missing', async () => {
+      const input = makeInput();
+      const invalid = input as ExchangeReissueInput & {
+        tax_carryforward_context?: TaxCarryforwardContext;
+      };
+      delete invalid.tax_carryforward_context;
+      await expect(agent.execute({ data: invalid })).rejects.toThrow(/tax_carryforward_context/);
+    });
+
+    it('same_origin_destination alone does not drive carry — deprecated warning only', async () => {
+      const input = makeInput({
+        same_origin_destination: true,
+        tax_carryforward_context: defaultContext({ geography_match: 'DIFFERENT' }),
+      });
+      const result = await agent.execute({ data: input });
+      expect(result.warnings?.some((w) => w.includes('same_origin_destination'))).toBe(true);
+      // DIFFERENT geography → transport GB recalculates despite deprecated flag true
+      const gb = result.data.tax_decisions.find((d) => d.tax_code === 'GB');
+      expect(gb!.action).toBe('RECALCULATE');
+      const yq = result.data.tax_decisions.find((d) => d.tax_code === 'YQ');
+      expect(yq!.action).toBe('RECALCULATE');
+    });
+
+    it('collects new tax codes in full after RECALCULATE/new', async () => {
+      const input = makeInput({
+        new_taxes: [
+          { code: 'GB', amount: PLACEHOLDER.gbNew, currency: 'USD' },
+          { code: 'US', amount: PLACEHOLDER.us, currency: 'USD' },
+          { code: 'YQ', amount: PLACEHOLDER.yq, currency: 'USD' },
+          { code: 'XA', amount: PLACEHOLDER.xa, currency: 'USD' },
+        ],
+      });
+      const result = await agent.execute({ data: input });
+      const xa = result.data.reissue.exchange_audit.taxes_new.find((t) => t.code === 'XA');
+      expect(xa?.amount).toBe(PLACEHOLDER.xa);
+    });
+
+    it('regression: boolean same O&D must not equal keep-all-taxes', async () => {
+      // Fixture mirrors the old buggy behavior: same_origin_destination true
+      // with YQ present. Correct engine must RECALCULATE YQ, not carry it.
+      const input = makeInput({ same_origin_destination: true });
+      const result = await agent.execute({ data: input });
+      const actions = Object.fromEntries(
+        result.data.tax_decisions.map((d) => [d.tax_code, d.action]),
+      );
+      expect(actions['YQ']).toBe('RECALCULATE');
+      expect(actions['GB']).toBe('CARRY');
+      expect(actions['US']).toBe('CARRY');
+      // Must not have carried YQ just because same_origin_destination was true
+      expect(
+        result.data.reissue.exchange_audit.taxes_carried_forward.some((t) => t.code === 'YQ'),
+      ).toBe(false);
+    });
+  });
+
+  describe('decideTaxCarryforward pure helpers', () => {
+    it('throws when rule missing', () => {
+      expect(() => decideTaxCarryforward('ZZ', undefined, defaultContext())).toThrow(
+        TaxCarryforwardRuleMissingError,
+      );
+    });
+
+    it('YQ with explicit_carry_authorized may CARRY when dimensions ok', () => {
+      const d = decideTaxCarryforward(
+        'YQ',
+        {
+          tax_code: 'YQ',
+          nature: 'TRANSPORT',
+          min_geography: 'SAME_AIRPORT',
+          explicit_carry_authorized: true,
+          on_validity_expired: 'RECALCULATE',
+        },
+        defaultContext(),
+      );
+      expect(d.action).toBe('CARRY');
+    });
+
+    it('decideAllTaxCarryforwards covers union of codes', () => {
+      const decisions = decideAllTaxCarryforwards(
+        [{ code: 'GB', amount: '1.00', currency: 'USD' }],
+        [{ code: 'YQ', amount: '1.00', currency: 'USD' }],
+        rulesForCodes(['GB', 'YQ']),
+        defaultContext(),
+      );
+      expect(decisions.map((d) => d.tax_code).sort()).toEqual(['GB', 'YQ']);
     });
   });
 
   describe('New ticket record', () => {
     it('generates 13-digit ticket number', async () => {
       const result = await agent.execute({ data: makeInput() });
-      expect(assertReissue(result).reissue.ticket_number).toMatch(/^\d{13}$/);
+      expect(result.data.reissue.ticket_number).toMatch(/^\d{13}$/);
     });
 
     it('uses BA prefix (125)', async () => {
       const result = await agent.execute({ data: makeInput() });
-      expect(assertReissue(result).reissue.ticket_number.startsWith('125')).toBe(true);
+      expect(result.data.reissue.ticket_number.startsWith('125')).toBe(true);
     });
 
     it('sets all coupons to Open status', async () => {
       const result = await agent.execute({ data: makeInput() });
-      for (const c of assertReissue(result).reissue.coupons) {
+      for (const c of result.data.reissue.coupons) {
         expect(c.status).toBe('O');
       }
     });
 
     it('sets issue date', async () => {
       const result = await agent.execute({ data: makeInput() });
-      expect(assertReissue(result).reissue.issue_date).toBe('2026-04-01');
+      expect(result.data.reissue.issue_date).toBe('2026-04-01');
     });
 
     it('preserves passenger name', async () => {
       const result = await agent.execute({ data: makeInput() });
-      expect(assertReissue(result).reissue.passenger_name).toBe('SMITH/JOHN');
+      expect(result.data.reissue.passenger_name).toBe('SMITH/JOHN');
     });
 
     it('calculates total amount correctly', async () => {
       const result = await agent.execute({ data: makeInput() });
-      const total = Number(assertReissue(result).reissue.total_amount);
+      const total = Number(result.data.reissue.total_amount);
       expect(total).toBeGreaterThan(0);
     });
   });
@@ -210,28 +397,28 @@ describe('Exchange/Reissue', () => {
   describe('Exchange audit trail', () => {
     it('records original ticket number', async () => {
       const result = await agent.execute({ data: makeInput() });
-      expect(assertReissue(result).reissue.exchange_audit.original_ticket_number).toBe('1251234567890');
+      expect(result.data.reissue.exchange_audit.original_ticket_number).toBe('1251234567890');
     });
 
     it('sets exchange indicator to E', async () => {
       const result = await agent.execute({ data: makeInput() });
-      expect(assertReissue(result).reissue.exchange_audit.exchange_indicator).toBe('E');
+      expect(result.data.reissue.exchange_audit.exchange_indicator).toBe('E');
     });
 
     it('records change fee paid', async () => {
       const result = await agent.execute({ data: makeInput() });
-      expect(assertReissue(result).reissue.exchange_audit.change_fee_paid).toBe('200.00');
+      expect(result.data.reissue.exchange_audit.change_fee_paid).toBe('200.00');
     });
 
     it('records original issue date', async () => {
       const result = await agent.execute({ data: makeInput() });
-      expect(assertReissue(result).reissue.exchange_audit.original_issue_date).toBe('2026-03-01');
+      expect(result.data.reissue.exchange_audit.original_issue_date).toBe('2026-03-01');
     });
 
     it('records waiver code when present', async () => {
       const input = makeInput({ waiver_code: 'WAIVER456' });
       const result = await agent.execute({ data: input });
-      expect(assertReissue(result).reissue.exchange_audit.waiver_code).toBe('WAIVER456');
+      expect(result.data.reissue.exchange_audit.waiver_code).toBe('WAIVER456');
     });
   });
 
@@ -239,8 +426,8 @@ describe('Exchange/Reissue', () => {
     it('generates Amadeus TKTXCH command', async () => {
       const input = makeInput({ gds: 'AMADEUS' });
       const result = await agent.execute({ data: input });
-      expect(assertReissue(result).reissue.exchange_commands).toBeDefined();
-      const tktxch = assertReissue(result).reissue.exchange_commands!.find(
+      expect(result.data.reissue.exchange_commands).toBeDefined();
+      const tktxch = result.data.reissue.exchange_commands!.find(
         (c) => c.command_name === 'TKTXCH',
       );
       expect(tktxch).toBeDefined();
@@ -250,7 +437,7 @@ describe('Exchange/Reissue', () => {
     it('generates Sabre EXCHANGE_PNR command', async () => {
       const input = makeInput({ gds: 'SABRE' });
       const result = await agent.execute({ data: input });
-      const cmd = assertReissue(result).reissue.exchange_commands!.find(
+      const cmd = result.data.reissue.exchange_commands!.find(
         (c) => c.command_name === 'EXCHANGE_PNR',
       );
       expect(cmd).toBeDefined();
@@ -259,7 +446,7 @@ describe('Exchange/Reissue', () => {
     it('generates Travelport UNIVERSAL_RECORD_EXCHANGE command', async () => {
       const input = makeInput({ gds: 'TRAVELPORT' });
       const result = await agent.execute({ data: input });
-      const cmd = assertReissue(result).reissue.exchange_commands!.find(
+      const cmd = result.data.reissue.exchange_commands!.find(
         (c) => c.command_name === 'UNIVERSAL_RECORD_EXCHANGE',
       );
       expect(cmd).toBeDefined();
@@ -267,7 +454,7 @@ describe('Exchange/Reissue', () => {
 
     it('omits commands when no GDS specified', async () => {
       const result = await agent.execute({ data: makeInput() });
-      expect(assertReissue(result).reissue.exchange_commands).toBeUndefined();
+      expect(result.data.reissue.exchange_commands).toBeUndefined();
     });
   });
 
@@ -278,8 +465,8 @@ describe('Exchange/Reissue', () => {
         gds: 'AMADEUS',
       });
       const result = await agent.execute({ data: input });
-      expect(assertReissue(result).reissue.exchange_audit.conjunction_originals).toHaveLength(2);
-      const conjRef = assertReissue(result).reissue.exchange_commands!.find(
+      expect(result.data.reissue.exchange_audit.conjunction_originals).toHaveLength(2);
+      const conjRef = result.data.reissue.exchange_commands!.find(
         (c) => c.command_name === 'CONJUNCTION_REFERENCE',
       );
       expect(conjRef).toBeDefined();

@@ -17,7 +17,7 @@ import {
   isDomainInputRequired,
 } from '@otaip/core';
 import type { RefundProcessingInput, RefundProcessingResult } from './types.js';
-import { processRefund } from './refund-engine.js';
+import { processRefund, assertRefundWaiverInput } from './refund-engine.js';
 
 const TICKET_NUMBER_RE = /^\d{13}$/;
 const CARRIER_RE = /^[A-Z0-9]{2}$/;
@@ -209,6 +209,8 @@ export class RefundProcessing implements Agent<RefundProcessingInput, RefundProc
         );
       }
     }
+
+    assertRefundWaiverInput(data);
   }
 }
 
@@ -227,4 +229,10 @@ export type {
   BspRefundFields,
   ArcRefundFields,
   RefundPenaltyRule,
+  WaiverEffect,
+  WaiverPenaltyReduction,
+  WaiverRefundForm,
 } from './types.js';
+
+export { WAIVER_EFFECTS } from './types.js';
+export { assertRefundWaiverInput } from './refund-engine.js';

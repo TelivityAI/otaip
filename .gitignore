@@ -1,5 +1,13 @@
-# reference data
+# reference data (downloaded airports, etc.)
 /data/*
+# curated MCT starter dataset (checked in — see data/reference/mct/)
+!/data/reference/
+!/data/reference/.gitkeep
+!/data/reference/mct/
+!/data/reference/mct/**
+/data/reference/airports.json
+/data/reference/metro-areas.json
+/data/reference/decommissioned.json
 
 # OTAIP run/gate traces (durable JSONL written by @otaip/integration)
 traces/

@@ -42,6 +42,24 @@ export {
   gdsNdcRouterOutputSchema,
 } from './gds-ndc-router/schema.js';
 export { buildCarrierCapabilities } from './gds-ndc-router/registry-adapter.js';
+export {
+  getSeedCapabilityMatrix,
+  parseCapabilityMatrixCsv,
+  lookupMatrixRow,
+  matrixRowToCarrierConfig,
+  buildCapabilityOverridesFromMatrix,
+  MATRIX_TO_AGENT_TRANSACTION,
+  matrixTransactionsForAgentType,
+  parseNdcVersionNotes,
+} from './gds-ndc-router/capability-matrix.js';
+export type {
+  CapabilityMatrixRow,
+  MatrixTransaction,
+  MatrixVendor,
+  MatrixChannel,
+  CapabilityMatrixInputRow,
+  DistributionVendor,
+} from './gds-ndc-router/index.js';
 
 export { PnrBuilder } from './pnr-builder/index.js';
 export type {
@@ -88,6 +106,7 @@ export type {
   QueuePriority,
   QueueItemStatus,
   QueueGdsSystem,
+  TravelportHost,
   QueueAction,
 } from './queue-management/index.js';
 

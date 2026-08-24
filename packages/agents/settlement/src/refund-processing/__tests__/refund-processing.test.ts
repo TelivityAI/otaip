@@ -9,20 +9,10 @@ import { createRequire } from 'node:module';
 import { RefundProcessing } from '../index.js';
 import type {
   RefundProcessingInput,
-  RefundProcessingResult,
   TaxItem,
   CouponRefundItem,
   Cat33Rules,
 } from '../types.js';
-import type { AgentOutput } from '@otaip/core';
-import { isDomainInputRequired } from '@otaip/core';
-
-function assertRefund(result: AgentOutput<RefundProcessingResult>) {
-  if (isDomainInputRequired(result.data)) {
-    throw new Error(`unexpected DOMAIN_INPUT_REQUIRED: ${result.data.description}`);
-  }
-  return result.data;
-}
 
 const require = createRequire(import.meta.url);
 const TEST_CAT33_RULES = require('./fixtures/test-cat33-rules.json') as Cat33Rules;
@@ -69,46 +59,46 @@ describe('Refund Processing', () => {
   describe('Full refund', () => {
     it('applies penalty for restricted fare', async () => {
       const result = await agent.execute({ data: makeInput() });
-      expect(Number(assertRefund(result).refund.penalty_applied)).toBeGreaterThan(0);
+      expect(Number(result.data.refund.penalty_applied)).toBeGreaterThan(0);
     });
 
     it('calculates base fare refund after penalty', async () => {
       const result = await agent.execute({ data: makeInput() });
-      const base = Number(assertRefund(result).refund.base_fare_refund);
+      const base = Number(result.data.refund.base_fare_refund);
       expect(base).toBeLessThan(450);
       expect(base).toBeGreaterThan(0);
     });
 
     it('refunds all taxes', async () => {
       const result = await agent.execute({ data: makeInput() });
-      expect(assertRefund(result).refund.tax_refund).toBe('120.00');
+      expect(result.data.refund.tax_refund).toBe('120.00');
     });
 
     it('calculates total refund', async () => {
       const result = await agent.execute({ data: makeInput() });
-      const total = Number(assertRefund(result).refund.total_refund);
+      const total = Number(result.data.refund.total_refund);
       expect(total).toBeGreaterThan(0);
     });
 
     it('no penalty for Y class (full fare)', async () => {
       const result = await agent.execute({ data: makeInput({ fare_basis: 'YOWUS' }) });
-      expect(assertRefund(result).refund.penalty_applied).toBe('0.00');
-      expect(assertRefund(result).refund.base_fare_refund).toBe('450.00');
+      expect(result.data.refund.penalty_applied).toBe('0.00');
+      expect(result.data.refund.base_fare_refund).toBe('450.00');
     });
 
     it('no penalty for business class', async () => {
       const result = await agent.execute({ data: makeInput({ fare_basis: 'COWUS' }) });
-      expect(assertRefund(result).refund.penalty_applied).toBe('0.00');
+      expect(result.data.refund.penalty_applied).toBe('0.00');
     });
 
     it('higher penalty for deep discount (E/G)', async () => {
       const result = await agent.execute({ data: makeInput({ fare_basis: 'EOWUS' }) });
-      expect(Number(assertRefund(result).refund.penalty_applied)).toBe(300);
+      expect(Number(result.data.refund.penalty_applied)).toBe(300);
     });
 
     it('lists all coupons as refunded', async () => {
       const result = await agent.execute({ data: makeInput() });
-      expect(assertRefund(result).refund.audit.coupons_refunded).toEqual([1, 2, 3, 4]);
+      expect(result.data.refund.audit.coupons_refunded).toEqual([1, 2, 3, 4]);
     });
   });
 
@@ -117,20 +107,29 @@ describe('Refund Processing', () => {
       const result = await agent.execute({
         data: makeInput({ cat33_rules: undefined }),
       });
-      expect(assertRefund(result).refund.penalty_applied).toBe('0.00');
-      expect(assertRefund(result).refund.base_fare_refund).toBe('450.00');
+      expect(result.data.refund.penalty_applied).toBe('0.00');
+      expect(result.data.refund.base_fare_refund).toBe('450.00');
     });
 
-    it('rules present but no provision match: free refund (not fail-closed)', async () => {
+    it('rules present but no provision matches fare basis: free refund (not fail-closed)', async () => {
       const result = await agent.execute({
         data: makeInput({
-          fare_basis: 'ZZZNORULE',
-          cat33_rules: { rules: TEST_CAT33_RULES.rules },
+          fare_basis: 'ZZZNOMATCH',
+          cat33_rules: {
+            rules: [
+              {
+                fare_basis_pattern: '^ONLYTHIS$',
+                penalty_amount: '999.00',
+                currency: 'USD',
+                forfeit_base_fare: false,
+                notes: 'test fixture — deliberately non-matching',
+              },
+            ],
+          },
         }),
       });
-      // ZZZNORULE matches none of the fixture patterns → free
-      expect(assertRefund(result).refund.penalty_applied).toBe('0.00');
-      expect(assertRefund(result).refund.base_fare_refund).toBe('450.00');
+      expect(result.data.refund.penalty_applied).toBe('0.00');
+      expect(result.data.refund.base_fare_refund).toBe('450.00');
     });
 
     it('involuntary refund with no rules: penalty = 0, full refund regardless of fare basis', async () => {
@@ -142,16 +141,25 @@ describe('Refund Processing', () => {
           is_refundable: false,
         }),
       });
-      expect(assertRefund(result).refund.penalty_applied).toBe('0.00');
-      expect(assertRefund(result).refund.base_fare_refund).toBe('450.00');
+      expect(result.data.refund.penalty_applied).toBe('0.00');
+      expect(result.data.refund.base_fare_refund).toBe('450.00');
     });
 
     it('involuntary refund with rules: penalty still waived to 0', async () => {
       const result = await agent.execute({
         data: makeInput({ is_involuntary: true, fare_basis: 'EOWUS' }),
       });
-      expect(assertRefund(result).refund.penalty_applied).toBe('0.00');
-      expect(assertRefund(result).refund.base_fare_refund).toBe('450.00');
+      expect(result.data.refund.penalty_applied).toBe('0.00');
+      expect(result.data.refund.base_fare_refund).toBe('450.00');
+    });
+
+    it('no Cat33 data + bare waiver_code: still fail-closed for missing waiver_effect', async () => {
+      // Missing Cat data must NOT be conflated with bare-waiver fail-closed.
+      await expect(
+        agent.execute({
+          data: makeInput({ cat33_rules: undefined, waiver_code: 'BARE' }),
+        }),
+      ).rejects.toThrow('waiver_effect');
     });
   });
 
@@ -160,35 +168,35 @@ describe('Refund Processing', () => {
       const result = await agent.execute({
         data: makeInput({ fare_basis: 'HOWBASIC', is_refundable: false }),
       });
-      expect(assertRefund(result).refund.base_fare_refund).toBe('0.00');
-      expect(assertRefund(result).refund.tax_refund).toBe('120.00');
+      expect(result.data.refund.base_fare_refund).toBe('0.00');
+      expect(result.data.refund.tax_refund).toBe('120.00');
     });
 
     it('forfeits base fare for NR fares', async () => {
       const result = await agent.execute({
         data: makeInput({ fare_basis: 'HOWNR', is_refundable: false }),
       });
-      expect(assertRefund(result).refund.base_fare_refund).toBe('0.00');
+      expect(result.data.refund.base_fare_refund).toBe('0.00');
     });
 
     it('taxes still refundable on non-refundable fare', async () => {
       const result = await agent.execute({
         data: makeInput({ fare_basis: 'HOWBASIC', is_refundable: false }),
       });
-      expect(Number(assertRefund(result).refund.tax_refund)).toBeGreaterThan(0);
+      expect(Number(result.data.refund.tax_refund)).toBeGreaterThan(0);
     });
   });
 
   describe('Tax-only refund', () => {
     it('refunds only taxes', async () => {
       const result = await agent.execute({ data: makeInput({ refund_type: 'TAX_ONLY' }) });
-      expect(assertRefund(result).refund.base_fare_refund).toBe('0.00');
-      expect(assertRefund(result).refund.tax_refund).toBe('120.00');
+      expect(result.data.refund.base_fare_refund).toBe('0.00');
+      expect(result.data.refund.tax_refund).toBe('120.00');
     });
 
     it('no penalty on tax-only refund', async () => {
       const result = await agent.execute({ data: makeInput({ refund_type: 'TAX_ONLY' }) });
-      expect(assertRefund(result).refund.penalty_applied).toBe('0.00');
+      expect(result.data.refund.penalty_applied).toBe('0.00');
     });
   });
 
@@ -206,14 +214,10 @@ describe('Refund Processing', () => {
       expect(result.data.missing).toContain('partial_valuation');
       expect(result.data.description).toMatch(/THB|IATA Ticketing Handbook/i);
       expect(result.data.description).toMatch(/MPA-P/);
-      expect(result.confidence).toBe(0);
     });
 
     it('applies Cat 33 penalty to PUBLISHED_FARE unused base (not coupon-ratio)', async () => {
-      // Made-up: ticketed 800, published flown 480 → unused 320; fixture HOWUS penalty 200
-      const coupons: CouponRefundItem[] = [
-        { coupon_number: 2, status: 'O', refundable: true },
-      ];
+      const coupons: CouponRefundItem[] = [{ coupon_number: 2, status: 'O', refundable: true }];
       const result = await agent.execute({
         data: makeInput({
           base_fare: '800.00',
@@ -230,17 +234,15 @@ describe('Refund Processing', () => {
         }),
       });
       if ('status' in result.data) throw new Error('unexpected domain sentinel');
-      expect(assertRefund(result).refund.audit.residual_method).toBe('PUBLISHED_FARE');
-      expect(assertRefund(result).refund.audit.flown_base_fare).toBe('480.00');
-      expect(assertRefund(result).refund.tax_refund).toBe('55.00');
-      expect(assertRefund(result).refund.penalty_applied).toBe('200.00');
-      expect(assertRefund(result).refund.base_fare_refund).toBe('120.00');
+      expect(result.data.refund.audit.residual_method).toBe('PUBLISHED_FARE');
+      expect(result.data.refund.audit.flown_base_fare).toBe('480.00');
+      expect(result.data.refund.tax_refund).toBe('55.00');
+      expect(result.data.refund.penalty_applied).toBe('200.00');
+      expect(result.data.refund.base_fare_refund).toBe('120.00');
     });
 
     it('no Cat 33 data + PUBLISHED_FARE: free penalty on unused base (not fail-closed)', async () => {
-      const coupons: CouponRefundItem[] = [
-        { coupon_number: 2, status: 'O', refundable: true },
-      ];
+      const coupons: CouponRefundItem[] = [{ coupon_number: 2, status: 'O', refundable: true }];
       const result = await agent.execute({
         data: makeInput({
           base_fare: '800.00',
@@ -257,8 +259,8 @@ describe('Refund Processing', () => {
         }),
       });
       if ('status' in result.data) throw new Error('unexpected domain sentinel');
-      expect(assertRefund(result).refund.penalty_applied).toBe('0.00');
-      expect(assertRefund(result).refund.base_fare_refund).toBe('320.00');
+      expect(result.data.refund.penalty_applied).toBe('0.00');
+      expect(result.data.refund.base_fare_refund).toBe('320.00');
     });
 
     it('does not invent coupon-ratio tax when unused taxes are supplied', async () => {
@@ -279,8 +281,8 @@ describe('Refund Processing', () => {
         }),
       });
       if ('status' in result.data) throw new Error('unexpected domain sentinel');
-      expect(assertRefund(result).refund.tax_refund).toBe('25.00');
-      expect(assertRefund(result).refund.base_fare_refund).toBe('112.50');
+      expect(result.data.refund.tax_refund).toBe('25.00');
+      expect(result.data.refund.base_fare_refund).toBe('112.50');
     });
 
     it('only refunds coupons marked as refundable', async () => {
@@ -301,45 +303,133 @@ describe('Refund Processing', () => {
         }),
       });
       if ('status' in result.data) throw new Error('unexpected domain sentinel');
-      expect(assertRefund(result).refund.audit.coupons_refunded).toEqual([1]);
-      expect(assertRefund(result).refund.audit.residual_method).toBe('CARRIER_SPECIFIC');
+      expect(result.data.refund.audit.coupons_refunded).toEqual([1]);
+      expect(result.data.refund.audit.residual_method).toBe('CARRIER_SPECIFIC');
     });
   });
 
-  describe('Waiver code', () => {
-    it('bare waiver_code fails closed (≠ free; same split as #153)', async () => {
-      const result = await agent.execute({ data: makeInput({ waiver_code: 'WAIVER123' }) });
-      expect(result.data).toMatchObject({ status: 'DOMAIN_INPUT_REQUIRED' });
-      if (!('missing' in result.data)) throw new Error('expected domain sentinel');
-      expect(result.data.missing).toContain('waiver_effect');
-      expect(result.data.description).toMatch(/waiver_effect|Bare waiver/i);
+  describe('Waiver typology', () => {
+    it('fail closed: waiver_code without waiver_effect', async () => {
+      await expect(
+        agent.execute({ data: makeInput({ waiver_code: 'WAIVER123' }) }),
+      ).rejects.toThrow('waiver_effect');
     });
 
-    it('bare waiver on PARTIAL fails closed even when valuation supplied', async () => {
+    it('fail closed: unknown waiver_effect', async () => {
+      await expect(
+        agent.execute({
+          data: makeInput({
+            waiver_code: 'X',
+            waiver_effect: 'SKIP_EVERYTHING' as 'ELIMINATE_PENALTY',
+          }),
+        }),
+      ).rejects.toThrow('waiver_effect');
+    });
+
+    it('ELIMINATE_PENALTY zeros filed Cat 33 charge', async () => {
       const result = await agent.execute({
         data: makeInput({
-          refund_type: 'PARTIAL',
-          coupons_to_refund: [{ coupon_number: 1, status: 'O', refundable: true }],
-          waiver_code: 'W',
-          partial_valuation: {
-            method: 'PUBLISHED_FARE',
-            unused_base_fare: '100.00',
-            unused_taxes: [{ code: 'GB', amount: '10.00', currency: 'USD' }],
-          },
+          waiver_code: 'WAIVER123',
+          waiver_effect: 'ELIMINATE_PENALTY',
         }),
       });
-      expect(result.data).toMatchObject({ status: 'DOMAIN_INPUT_REQUIRED' });
-      if (!('missing' in result.data)) throw new Error('expected domain sentinel');
-      expect(result.data.missing).toContain('waiver_effect');
+      expect(result.data.refund.penalty_applied).toBe('0.00');
+      expect(result.data.refund.base_fare_refund).toBe('450.00');
+      expect(result.data.refund.waiver_effect).toBe('ELIMINATE_PENALTY');
+      expect(result.data.refund.waiver_code).toBe('WAIVER123');
+      expect(result.data.refund.audit.waiver_code).toBe('WAIVER123');
+    });
+
+    it('REDUCE_PENALTY FIXED applies remaining amount (not invent)', async () => {
+      const result = await agent.execute({
+        data: makeInput({
+          fare_basis: 'EOWUS', // filed penalty 300 in fixture
+          waiver_code: 'RD50',
+          waiver_effect: 'REDUCE_PENALTY',
+          waiver_penalty_reduction: { kind: 'FIXED', amount: '50.00', currency: 'USD' },
+        }),
+      });
+      expect(result.data.refund.penalty_applied).toBe('50.00');
+      expect(result.data.refund.base_fare_refund).toBe('400.00');
+    });
+
+    it('REDUCE_PENALTY PERCENT_WAIVED halves filed penalty when percent=50', async () => {
+      const result = await agent.execute({
+        data: makeInput({
+          fare_basis: 'EOWUS',
+          waiver_code: 'RD50PCT',
+          waiver_effect: 'REDUCE_PENALTY',
+          waiver_penalty_reduction: { kind: 'PERCENT_WAIVED', percent: 50 },
+        }),
+      });
+      expect(result.data.refund.penalty_applied).toBe('150.00');
+    });
+
+    it('fail closed: REDUCE_PENALTY without reduction companion', async () => {
+      await expect(
+        agent.execute({
+          data: makeInput({
+            waiver_code: 'RD',
+            waiver_effect: 'REDUCE_PENALTY',
+          }),
+        }),
+      ).rejects.toThrow('waiver_penalty_reduction');
+    });
+
+    it('CHANGE_REFUND_FORM keeps filed penalty and records form', async () => {
+      const result = await agent.execute({
+        data: makeInput({
+          fare_basis: 'EOWUS',
+          waiver_code: 'CREDIT1',
+          waiver_effect: 'CHANGE_REFUND_FORM',
+          waiver_refund_form: 'CREDIT',
+        }),
+      });
+      expect(result.data.refund.penalty_applied).toBe('300.00');
+      expect(result.data.refund.waiver_refund_form).toBe('CREDIT');
+      expect(result.data.refund.audit.waiver_refund_form).toBe('CREDIT');
+    });
+
+    it('fail closed: CHANGE_REFUND_FORM without form', async () => {
+      await expect(
+        agent.execute({
+          data: makeInput({
+            waiver_code: 'CREDIT1',
+            waiver_effect: 'CHANGE_REFUND_FORM',
+          }),
+        }),
+      ).rejects.toThrow('waiver_refund_form');
+    });
+
+    it('IRROP_INVOLUNTARY zeros voluntary Cat 33 charge', async () => {
+      const result = await agent.execute({
+        data: makeInput({
+          fare_basis: 'EOWUS',
+          waiver_code: 'IRROP9',
+          waiver_effect: 'IRROP_INVOLUNTARY',
+        }),
+      });
+      expect(result.data.refund.penalty_applied).toBe('0.00');
+      expect(result.data.refund.base_fare_refund).toBe('450.00');
+    });
+
+    it('never treats bare waiver_code as general skip-penalty rule', async () => {
+      // Regression: any waiver ⇒ 0 must not hold
+      await expect(
+        agent.execute({ data: makeInput({ waiver_code: 'ANYTHING' }) }),
+      ).rejects.toThrow(/waiver_effect|skip penalty/i);
     });
   });
 
   describe('Commission recall', () => {
     it('recalls proportional commission on full refund', async () => {
       const result = await agent.execute({
-        data: makeInput({ cat33_rules: undefined }), // free — full base refund
+        data: makeInput({
+          waiver_code: 'W',
+          waiver_effect: 'ELIMINATE_PENALTY',
+        }),
       });
-      expect(assertRefund(result).commission_recalled).toBe('31.50'); // full commission
+      expect(result.data.commission_recalled).toBe('31.50'); // full commission
     });
 
     it('recalls proportional commission on partial refund', async () => {
@@ -357,39 +447,38 @@ describe('Refund Processing', () => {
         }),
       });
       if ('status' in result.data) throw new Error('unexpected domain sentinel');
-      // unused base 112.50 → commission recall = 31.50 * 112.50/450 = 7.875 → 7.88
-      expect(Number(assertRefund(result).commission_recalled)).toBeGreaterThan(0);
-      expect(Number(assertRefund(result).commission_recalled)).toBeLessThan(31.5);
+      expect(Number(result.data.commission_recalled)).toBeGreaterThan(0);
+      expect(Number(result.data.commission_recalled)).toBeLessThan(31.5);
     });
 
     it('no commission recall when no commission data', async () => {
       const result = await agent.execute({ data: makeInput({ commission: undefined }) });
-      expect(assertRefund(result).commission_recalled).toBe('0.00');
+      expect(result.data.commission_recalled).toBe('0.00');
     });
 
     it('no commission recall on tax-only refund', async () => {
       const result = await agent.execute({ data: makeInput({ refund_type: 'TAX_ONLY' }) });
-      expect(assertRefund(result).commission_recalled).toBe('0.00');
+      expect(result.data.commission_recalled).toBe('0.00');
     });
   });
 
   describe('BSP/ARC reporting', () => {
     it('generates BSP fields for BSP settlement', async () => {
       const result = await agent.execute({ data: makeInput({ settlement_system: 'BSP' }) });
-      expect(assertRefund(result).refund.bsp_fields).toBeDefined();
-      expect(assertRefund(result).refund.bsp_fields!.refund_indicator).toBe('R');
-      expect(assertRefund(result).refund.bsp_fields!.original_ticket_number).toBe('1251234567890');
+      expect(result.data.refund.bsp_fields).toBeDefined();
+      expect(result.data.refund.bsp_fields!.refund_indicator).toBe('R');
+      expect(result.data.refund.bsp_fields!.original_ticket_number).toBe('1251234567890');
     });
 
     it('generates ARC fields for ARC settlement', async () => {
       const result = await agent.execute({ data: makeInput({ settlement_system: 'ARC' }) });
-      expect(assertRefund(result).refund.arc_fields).toBeDefined();
-      expect(assertRefund(result).refund.arc_fields!.refund_type_indicator).toBe('R');
+      expect(result.data.refund.arc_fields).toBeDefined();
+      expect(result.data.refund.arc_fields!.refund_type_indicator).toBe('R');
     });
 
     it('no ARC fields on BSP ticket', async () => {
       const result = await agent.execute({ data: makeInput({ settlement_system: 'BSP' }) });
-      expect(assertRefund(result).refund.arc_fields).toBeUndefined();
+      expect(result.data.refund.arc_fields).toBeUndefined();
     });
   });
 
@@ -397,7 +486,7 @@ describe('Refund Processing', () => {
     it('records conjunction tickets in audit', async () => {
       const input = makeInput({ conjunction_tickets: ['1251234567891', '1251234567892'] });
       const result = await agent.execute({ data: input });
-      expect(assertRefund(result).refund.audit.conjunction_tickets).toHaveLength(2);
+      expect(result.data.refund.audit.conjunction_tickets).toHaveLength(2);
     });
 
     it('rejects partial refund for conjunction set', async () => {

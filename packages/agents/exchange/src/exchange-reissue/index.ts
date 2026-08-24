@@ -4,20 +4,21 @@
  * Ticket reissue with residual value, tax carryforward,
  * GDS exchange command stubs, conjunction ticket handling.
  *
- * Residual method required — never invent original − change fee
- * (docs/knowledge-base/partial-refund-residual-value.md, issue #150).
+ * Tax carryforward is per-tax CARRY | RECALCULATE | FORFEIT.
+ * Same O&D alone is insufficient. See docs/knowledge-base/tax-carryforward-reissue.md
  *
  * Implements the base Agent interface from @otaip/core.
  */
 
 import type { Agent, AgentInput, AgentOutput, AgentHealthStatus } from '@otaip/core';
-import {
-  AgentNotInitializedError,
-  AgentInputValidationError,
-  isDomainInputRequired,
-} from '@otaip/core';
+import { AgentNotInitializedError, AgentInputValidationError, isDomainInputRequired } from '@otaip/core';
 import type { ExchangeReissueInput, ExchangeReissueResult } from './types.js';
 import { processReissue } from './reissue-engine.js';
+import {
+  TaxCarryforwardRuleMissingError,
+  collectTaxCodes,
+  indexRulesByCode,
+} from './tax-carryforward.js';
 
 const TICKET_NUMBER_RE = /^\d{13}$/;
 const CARRIER_RE = /^[A-Z0-9]{2}$/;
@@ -25,12 +26,18 @@ const AIRPORT_RE = /^[A-Z]{3}$/;
 const PASSENGER_NAME_RE = /^[A-Z][A-Z' -]+\/[A-Z][A-Z' -]+$/;
 const RECORD_LOCATOR_RE = /^[A-Z0-9]{6}$/;
 const VALID_GDS = new Set(['AMADEUS', 'SABRE', 'TRAVELPORT']);
+const VALID_GEOGRAPHY = new Set(['SAME_AIRPORT', 'SAME_CITY', 'DIFFERENT']);
+const VALID_FLOWN = new Set(['UNFLOWN', 'PARTIALLY_FLOWN', 'FULLY_FLOWN']);
+const VALID_NATURE = new Set(['TRANSPORT', 'SALES']);
+const VALID_MIN_GEO = new Set(['SAME_AIRPORT', 'SAME_CITY']);
+const VALID_EXPIRED_ACTION = new Set(['RECALCULATE', 'FORFEIT']);
+
 const VALID_RESIDUAL_METHODS = new Set(['FULLY_UNUSED', 'PUBLISHED_FARE', 'CARRIER_SPECIFIC']);
 
 export class ExchangeReissue implements Agent<ExchangeReissueInput, ExchangeReissueResult> {
   readonly id = '5.2';
   readonly name = 'Exchange/Reissue';
-  readonly version = '0.1.0';
+  readonly version = '0.2.0';
 
   private initialized = false;
 
@@ -47,7 +54,19 @@ export class ExchangeReissue implements Agent<ExchangeReissueInput, ExchangeReis
 
     this.validateInput(input.data);
 
-    const result = processReissue(input.data);
+    let result: ExchangeReissueResult;
+    try {
+      result = processReissue(input.data);
+    } catch (err) {
+      if (err instanceof TaxCarryforwardRuleMissingError) {
+        throw new AgentInputValidationError(
+          this.id,
+          'tax_carryforward_rules',
+          err.message,
+        );
+      }
+      throw err;
+    }
 
     if (isDomainInputRequired(result)) {
       return {
@@ -77,6 +96,11 @@ export class ExchangeReissue implements Agent<ExchangeReissueInput, ExchangeReis
         `Conjunction exchange: ${input.data.conjunction_originals.length + 1} original tickets referenced.`,
       );
     }
+    if (input.data.same_origin_destination !== undefined) {
+      warnings.push(
+        'same_origin_destination is deprecated and ignored for tax carryforward; decisions use tax_carryforward_context + per-code rules (same O&D ≠ keep all TFCs).',
+      );
+    }
 
     return {
       data: result,
@@ -89,6 +113,7 @@ export class ExchangeReissue implements Agent<ExchangeReissueInput, ExchangeReis
         new_ticket: result.reissue.ticket_number,
         additional_collection: result.additional_collection,
         credit_amount: result.credit_amount,
+        tax_decision_count: result.tax_decisions.length,
         residual_method: result.reissue.exchange_audit.residual_method,
       },
     };
@@ -191,6 +216,99 @@ export class ExchangeReissue implements Agent<ExchangeReissueInput, ExchangeReis
         }
       }
     }
+
+    this.validateTaxCarryforward(data);
+  }
+
+  private validateTaxCarryforward(data: ExchangeReissueInput): void {
+    if (!data.tax_carryforward_context) {
+      throw new AgentInputValidationError(
+        this.id,
+        'tax_carryforward_context',
+        'Required. Same O&D boolean alone is insufficient for TFC carryforward (see docs/knowledge-base/tax-carryforward-reissue.md).',
+      );
+    }
+    const ctx = data.tax_carryforward_context;
+    if (!VALID_GEOGRAPHY.has(ctx.geography_match)) {
+      throw new AgentInputValidationError(
+        this.id,
+        'tax_carryforward_context.geography_match',
+        'Must be SAME_AIRPORT, SAME_CITY, or DIFFERENT.',
+      );
+    }
+    if (!VALID_FLOWN.has(ctx.flown_status)) {
+      throw new AgentInputValidationError(
+        this.id,
+        'tax_carryforward_context.flown_status',
+        'Must be UNFLOWN, PARTIALLY_FLOWN, or FULLY_FLOWN.',
+      );
+    }
+    if (typeof ctx.within_validity_window !== 'boolean') {
+      throw new AgentInputValidationError(
+        this.id,
+        'tax_carryforward_context.within_validity_window',
+        'Must be a boolean (caller evaluates published windows; engine does not invent dates).',
+      );
+    }
+    if (typeof ctx.point_of_sale_unchanged !== 'boolean') {
+      throw new AgentInputValidationError(
+        this.id,
+        'tax_carryforward_context.point_of_sale_unchanged',
+        'Must be a boolean (sales vs transport reassessment).',
+      );
+    }
+
+    if (!data.tax_carryforward_rules || !Array.isArray(data.tax_carryforward_rules)) {
+      throw new AgentInputValidationError(
+        this.id,
+        'tax_carryforward_rules',
+        'Required. Provide a per-code rule for every tax on original ∪ new tickets. Fail closed when unknown.',
+      );
+    }
+
+    for (const rule of data.tax_carryforward_rules) {
+      if (!rule.tax_code || typeof rule.tax_code !== 'string') {
+        throw new AgentInputValidationError(
+          this.id,
+          'tax_carryforward_rules.tax_code',
+          'Each rule requires a tax_code.',
+        );
+      }
+      if (!VALID_NATURE.has(rule.nature)) {
+        throw new AgentInputValidationError(
+          this.id,
+          'tax_carryforward_rules.nature',
+          `Invalid nature for ${rule.tax_code}: must be TRANSPORT or SALES.`,
+        );
+      }
+      if (!VALID_MIN_GEO.has(rule.min_geography)) {
+        throw new AgentInputValidationError(
+          this.id,
+          'tax_carryforward_rules.min_geography',
+          `Invalid min_geography for ${rule.tax_code}.`,
+        );
+      }
+      if (!VALID_EXPIRED_ACTION.has(rule.on_validity_expired)) {
+        throw new AgentInputValidationError(
+          this.id,
+          'tax_carryforward_rules.on_validity_expired',
+          `Must be RECALCULATE or FORFEIT for ${rule.tax_code}.`,
+        );
+      }
+    }
+
+    // Fail closed: every code on the ticket set must have a rule
+    const ruleMap = indexRulesByCode(data.tax_carryforward_rules);
+    const codes = collectTaxCodes(data.original_taxes ?? [], data.new_taxes ?? []);
+    for (const code of codes) {
+      if (!ruleMap.has(code)) {
+        throw new AgentInputValidationError(
+          this.id,
+          'tax_carryforward_rules',
+          `No tax carryforward rule for code ${code}. Fail closed — do not assume CARRY from same O&D. Supply a rule from TTBS/ATPCO/SITA.`,
+        );
+      }
+    }
   }
 }
 
@@ -206,4 +324,18 @@ export type {
   ExchangeSegment,
   TaxItem,
   FormOfPayment,
+  TaxCarryforwardAction,
+  TaxCarryforwardDecision,
+  TaxCarryforwardContext,
+  TaxCarryforwardRule,
+  TaxGeographyMatch,
+  TaxItineraryFlownStatus,
+  TaxNature,
 } from './types.js';
+
+export {
+  decideTaxCarryforward,
+  decideAllTaxCarryforwards,
+  CARRIER_IMPOSED_SURCHARGE_CODES,
+  TaxCarryforwardRuleMissingError,
+} from './tax-carryforward.js';

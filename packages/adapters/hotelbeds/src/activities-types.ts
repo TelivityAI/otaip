@@ -3,12 +3,10 @@
  *
  * Two layers:
  *   - **Wire types** (`HotelbedsActivities*`) describe the JSON the API
- *     returns. Field names are best-effort based on Hotelbeds API
- *     conventions and the vendor brief; the adapter mapper tolerates
- *     missing fields. See `docs/knowledge-base/activities.md` for the
- *     authoritative source and outstanding DOMAIN_QUESTIONs.
- *   - **Canonical types** (`Activity*`) are the OTAIP-facing shape the
- *     adapter exports. These match the vendor brief verbatim.
+ *     returns. Field names follow official Hotelbeds docs where cited in
+ *     `docs/knowledge-base/activities.md`, plus the brief-shape fixtures
+ *     already in tests. The mapper tolerates missing fields.
+ *   - **Canonical types** (`Activity*`) are the OTAIP-facing shape.
  */
 
 import type { Money } from './shared-types.js';
@@ -36,21 +34,37 @@ export interface ActivitySearchRequest {
 }
 
 /**
- * Cancellation policy class.
+ * Cancellation policy class (`rateClass`).
  *
- * `'NOR'` = refundable, `'NRF'` = non-refundable. Behavioral semantics
- * (penalty schedule, free-cancel cutoff) are NOT documented in the vendor
- * brief — see DQ-A5 in the KB. Adapter exposes the class verbatim.
+ * `'NOR'` = refundable (read `cancellationPolicies[]` for stepped penalties).
+ * `'NRF'` = non-refundable.
+ * Official: Activities Cancellation Policies KB + Availability docs (DQ-A5 CLOSED).
  */
 export type ActivityCancellationPolicy = 'NOR' | 'NRF';
+
+/**
+ * Stepped cancellation penalty from Hotelbeds `cancellationPolicies[]`.
+ * `dateFrom` is destination-local time (official docs).
+ */
+export interface ActivityCancellationPenalty {
+  dateFrom: string;
+  /** Penalty amount as decimal string. */
+  amount: string;
+  currency?: string;
+}
 
 export interface ActivityModality {
   code: string;
   name: string;
-  /** Per-adult price. */
+  /** Per-adult agency/net price (`amount` on the wire). */
   price: Money;
   /** Per-child price, when published separately. */
   childPrice?: Money;
+  /**
+   * Box-office / gate price when published.
+   * Official: not the selling price — see DQ-A2 CLOSED in KB.
+   */
+  boxOfficePrice?: Money;
   maxPax: number;
   /** Available start times for the modality. Format passed through verbatim. */
   schedule?: string[];
@@ -64,7 +78,10 @@ export interface ActivityOffer {
   duration: string;
   location: { latitude: number; longitude: number };
   images: string[];
+  /** rateClass NOR | NRF. */
   cancellationPolicy: ActivityCancellationPolicy;
+  /** Stepped penalties when Hotelbeds returns cancellationPolicies[]. */
+  cancellationPolicies?: ActivityCancellationPenalty[];
 }
 
 export interface ActivityBookRequest {
@@ -81,7 +98,12 @@ export interface ActivityBookRequest {
   signal?: AbortSignal;
 }
 
-export type ActivityBookingStatus = 'CONFIRMED' | 'ON_REQUEST';
+/**
+ * Official confirm statuses are CONFIRMED | CANCELLED.
+ * PRECONFIRMED is the optional preconfirm/reconfirm hold — not ON_REQUEST.
+ * DQ-A3 CLOSED: Activities confirm has no OnRequest.
+ */
+export type ActivityBookingStatus = 'CONFIRMED' | 'PRECONFIRMED' | 'CANCELLED';
 
 export interface ActivityBookResponse {
   bookingReference: string;
@@ -98,10 +120,6 @@ export interface ActivityCancelResponse {
 
 // ---------------------------------------------------------------------------
 // Wire types — Hotelbeds Activities API responses
-//
-// Best-effort. Field names mirror Hotelbeds API conventions but the
-// authoritative shape is the live sandbox; the field-mapper tolerates
-// missing fields. See KB file for outstanding DQs.
 // ---------------------------------------------------------------------------
 
 export interface HotelbedsActivitiesAvailabilityRequest {
@@ -124,14 +142,37 @@ export interface HotelbedsActivitiesAvailabilityResponse {
   auditData?: { timestamp?: string; processTime?: string };
 }
 
+export interface HotelbedsActivityCancellationPolicy {
+  dateFrom?: string;
+  amount?: number | string;
+  currency?: string;
+}
+
+export interface HotelbedsActivityRate {
+  rateClass?: string;
+  freeCancellation?: boolean;
+  rateDetails?: Array<{
+    operationDates?: Array<{
+      from?: string;
+      to?: string;
+      cancellationPolicies?: HotelbedsActivityCancellationPolicy[];
+    }>;
+  }>;
+}
+
 export interface HotelbedsActivity {
   code: string;
   name?: string;
   /** Long-form description, often with HTML. */
   description?: string;
   duration?: string;
-  /** Cancellation class flag. Adapter narrows to ActivityCancellationPolicy. */
+  /**
+   * Brief-shape cancellation class flag. Official wire uses
+   * modalities[].rates[].rateClass — mapper accepts either (DQ-A5).
+   */
   cancellationPolicy?: string;
+  /** Top-level stepped policies when present on recorded fixtures. */
+  cancellationPolicies?: HotelbedsActivityCancellationPolicy[];
   /** Geo coordinates. Strings or numbers depending on supplier. */
   location?: { latitude?: number | string; longitude?: number | string };
   images?: Array<{ url?: string } | string>;
@@ -141,13 +182,16 @@ export interface HotelbedsActivity {
 export interface HotelbedsActivityModality {
   code: string;
   name?: string;
-  /** Per-adult net amount. String for decimal precision. */
+  /** Per-adult net/agency amount. String for decimal precision. */
   amount?: string;
   /** Per-child amount when published separately. */
   childAmount?: string;
+  /** Box-office amount when published (not sellingRate — DQ-A2). */
+  boxOfficeAmount?: string;
   currency?: string;
   maxPax?: number;
   schedule?: string[];
+  rates?: HotelbedsActivityRate[];
 }
 
 export interface HotelbedsActivitiesBookingRequest {
@@ -167,6 +211,10 @@ export interface HotelbedsActivitiesBookingResponse {
     clientReference?: string;
     status?: string;
     voucherUrl?: string;
+    activities?: Array<{
+      vouchers?: Array<{ url?: string; dateFrom?: string; dateTo?: string }>;
+      cancellationPolicies?: HotelbedsActivityCancellationPolicy[];
+    }>;
   };
   auditData?: { timestamp?: string };
 }
@@ -176,6 +224,8 @@ export interface HotelbedsActivitiesCancellationResponse {
     reference: string;
     cancellationReference?: string;
     status?: string;
+    /** Simulation may return charge amount — shape observed in cancel docs narrative. */
+    totalNet?: number | string;
   };
   auditData?: { timestamp?: string };
 }

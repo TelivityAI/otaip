@@ -30,6 +30,15 @@ const VALID_TRANSACTION_TYPES = new Set<TransactionType>([
   'group',
   'corporate',
 ]);
+const VALID_VENDORS = new Set([
+  'sabre',
+  'amadeus',
+  'duffel',
+  'navitaire',
+  'trippro',
+  'airline_direct',
+  'unknown',
+]);
 
 export class GdsNdcRouter implements Agent<GdsNdcRouterInput, GdsNdcRouterOutput> {
   readonly id = '3.1';
@@ -158,6 +167,22 @@ export class GdsNdcRouter implements Agent<GdsNdcRouterInput, GdsNdcRouterOutput
         'Must be AMADEUS, SABRE, or TRAVELPORT.',
       );
     }
+
+    if (data.vendor && !VALID_VENDORS.has(data.vendor)) {
+      throw new AgentInputValidationError(
+        this.id,
+        'vendor',
+        `Must be one of: ${[...VALID_VENDORS].join(', ')}`,
+      );
+    }
+
+    if (data.plating_carrier && !IATA_CODE_RE.test(data.plating_carrier)) {
+      throw new AgentInputValidationError(
+        this.id,
+        'plating_carrier',
+        'Must be a 2-letter IATA code.',
+      );
+    }
   }
 }
 
@@ -168,6 +193,7 @@ export type {
   ChannelRouting,
   CarrierChannelConfig,
   DistributionChannel,
+  DistributionVendor,
   NdcVersion,
   GdsSystem,
   GdsPnrFormat,
@@ -176,4 +202,22 @@ export type {
   NdcOfferItem,
   TransactionType,
   TransactionCapabilityOverrides,
+  CapabilityMatrixInputRow,
 } from './types.js';
+
+export {
+  getSeedCapabilityMatrix,
+  parseCapabilityMatrixCsv,
+  lookupMatrixRow,
+  matrixRowToCarrierConfig,
+  buildCapabilityOverridesFromMatrix,
+  MATRIX_TO_AGENT_TRANSACTION,
+  matrixTransactionsForAgentType,
+  parseNdcVersionNotes,
+} from './capability-matrix.js';
+export type {
+  CapabilityMatrixRow,
+  MatrixTransaction,
+  MatrixVendor,
+  MatrixChannel,
+} from './capability-matrix.js';

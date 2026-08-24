@@ -12,19 +12,24 @@ Distribution channel routing, PNR construction, validation, queue management, AP
 **Class:** `GdsNdcRouter`
 **Status:** Implemented
 
-Routes booking requests to the correct distribution channel (GDS, NDC, or direct API) based on carrier config, codeshare rules, and NDC capability. Per-segment routing with fallback support.
+Routes booking requests to the correct distribution channel (GDS, NDC, or direct API). **Lookup key is `(carrier, vendor, transaction)`** — never a single airline→channel map. Authoritative matrix: [`docs/knowledge-base/gds-ndc-capability-matrix.md`](../knowledge-base/gds-ndc-capability-matrix.md). Res 787 names Shop / Order / Change processes; it is not a channel parity checklist. NDC schema versions are never invented (no default `21.3`).
 
 **Input (`GdsNdcRouterInput`):**
 - `segments` -- routing segments (marketing/operating carrier, origin, destination, flight number)
+- `transaction_type` -- `'shopping' | 'booking' | 'ticketing' | 'servicing' | 'group' | 'corporate'` (aliases for matrix labels Shop / OrderCreate / Servicing|OrderChange|OrderCancel / Groups / Corporate)
+- `vendor?` -- `'sabre' | 'amadeus' | 'duffel' | 'navitaire' | 'trippro' | 'airline_direct' | 'unknown'` (required for unambiguous matrix lookup)
+- `plating_carrier?` -- when plating ≠ marketing/operating (DOMAIN_QUESTION on precedence)
+- `capability_matrix?` -- inline KB CSV-shaped rows; preferred over airline→channel maps
+- `capability_overrides?` -- per-carrier, per-transaction escape hatch when matrix cell is unknown
 - `preferred_channel?` -- `'GDS' | 'NDC' | 'DIRECT'`
 - `preferred_gds?` -- `'AMADEUS' | 'SABRE' | 'TRAVELPORT'`
 - `include_fallbacks` -- whether to include fallback channels
 
 **Output (`GdsNdcRouterOutput`):**
-- `routings` -- per-segment channel routing (primary channel, GDS system, NDC version, fallbacks, booking format)
+- `routings` -- per-segment channel routing (primary channel, GDS system, NDC version, fallbacks, booking format); `domain_input_required` when matrix/override missing
 - `unified_channel` -- whether all segments can use the same channel
 - `recommended_channel` -- best channel for entire itinerary
-- `gds_format` / `ndc_format` -- format translation stubs
+- `gds_format` / `ndc_format` -- format translation stubs (`ndc_format` omitted when version unknown — never invents `21.3`)
 
 ---
 
@@ -87,11 +92,14 @@ Pre-ticketing validation with 13 checks to catch errors before ADMs: segment sta
 
 GDS queue monitoring and processing: priority assignment, categorization, action routing, and queue command generation.
 
+Travelport place/list/remove commands are **per host** (Apollo / Galileo≡Travelport+ / Worldspan) from the public format-compare table — see `docs/knowledge-base/tmc-mid-office-ttl-queues.md`. TTL priority uses Zulu deadline-day urgency.
+
 **Input (`QueueManagementInput`):**
 - `entries` -- queue items (record locator, GDS, queue number, entry type, deadline, remark)
 - `current_time?` -- ISO timestamp for priority calculation
 - `gds?` -- GDS system for command generation
 - `queue_number?` -- queue to generate read commands for
+- `travelport_host?` -- `'APOLLO' | 'GALILEO' | 'WORLDSPAN'` when `gds` is `TRAVELPORT`
 
 **Output (`QueueManagementOutput`):**
 - `results` -- processed items with priority, status, recommended action, target agent

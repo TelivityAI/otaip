@@ -1,0 +1,70 @@
+{
+  "id": "eu-depart-any-carrier",
+  "description": "Art.3(1)(a): Member State departure (FR/CDG) on a non-EU operating carrier — EU261 applies to any carrier. Art.8 passenger choice required. Do not silently same-carrier rebook. (GB omitted post-Brexit — see DQ-IRROP-8.)",
+  "source": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32004R0261",
+  "expect": {
+    "is_involuntary": true,
+    "trigger": "FLIGHT_CANCELLATION",
+    "eu261_applies": true,
+    "us_dot_applies": false,
+    "art8_passenger_choice_required": true,
+    "protection_path": "SAME_OPERATING"
+  },
+  "input": {
+    "original_pnr": {
+      "record_locator": "EUDPRT",
+      "passenger_name": "SMITH/JANE",
+      "affected_segment": {
+        "carrier": "AA",
+        "flight_number": "100",
+        "origin": "CDG",
+        "destination": "JFK",
+        "departure_date": "2026-06-15",
+        "departure_time": "10:00",
+        "booking_class": "Y",
+        "fare_basis": "YOWUS",
+        "operating_carrier": "AA"
+      },
+      "issuing_carrier": "AA",
+      "departure_country": "FR",
+      "arrival_country": "US",
+      "is_checked_in": true,
+      "is_eu_carrier": false,
+      "endorsement": "VALID AA/AF"
+    },
+    "schedule_change": {
+      "change_type": "FLIGHT_CANCELLATION",
+      "carrier_reason": "Operational cancellation"
+    },
+    "available_flights": [
+      {
+        "carrier": "AA",
+        "flight_number": "106",
+        "departure_date": "2026-06-15",
+        "departure_time": "18:00",
+        "booking_class": "Y",
+        "is_same_operating_carrier": true,
+        "is_alliance_partner": false,
+        "is_interline": false,
+        "endorsement_allows": true
+      },
+      {
+        "carrier": "AF",
+        "flight_number": "7",
+        "departure_date": "2026-06-15",
+        "departure_time": "16:00",
+        "booking_class": "Y",
+        "is_same_operating_carrier": false,
+        "is_marketing_carrier": false,
+        "is_alliance_partner": true,
+        "is_interline": false,
+        "endorsement_allows": true
+      }
+    ],
+    "eu261_inputs": {
+      "distance_km": 5850,
+      "extraordinary_circumstances": false,
+      "notice_days_before_departure": 1
+    }
+  }
+}

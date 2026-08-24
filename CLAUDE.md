@@ -59,6 +59,7 @@ Follow the pattern in `packages/agents/reference/src/airport-code-resolver/`:
 ## Domain Knowledge
 - Air: `docs/knowledge-base/` (existing)
 - Lodging: `docs/knowledge-base/lodging.md`
+- BSP HOT (Agent 7.1): `docs/knowledge-base/bsp-hot-reconciliation.md` (DISH Rev 23; multi-currency CUTP; IROE≠ICER; conjunction/exchange/EMD/ADM separate)
 - Agent definitions: `docs/agents/`
 
 ## Repository Structure
@@ -107,9 +108,9 @@ When building agents, Claude Code will attempt to rationalize inventing domain l
 
 | Rationalization | Required response |
 |---|---|
-| "NUC conversion uses a standard multiply-and-round pattern, I'll apply banker's rounding" | STOP. IATA rounding rules are currency-specific and are NOT standard banker's rounding. Check KB for the IATA rounding table. Do not implement any rounding without the exact rule for the currency in question. |
-| "ROE rates change periodically, I'll use a hardcoded value for now as a placeholder" | STOP. ROE values are published by IATA monthly. Hardcoded ROE values will produce wrong fares immediately. Surface as DOMAIN_QUESTION: how will ROE data be ingested? |
-| "TPM/MPM mileage data isn't available, I'll approximate the distance using haversine between airports" | STOP. TPM is NOT great-circle distance. TPM is published by IATA/SITA and includes routing-specific values that differ from haversine. HIP/BHC/CTM checks depend on exact TPM. Do not approximate. Surface as DOMAIN_QUESTION. |
+| "NUC conversion uses a standard multiply-and-round pattern, I'll apply banker's rounding" | STOP. IATA Resolution **024d** uses per-currency units with **HX** (round up) or **NX** (nearest). Banker's / half-to-even is not a substitute. Check KB `docs/knowledge-base/fare-construction-data-dependencies.md`. |
+| "ROE rates change periodically, I'll use a hardcoded value for now as a placeholder" | STOP. **IROE** values are published by IATA monthly for **fare construction** (Res 024c). Hardcoded rates produce wrong fares immediately. Pass licensed rates via `data_sources.iroe` or surface DOMAIN_INPUT_REQUIRED. Do not commit proprietary IROE files. Do **not** use IROE for ticket-tax / payment FX — that is **ICER** ([xrates](https://www.iata.org/en/services/finance/xrates/)). |
+| "TPM/MPM mileage data isn't available, I'll approximate the distance using haversine between airports" | STOP. TPM is NOT great-circle distance. TPM is published by IATA ([TPM Manual](https://www.iata.org/en/publications/manuals/mileage/ticketed-point-mileage-tpm/)). HIP/BHC/CTM depend on exact TPM. Fail closed — never approximate. |
 | "The HIP check logic seems straightforward — just compare the fare to the sum of sector fares" | STOP. HIP/BHC/CTM each have different comparison rules, directionality requirements, and NUC-vs-local-currency considerations. Check KB for the exact ATPCO comparison logic before implementing. |
 | "For multi-sector itineraries, I'll prorate the fare evenly across segments" | STOP. IATA fare proration uses TPM-based proportional allocation, not equal division. Check KB for the exact proration formula. |
 | "I don't have the fare construction rules for this specific routing, I'll use the published fare directly" | STOP. Published fares and constructed fares are different pricing mechanisms. Do not conflate them. Surface as DOMAIN_QUESTION: which fare type applies? |
@@ -119,8 +120,8 @@ When building agents, Claude Code will attempt to rationalize inventing domain l
 
 | Rationalization | Required response |
 |---|---|
-| "Airline X supports NDC, so I'll route all bookings through NDC" | STOP. Airlines have varying NDC adoption levels by transaction type and market. Some support NDC for shopping only. Some require NDC for certain fare types but GDS for others. Check KB for the carrier's NDC capability matrix. |
-| "NDC version 21.3 is widely supported, I'll default to that" | STOP. NDC versions are NOT backward compatible in all cases. Carriers implement specific versions with carrier-specific extensions. Check KB for which version the specific carrier supports. |
+| "Airline X supports NDC, so I'll route all bookings through NDC" | STOP. Airlines have varying NDC adoption levels by transaction type and vendor. Some support NDC for shopping only. Some require NDC for certain fare types but GDS for others. Check `docs/knowledge-base/gds-ndc-capability-matrix.md` for the carrier×vendor×transaction matrix. Res 787 is the Offer/Order process standard — not a channel parity checklist. |
+| "NDC version 21.3 is widely supported, I'll default to that" | STOP. NDC versions are NOT backward compatible in all cases. Carriers implement specific versions with carrier-specific extensions. Check the matrix `ndc_version_notes` for the specific carrier×vendor. Never invent a version. |
 | "Codeshare flights route through the marketing carrier's channel" | STOP. Codeshare routing depends on ticketing arrangement, inventory control (free-sale vs blocked space), and plating carrier. Some require dual-channel booking. Check KB for the codeshare agreement's booking rules. |
 | "I'll map each airline to either GDS or NDC as their primary channel" | STOP. Most NDC airlines still require GDS for specific scenarios (groups, tours, corporate fares, post-booking servicing). The routing decision must be PER-TRANSACTION, not per-airline. Check KB for channel capability per transaction type. |
 

@@ -1,12 +1,13 @@
 /**
  * Fare Construction — Agent 2.2
  *
- * NUC × ROE fare construction with mileage validation,
- * HIP/BHC/CTM checks, surcharges, and IATA rounding.
+ * NUC × IROE with published TPM/MPM, Resolution 024d (HX/NX) rounding,
+ * and fail-closed HIP/BHC/CTM hooks.
  *
- * ALL financial math uses decimal.js — no floating point for currency.
+ * Licensed data is supplied via input.data_sources — this package does
+ * not ship IROE or TPM files.
  *
- * Implements the base Agent interface from @otaip/core.
+ * KB: docs/knowledge-base/fare-construction-data-dependencies.md
  */
 
 import type { Agent, AgentInput, AgentOutput, AgentHealthStatus } from '@otaip/core';
@@ -29,7 +30,7 @@ const CURRENCY_RE = /^[A-Z]{3}$/;
 export class FareConstruction implements Agent<FareConstructionInput, FareConstructionResult> {
   readonly id = '2.2';
   readonly name = 'Fare Construction';
-  readonly version = '0.1.0';
+  readonly version = '0.2.0';
 
   private initialized = false;
 
@@ -70,7 +71,7 @@ export class FareConstruction implements Agent<FareConstructionInput, FareConstr
     const warnings: string[] = [];
     if (result.mileage_exceeded) {
       warnings.push(
-        `Mileage exceeded: TPM ${result.total_tpm} > MPM ${result.total_mph}. Surcharge of ${result.mileage_surcharge.percentage}% applied.`,
+        `Mileage exceeded: TPM ${result.total_tpm} > MPM ${result.total_mpm}. Surcharge of ${result.mileage_surcharge.percentage}% applied.`,
       );
     }
     if (result.hip_check.detected) {
@@ -89,10 +90,10 @@ export class FareConstruction implements Agent<FareConstructionInput, FareConstr
         `DOMAIN_INPUT_REQUIRED (BHC): ${result.bhc_check.missing_inputs.join(', ')}`,
       );
     }
-
-    const missingMileage = result.mileage_checks.filter((m) => !m.data_available);
-    for (const m of missingMileage) {
-      warnings.push(`No mileage data for ${m.origin}-${m.destination}.`);
+    if (result.ctm_check.missing_inputs && result.ctm_check.missing_inputs.length > 0) {
+      warnings.push(
+        `DOMAIN_INPUT_REQUIRED (CTM): ${result.ctm_check.missing_inputs.join(', ')}`,
+      );
     }
 
     return {
@@ -168,10 +169,20 @@ export class FareConstruction implements Agent<FareConstructionInput, FareConstr
   }
 }
 
+export {
+  constructFare,
+  apply024dRounding,
+  assertPublishedTpmSource,
+  HAVERSINE_AS_TPM_BANNED,
+  HARDCODED_IROE_BANNED,
+  BANKERS_ROUNDING_AS_IATA_BANNED,
+} from './fare-engine.js';
+
 export type {
   FareConstructionInput,
   FareConstructionOutput,
   FareConstructionResult,
+  FareConstructionDataSources,
   FareComponent,
   JourneyType,
   MileageCheck,
@@ -180,4 +191,10 @@ export type {
   BhcCheck,
   CtmCheck,
   AuditStep,
+  Rounding024dMethod,
+  Rounding024dRule,
+  PublishedCityPairMileage,
+  HipCheckRequirements,
+  BhcCheckRequirements,
+  CtmCheckRequirements,
 } from './types.js';

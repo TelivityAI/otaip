@@ -4,6 +4,10 @@
  * Agent 6.1: ATPCO Category 33 refund processing with penalty application,
  * commission recall, BSP/ARC reporting, conjunction ticket handling.
  *
+ * Waiver typology: docs/knowledge-base/waiver-typology.md
+ * - No Cat 33 data / no match → free refund (ATPCO default; not fail-closed).
+ * - Bare waiver_code without waiver_effect → fail closed (≠ skip penalty).
+ *
  * Partial refunds: Cat 33 + IATA Ticketing Handbook (THB) practice, with
  * explicit PUBLISHED_FARE or CARRIER_SPECIFIC valuation — never
  * original−used / coupon-ratio / MPA-P. See
@@ -18,6 +22,32 @@ export type SettlementSystem = 'BSP' | 'ARC';
 
 export type CommissionType = 'PERCENTAGE' | 'FLAT';
 
+/**
+ * Semantic effect of a Cat 33 (or IRROP) waiver.
+ * See docs/knowledge-base/waiver-typology.md — code alone does not imply ELIMINATE_PENALTY.
+ */
+export type WaiverEffect =
+  | 'ELIMINATE_PENALTY'
+  | 'REDUCE_PENALTY'
+  | 'CHANGE_REFUND_FORM'
+  | 'CHANGE_REBOOKING_CLASS'
+  | 'IRROP_INVOLUNTARY';
+
+/** Remaining penalty after waiver, or percent of filed penalty eliminated. */
+export type WaiverPenaltyReduction =
+  | { kind: 'FIXED'; amount: string; currency: string }
+  | { kind: 'PERCENT_WAIVED'; percent: number };
+
+/** Refund fulfillment form when waiver changes form without eliminating penalty. */
+export type WaiverRefundForm = 'CASH' | 'MCO' | 'EMD' | 'CREDIT';
+
+export const WAIVER_EFFECTS: readonly WaiverEffect[] = [
+  'ELIMINATE_PENALTY',
+  'REDUCE_PENALTY',
+  'CHANGE_REFUND_FORM',
+  'CHANGE_REBOOKING_CLASS',
+  'IRROP_INVOLUNTARY',
+] as const;
 export interface TaxItem {
   /** Tax code (e.g., GB, US, YQ) */
   code: string;
@@ -120,6 +150,10 @@ export interface RefundAuditTrail {
   penalty_applied: string;
   /** Waiver code (if applied) */
   waiver_code?: string;
+  /** Typed waiver effect (required when waiver_code is set) */
+  waiver_effect?: WaiverEffect;
+  /** Refund form when waiver changes form */
+  waiver_refund_form?: WaiverRefundForm;
   /** Base fare refunded (decimal string) */
   base_fare_refunded: string;
   /** Tax refunded (decimal string) */
@@ -128,9 +162,9 @@ export interface RefundAuditTrail {
   commission_recalled: string;
   /** Coupons refunded */
   coupons_refunded: number[];
-  /** Valuation method for PARTIAL (when applicable) */
+  /** Residual valuation method for PARTIAL refunds */
   residual_method?: 'PUBLISHED_FARE' | 'CARRIER_SPECIFIC';
-  /** Flown base used in valuation audit (when supplied) */
+  /** Flown base fare when PUBLISHED_FARE valuation supplied */
   flown_base_fare?: string;
 }
 
@@ -155,6 +189,10 @@ export interface RefundRecord {
   net_refund: string;
   /** Waiver code (if applied) */
   waiver_code?: string;
+  /** Typed waiver effect (required when waiver_code is set) */
+  waiver_effect?: WaiverEffect;
+  /** Refund form when waiver changes form */
+  waiver_refund_form?: WaiverRefundForm;
   /** BSP reporting fields */
   bsp_fields?: BspRefundFields;
   /** ARC reporting fields */
@@ -188,8 +226,33 @@ export interface RefundProcessingInput {
   coupons_to_refund?: CouponRefundItem[];
   /** Total coupon count on ticket */
   total_coupons: number;
-  /** Waiver code (if airline provided one) */
+  /**
+   * Waiver code identity (OSI/SSR/endorsement/NDC). Presence alone does NOT
+   * skip penalty — see docs/knowledge-base/waiver-typology.md.
+   * When set, `waiver_effect` is required (fail closed).
+   */
   waiver_code?: string;
+  /**
+   * Typed semantic effect of the waiver. Required when `waiver_code` is set.
+   * // TODO: DOMAIN_QUESTION: DQ-W1 — per-carrier map from free-text codes → effect
+   */
+  waiver_effect?: WaiverEffect;
+  /**
+   * Required when `waiver_effect` is REDUCE_PENALTY.
+   * FIXED = remaining penalty amount; PERCENT_WAIVED = % of filed penalty eliminated.
+   */
+  waiver_penalty_reduction?: WaiverPenaltyReduction;
+  /**
+   * Required when `waiver_effect` is CHANGE_REFUND_FORM.
+   * Does not eliminate the filed Cat 33 charge.
+   */
+  waiver_refund_form?: WaiverRefundForm;
+  /**
+   * Optional companions for CHANGE_REBOOKING_CLASS (primarily Cat 31;
+   * accepted here for shared typology — Cat 33 engines ignore class constraints).
+   */
+  permitted_booking_classes?: string[];
+  permitted_fare_basis_patterns?: string[];
   /** Fare basis code */
   fare_basis: string;
   /** Whether the fare is refundable */
@@ -210,10 +273,8 @@ export interface RefundProcessingInput {
    */
   cat33_rules?: Cat33Rules;
   /**
-   * Required for PARTIAL refunds. Caller-supplied unused base/taxes after
-   * PUBLISHED_FARE or CARRIER_SPECIFIC valuation (Cat 33 + IATA Ticketing
-   * Handbook practice). Without this, the engine returns DOMAIN_INPUT_REQUIRED.
-   * No Cat 33 / unmatched provision → free penalty once amounts are supplied.
+   * Explicit passenger residual for PARTIAL refunds (PUBLISHED_FARE or
+   * CARRIER_SPECIFIC). Required for PARTIAL — no coupon-ratio fallback.
    */
   partial_valuation?: PassengerPartialValuation;
 }

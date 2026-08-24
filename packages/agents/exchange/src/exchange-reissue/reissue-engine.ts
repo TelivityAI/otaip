@@ -1,9 +1,12 @@
 /**
  * Exchange/Reissue Engine — residual value, tax carryforward, GDS commands.
  *
+ * Tax carryforward: per-tax CARRY | RECALCULATE | FORFEIT.
+ * See docs/knowledge-base/tax-carryforward-reissue.md
+ * Same O&D boolean is not used for tax decisions. IROE ≠ ICER (no FX here).
+ *
  * Residual is applied as supplied with an explicit residual_method.
  * Never recomputes residual as original − change fee (issue #150).
- * MPA-P is not a passenger residual method.
  */
 
 import Decimal from 'decimal.js';
@@ -16,7 +19,9 @@ import type {
   TaxItem,
   ExchangeCommand,
   ExchangeAuditTrail,
+  TaxCarryforwardDecision,
 } from './types.js';
+import { decideAllTaxCarryforwards } from './tax-carryforward.js';
 
 const airlinePrefixes: Record<string, string> = {
   AA: '001',
@@ -63,62 +68,116 @@ function sumTaxes(taxes: TaxItem[]): Decimal {
   return total;
 }
 
-function computeTaxes(input: ExchangeReissueInput): {
+// ---------------------------------------------------------------------------
+// Tax carryforward — per-code decisions (not same_origin_destination)
+// ---------------------------------------------------------------------------
+
+function applyTaxDecisions(
+  input: ExchangeReissueInput,
+  decisions: TaxCarryforwardDecision[],
+): {
   taxes: TaxItem[];
   carriedForward: TaxItem[];
   newTaxes: TaxItem[];
   totalTax: Decimal;
 } {
-  if (input.same_origin_destination) {
-    const origMap = new Map<string, TaxItem>();
-    for (const t of input.original_taxes) {
-      origMap.set(t.code, t);
+  const decisionMap = new Map(decisions.map((d) => [d.tax_code, d]));
+  const origMap = new Map<string, TaxItem>();
+  for (const t of input.original_taxes) {
+    origMap.set(t.code, t);
+  }
+  const newMap = new Map<string, TaxItem>();
+  for (const t of input.new_taxes) {
+    newMap.set(t.code, t);
+  }
+
+  const carriedForward: TaxItem[] = [];
+  const newTaxes: TaxItem[] = [];
+  const finalTaxes: TaxItem[] = [];
+
+  const allCodes = new Set([...origMap.keys(), ...newMap.keys()]);
+
+  for (const code of allCodes) {
+    const decision = decisionMap.get(code);
+    if (!decision) {
+      // decideAllTaxCarryforwards always covers all codes; defensive
+      throw new Error(`Missing tax decision for ${code}`);
     }
 
-    const carriedForward: TaxItem[] = [];
-    const newTaxes: TaxItem[] = [];
-    const finalTaxes: TaxItem[] = [];
+    const orig = origMap.get(code);
+    const nt = newMap.get(code);
 
-    for (const nt of input.new_taxes) {
-      const orig = origMap.get(nt.code);
-      if (orig) {
-        const origAmt = new Decimal(orig.amount);
-        const newAmt = new Decimal(nt.amount);
-        carriedForward.push(orig);
-        if (newAmt.greaterThan(origAmt)) {
-          const delta = newAmt.minus(origAmt);
-          newTaxes.push({ code: nt.code, amount: delta.toFixed(2), currency: nt.currency });
-          finalTaxes.push({ code: nt.code, amount: newAmt.toFixed(2), currency: nt.currency });
-        } else {
-          finalTaxes.push({ code: nt.code, amount: origAmt.toFixed(2), currency: nt.currency });
+    switch (decision.action) {
+      case 'CARRY': {
+        if (orig && nt) {
+          const origAmt = new Decimal(orig.amount);
+          const newAmt = new Decimal(nt.amount);
+          carriedForward.push(orig);
+          if (newAmt.greaterThan(origAmt)) {
+            const delta = newAmt.minus(origAmt);
+            newTaxes.push({ code, amount: delta.toFixed(2), currency: nt.currency });
+            finalTaxes.push({ code, amount: newAmt.toFixed(2), currency: nt.currency });
+          } else {
+            finalTaxes.push({ code, amount: origAmt.toFixed(2), currency: orig.currency });
+          }
+        } else if (orig && !nt) {
+          // Original code not on new assessment — carry amount already paid
+          carriedForward.push(orig);
+          finalTaxes.push(orig);
+        } else if (nt) {
+          // New code with CARRY but no original — collect full new amount
+          newTaxes.push(nt);
+          finalTaxes.push(nt);
         }
-        origMap.delete(nt.code);
-      } else {
-        newTaxes.push(nt);
-        finalTaxes.push(nt);
+        break;
+      }
+      case 'RECALCULATE': {
+        if (nt) {
+          newTaxes.push(nt);
+          finalTaxes.push(nt);
+        }
+        // No original amount carried; original without new line drops
+        break;
+      }
+      case 'FORFEIT': {
+        // Original not credited; apply new assessment if present
+        if (nt) {
+          newTaxes.push(nt);
+          finalTaxes.push(nt);
+        }
+        break;
       }
     }
-
-    for (const [, orig] of origMap) {
-      carriedForward.push(orig);
-      finalTaxes.push(orig);
-    }
-
-    return {
-      taxes: finalTaxes,
-      carriedForward,
-      newTaxes,
-      totalTax: sumTaxes(finalTaxes),
-    };
   }
 
   return {
-    taxes: input.new_taxes,
-    carriedForward: [],
-    newTaxes: input.new_taxes,
-    totalTax: sumTaxes(input.new_taxes),
+    taxes: finalTaxes,
+    carriedForward,
+    newTaxes,
+    totalTax: sumTaxes(finalTaxes),
   };
 }
+
+function computeTaxes(input: ExchangeReissueInput): {
+  taxes: TaxItem[];
+  carriedForward: TaxItem[];
+  newTaxes: TaxItem[];
+  totalTax: Decimal;
+  decisions: TaxCarryforwardDecision[];
+} {
+  const decisions = decideAllTaxCarryforwards(
+    input.original_taxes,
+    input.new_taxes,
+    input.tax_carryforward_rules,
+    input.tax_carryforward_context,
+  );
+  const applied = applyTaxDecisions(input, decisions);
+  return { ...applied, decisions };
+}
+
+// ---------------------------------------------------------------------------
+// GDS exchange commands
+// ---------------------------------------------------------------------------
 
 function buildExchangeCommands(
   input: ExchangeReissueInput,
@@ -179,6 +238,7 @@ function buildExchangeCommands(
       break;
   }
 
+  // Conjunction ticket reference
   if (input.conjunction_originals && input.conjunction_originals.length > 0) {
     commands.push({
       gds: input.gds,
@@ -193,6 +253,10 @@ function buildExchangeCommands(
 
   return commands;
 }
+
+// ---------------------------------------------------------------------------
+// Main engine
+// ---------------------------------------------------------------------------
 
 export function processReissue(input: ExchangeReissueInput): ExchangeReissueResult {
   if (!input.residual_method) {
@@ -232,7 +296,7 @@ export function processReissue(input: ExchangeReissueInput): ExchangeReissueResu
   const residualValue = new Decimal(input.residual_value);
   const changeFee = new Decimal(input.change_fee);
 
-  // Apply residual as supplied — do not recompute as base − fee
+  // Apply residual value first
   const afterResidual = newFare.minus(residualValue);
   let additionalCollection = new Decimal(0);
   let creditAmount = new Decimal(0);
@@ -240,17 +304,21 @@ export function processReissue(input: ExchangeReissueInput): ExchangeReissueResu
   if (afterResidual.greaterThan(0)) {
     additionalCollection = afterResidual.plus(changeFee);
   } else {
+    // Residual covers the new fare — potential credit
     creditAmount = afterResidual.abs();
-    additionalCollection = changeFee;
+    additionalCollection = changeFee; // Still owe the change fee
   }
 
-  const { taxes, carriedForward, newTaxes, totalTax } = computeTaxes(input);
+  // Tax computation — per-code decisions (not boolean same O&D)
+  const { taxes, carriedForward, newTaxes, totalTax, decisions } = computeTaxes(input);
 
+  // Add new tax collection to additional collection
   const newTaxTotal = sumTaxes(newTaxes);
   additionalCollection = additionalCollection.plus(newTaxTotal);
 
   const totalAmount = newFare.plus(totalTax);
 
+  // Build coupons
   const coupons: ReissuedCoupon[] = input.new_segments.map((seg, idx) => ({
     coupon_number: idx + 1,
     carrier: seg.carrier,
@@ -265,6 +333,7 @@ export function processReissue(input: ExchangeReissueInput): ExchangeReissueResu
     status: 'O' as const,
   }));
 
+  // Audit trail
   const exchangeAudit: ExchangeAuditTrail = {
     original_ticket_number: input.original_ticket_number,
     conjunction_originals: input.conjunction_originals,
@@ -276,9 +345,11 @@ export function processReissue(input: ExchangeReissueInput): ExchangeReissueResu
     additional_collection: additionalCollection.toFixed(2),
     taxes_carried_forward: carriedForward,
     taxes_new: newTaxes,
+    tax_decisions: decisions,
     waiver_code: input.waiver_code,
   };
 
+  // GDS commands
   const exchangeCommands = buildExchangeCommands(input, additionalCollection.toFixed(2));
 
   const reissue: ReissueRecord = {
@@ -303,5 +374,6 @@ export function processReissue(input: ExchangeReissueInput): ExchangeReissueResu
     reissue,
     additional_collection: additionalCollection.toFixed(2),
     credit_amount: creditAmount.toFixed(2),
+    tax_decisions: decisions,
   };
 }
