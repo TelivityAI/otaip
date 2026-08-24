@@ -1,0 +1,27 @@
+{
+  "description": "TEST FIXTURE — invented numbers for unit tests only. Do NOT use in production. Real IROE must come from the licensed IATA Rates of Exchange feed. Do not commit proprietary IROE files to the repo.",
+  "iroe": {
+    "USD": "1.000000",
+    "EUR": "0.920830",
+    "GBP": "0.793650",
+    "JPY": "149.520000",
+    "CHF": "0.882460",
+    "KRW": "1312.500000"
+  },
+  "rounding_024d": {
+    "USD": { "unit": "0.01", "method": "NX" },
+    "EUR": { "unit": "0.01", "method": "HX" },
+    "GBP": { "unit": "0.01", "method": "HX" },
+    "JPY": { "unit": "1", "method": "HX" },
+    "CHF": { "unit": "0.05", "method": "HX" },
+    "KRW": { "unit": "100", "method": "HX" }
+  },
+  "mileage": [
+    { "origin": "JFK", "destination": "LHR", "tpm": 3459, "mpm": 3805 },
+    { "origin": "JFK", "destination": "CDG", "tpm": 3635, "mpm": 3999 },
+    { "origin": "LHR", "destination": "CDG", "tpm": 215, "mpm": 237 },
+    { "origin": "CDG", "destination": "JFK", "tpm": 3635, "mpm": 3999 },
+    { "origin": "SFO", "destination": "NRT", "tpm": 5130, "mpm": 5643 },
+    { "origin": "LHR", "destination": "JFK", "tpm": 3459, "mpm": 3805 }
+  ]
+}
