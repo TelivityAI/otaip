@@ -20,11 +20,11 @@ ATPCO Category 31 voluntary change assessment: change fees, fare difference, res
 - `waiver_code?` -- airline-provided waiver code
 - `current_datetime?` -- ISO datetime
 - `cat31_rules?` -- filed Cat 31 rules (omit → ATPCO default no charge)
-- `us_dot_24h?` -- `part_259_applicable?`, `booking_channel?` (`airline_direct` | `third_party` | `unknown`)
+- `us_dot_24h?` -- `part_259_applicable?`, `booking_channel?` (`airline_direct` | `agency` | `ndc` | `gds` | `unknown`)
 
 **Output (`ChangeManagementOutput`):**
 - `assessment` -- action (`REISSUE | REBOOK | REJECT`), change fee, fare difference, additional collection, residual value, forfeited amount, tax difference, total due, Cat 31 `is_free_change` flag, summary
-- `us_dot_24h` -- carrier remedy (`cancel` | `hold` | `unknown`), eligibility, ineligibility reasons (including `departure_within_7_days`), entitlement (`penalty_free_cancel` | `unpaid_fare_hold` | `none` | `unknown`). **Not** a free-change boolean.
+- `us_dot_24h` -- carrier remedy (`cancel` | `hold` | `unknown`), eligibility, ineligibility reasons (including `departure_within_7_days`, `channel_coverage_unknown`), entitlement (`penalty_free_cancel` | `unpaid_fare_hold` | `none` | `unknown`). **Not** a free-change boolean. Channel coverage follows carrier disclosure — not a baked-in “third-party never qualifies” rule.
 
 ---
 

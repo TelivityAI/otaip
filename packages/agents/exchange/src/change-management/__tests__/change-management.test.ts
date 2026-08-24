@@ -302,7 +302,7 @@ describe('Change Management', () => {
       expect(Number(result.data.assessment.change_fee)).toBeGreaterThan(0);
     });
 
-    it('third-party booking is outside airline DOT mandate', async () => {
+    it('agency/NDC/GDS channel stays unknown until carrier disclosure covers it', async () => {
       const input = makeInput({
         original_ticket: makeOriginal({
           issuing_carrier: 'AA',
@@ -312,12 +312,33 @@ describe('Change Management', () => {
         current_datetime: '2026-03-15T12:00:00Z',
         us_dot_24h: {
           part_259_applicable: true,
-          booking_channel: 'third_party',
+          booking_channel: 'agency',
         },
       });
       const result = await agent.execute({ data: input });
       expect(result.data.us_dot_24h.eligible).toBe(false);
-      expect(result.data.us_dot_24h.ineligibility_reasons).toContain('third_party_booking');
+      expect(result.data.us_dot_24h.ineligibility_reasons).toContain('channel_coverage_unknown');
+      // Not a statutory “third-party never qualifies” reason
+      expect(result.data.us_dot_24h.ineligibility_reasons).not.toContain('third_party_booking');
+      expect(result.data.us_dot_24h.notes).toContain('not a statutory third-party bar');
+    });
+
+    it('ndc and gds channels are also unknown without carrier disclosure', async () => {
+      for (const booking_channel of ['ndc', 'gds'] as const) {
+        const result = await agent.execute({
+          data: makeInput({
+            original_ticket: makeOriginal({
+              issuing_carrier: 'AA',
+              booking_date: '2026-03-15T10:00:00Z',
+              original_departure_date: '2026-04-15T15:00:00Z',
+            }),
+            current_datetime: '2026-03-15T12:00:00Z',
+            us_dot_24h: { part_259_applicable: true, booking_channel },
+          }),
+        });
+        expect(result.data.us_dot_24h.eligible).toBe(false);
+        expect(result.data.us_dot_24h.ineligibility_reasons).toContain('channel_coverage_unknown');
+      }
     });
 
     it('unknown carrier remedy stays unknown (no invention)', () => {

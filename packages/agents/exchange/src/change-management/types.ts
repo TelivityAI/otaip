@@ -17,13 +17,27 @@ export type ChangeAction = 'REISSUE' | 'REBOOK' | 'REJECT';
  */
 export type UsDot24HourRemedy = 'cancel' | 'hold' | 'unknown';
 
-/** How the reservation was made. DOT mandate is on airlines, not OTAs. */
-export type UsDot24HourBookingChannel = 'airline_direct' | 'third_party' | 'unknown';
+/**
+ * How the reservation was made.
+ * §259.5 binds the *airline*. Do not treat agency/NDC/GDS as legally
+ * excluded — unverified channels stay unknown until that carrier's
+ * disclosed policy lists them in `channels_covered`.
+ */
+export type UsDot24HourBookingChannel =
+  | 'airline_direct'
+  | 'agency'
+  | 'ndc'
+  | 'gds'
+  | 'unknown';
 
 export type UsDot24HourIneligibilityReason =
   | 'departure_within_7_days'
   | 'outside_24_hour_window'
-  | 'third_party_booking'
+  /**
+   * Channel not verified as covered by the carrier's disclosed policy.
+   * Not a statutory “third-party never qualifies” rule.
+   */
+  | 'channel_coverage_unknown'
   | 'geography_not_applicable'
   | 'carrier_remedy_unknown'
   | 'insufficient_inputs'
@@ -44,6 +58,11 @@ export type UsDot24HourEntitlement =
 export interface UsDot24HourCarrierRemedyRow {
   carrier_code: string;
   remedy: UsDot24HourRemedy;
+  /**
+   * Channels explicitly covered by the carrier's verified public disclosure.
+   * Empty / missing → coverage unknown for all channels.
+   */
+  channels_covered: UsDot24HourBookingChannel[];
   last_verified: string | null;
   source_url: string | null;
   notes: string;
@@ -56,7 +75,10 @@ export interface UsDot24HourContext {
    * Do not invent from airport codes — see §259.2.
    */
   part_259_applicable?: boolean;
-  /** Booking channel. Third-party is outside the airline DOT mandate. */
+  /**
+   * Booking channel. Agency/NDC/GDS remain unknown for eligibility
+   * until listed in the carrier matrix `channels_covered`.
+   */
   booking_channel?: UsDot24HourBookingChannel;
 }
 

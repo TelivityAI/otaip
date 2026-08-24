@@ -439,7 +439,7 @@ const SEED_DOCUMENTS: Omit<KnowledgeDocument, 'indexed_at'>[] = [
     title: 'US DOT 24-Hour Cancellation Rule',
     topic: 'regulations',
     content:
-      '14 CFR §259.5(b)(4): covered airlines must allow reservations to be held at the quoted fare without payment OR cancelled without penalty for at least 24 hours after the reservation is made, if the reservation is made one week or more prior to departure. Carrier chooses one path — not both. Obligation is on airlines (not OTAs). Does not require free itinerary changes. See docs/knowledge-base/us-dot-24-hour-reservation.md.',
+      '14 CFR §259.5(b)(4): covered airlines must allow reservations to be held at the quoted fare without payment OR cancelled without penalty for at least 24 hours after the reservation is made, if the reservation is made one week or more prior to departure. Carrier chooses one path — not both. The rule binds the airline. Channel coverage (direct vs agency/NDC/GDS) follows the carrier’s disclosed policy — do not invent that third-party bookings never qualify. Does not require free itinerary changes. See docs/knowledge-base/us-dot-24-hour-reservation.md.',
     tags: ['usdot', '24-hour', 'cancellation'],
   },
   {

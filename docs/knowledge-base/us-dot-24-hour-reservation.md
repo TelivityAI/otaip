@@ -23,7 +23,7 @@ Each covered carrier’s Customer Service Plan must address:
 | **Hold OR cancel** | Carrier chooses **one** compliance path. Do **not** assume both. |
 | **≥ 7 days before departure** | Reservation must be made **one week or more** prior to the flight’s departure. Inside that window → **no** DOT entitlement. |
 | **Disclose** | Carrier must disclose the policy (Customer Service Plan / booking flow). |
-| **Rule is on airlines** | Obligation is on covered **air carriers**, not on OTAs/TMCs as such. Third-party bookings are outside the airline DOT mandate (agents may voluntarily mirror). |
+| **Rule is on airlines** | §259.5 binds covered **air carriers**. Do **not** bake “third-party / OTA never qualifies” as the statute. Agency / NDC / GDS channel coverage follows the **carrier’s disclosed policy**; until verified, mark **unknown**. |
 | **Not free change / reissue** | DOT does **not** require free itinerary *changes*. Do not map this rule to Cat 31 `is_free_change`. |
 
 ### Part 259 applicability (geography / carrier coverage)
@@ -42,7 +42,7 @@ Caller must supply whether Part 259 applies to the ticket. Do not invent coverag
 Use in order. Any hard fail → not eligible under DOT 24h.
 
 1. **Part 259 in scope?** (`part_259_applicable === true`) — else unknown / insufficient.
-2. **Booking channel airline-direct?** Third-party / OTA / travel-agent bookings are **not** under the airline’s DOT 24h mandate.
+2. **Channel covered by carrier disclosure?** Use matrix `channels_covered` from the carrier CSP. Unverified `agency` / `ndc` / `gds` / `unknown` → `channel_coverage_unknown` (not a statutory third-party bar).
 3. **Booked ≥ 7 days before departure?** If departure is inside 7 days of booking → **ineligible** (`departure_within_7_days`).
 4. **Within 24 hours of reservation?** Clock starts at reservation / purchase time per carrier disclosure.
 5. **Carrier remedy known?** `cancel` | `hold` | `unknown` from matrix below. Never guess.
@@ -67,18 +67,18 @@ Use in order. Any hard fail → not eligible under DOT 24h.
 **Verification date:** ISO date of last human check of a **public** source.  
 **Policy:** Prefer primary carrier Customer Service Plan / Conditions of Carriage / official refund pages. Secondary blogs do **not** count.
 
-| Carrier | IATA | Remedy | Last verified | Public source | Notes |
-| --- | --- | --- | --- | --- | --- |
-| American Airlines | AA | `cancel` | 2026-08-24 | [aa.com Customer Service Plan — 24-hour refund](https://www.aa.com/i18n/customer-service/support/customer-service-plan.html) | CSP: buy on aa.com / AA Reservations ≥7 days prior → cancel within 24h for refund. TOC also lists a separate “24-hour hold” topic; **DOT election recorded as cancel** from the refund section — do not assume both satisfy §259.5(b)(4) without treating hold as unverified for this matrix cell. |
-| Delta Air Lines | DL | `cancel` | 2026-08-24 | [delta.com Customer Commitment — Risk-Free Cancellation](https://www.delta.com/us/en/legal/customer-commitment) | Published cancel-without-penalty path. Carrier may be more generous than the 7-day floor; DOT floor still applies for regulatory minimum. |
-| Southwest Airlines | WN | `cancel` | 2026-08-24 | [Southwest Customer Service Plan (PDF)](https://www.southwest.com/swa-resources/pdfs/corporate-commitments/customer-service-plan.pdf) | CSP §4: cancel without penalty within 24h if reservation made one week or more prior to departure. |
-| United Airlines | UA | `unknown` | 2026-08-24 | — | No primary united.com CSP text verified in-repo this pass. |
-| Alaska Airlines | AS | `unknown` | 2026-08-24 | — | Not verified from primary public page. |
-| JetBlue | B6 | `unknown` | 2026-08-24 | — | Not verified. |
-| Spirit | NK | `unknown` | 2026-08-24 | — | Not verified. |
-| Frontier | F9 | `unknown` | 2026-08-24 | — | Not verified. |
-| Hawaiian | HA | `unknown` | 2026-08-24 | — | Not verified. |
-| *(any other)* | * | `unknown` | — | — | Default. |
+| Carrier | IATA | Remedy | Channels covered (CSP) | Last verified | Public source | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| American Airlines | AA | `cancel` | `airline_direct` | 2026-08-24 | [aa.com Customer Service Plan — 24-hour refund](https://www.aa.com/i18n/customer-service/support/customer-service-plan.html) | CSP discloses aa.com / AA Reservations. Agency/NDC/GDS **unknown** until CSP text verifies. |
+| Delta Air Lines | DL | `cancel` | `airline_direct` | 2026-08-24 | [delta.com Customer Commitment — Risk-Free Cancellation](https://www.delta.com/us/en/legal/customer-commitment) | Direct cancel path verified. Agency/NDC/GDS **unknown**. |
+| Southwest Airlines | WN | `cancel` | `airline_direct` | 2026-08-24 | [Southwest Customer Service Plan (PDF)](https://www.southwest.com/swa-resources/pdfs/corporate-commitments/customer-service-plan.pdf) | CSP §4 cancel path. Agency/NDC/GDS **unknown**. |
+| United Airlines | UA | `unknown` | *(none)* | 2026-08-24 | — | No primary united.com CSP text verified in-repo this pass. |
+| Alaska Airlines | AS | `unknown` | *(none)* | 2026-08-24 | — | Not verified from primary public page. |
+| JetBlue | B6 | `unknown` | *(none)* | 2026-08-24 | — | Not verified. |
+| Spirit | NK | `unknown` | *(none)* | 2026-08-24 | — | Not verified. |
+| Frontier | F9 | `unknown` | *(none)* | 2026-08-24 | — | Not verified. |
+| Hawaiian | HA | `unknown` | *(none)* | 2026-08-24 | — | Not verified. |
+| *(any other)* | * | `unknown` | *(none)* | — | — | Default. |
 
 Machine-readable copy used by Agent 5.1:  
 `packages/agents/exchange/src/change-management/data/us-dot-24h-carrier-remedy.json`
@@ -97,7 +97,7 @@ Do **not** overload `assessment.is_free_change` (Cat 31 filed free-change window
 | `us_dot_24h.entitlement` | `penalty_free_cancel` \| `unpaid_fare_hold` \| `none` \| `unknown` | What DOT would grant — **not** free change |
 | `us_dot_24h.days_booking_to_departure` | `number \| null` | Measured window |
 | Input `original_ticket.original_departure_date` | ISO date | Required for 7-day check |
-| Input `us_dot_24h.booking_channel` | `airline_direct` \| `third_party` \| `unknown` | Channel gate |
+| Input `us_dot_24h.booking_channel` | `airline_direct` \| `agency` \| `ndc` \| `gds` \| `unknown` | Compared to carrier `channels_covered` |
 | Input `us_dot_24h.part_259_applicable` | `boolean` | Caller-supplied Part 259 scope |
 
 ---
@@ -107,3 +107,4 @@ Do **not** overload `assessment.is_free_change` (Cat 31 filed free-change window
 - // TODO: DOMAIN_QUESTION: timezone for “one week prior” when departure is date-only vs local scheduled time.
 - // TODO: DOMAIN_QUESTION: whether codeshare marketing vs operating carrier disclosure controls the remedy election.
 - // TODO: DOMAIN_QUESTION: ingestion cadence to re-verify carrier CSP pages (matrix staleness).
+- // TODO: DOMAIN_QUESTION: when a carrier CSP explicitly covers agency/NDC/GDS, add those channels to `channels_covered`.

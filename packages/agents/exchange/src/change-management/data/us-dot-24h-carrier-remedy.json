@@ -1,32 +1,36 @@
 {
-  "description": "US DOT 14 CFR §259.5(b)(4) carrier remedy election: cancel OR hold (not both). Mark unknown unless verified from a public carrier or DOT primary page. See docs/knowledge-base/us-dot-24-hour-reservation.md.",
+  "description": "US DOT 14 CFR §259.5(b)(4) carrier remedy election: cancel OR hold (not both). Mark unknown unless verified from a public carrier or DOT primary page. Channel coverage is from carrier disclosure only — §259.5 binds the airline; do not invent that agency/NDC/GDS never qualifies. See docs/knowledge-base/us-dot-24-hour-reservation.md.",
   "regulation": "14_CFR_259_5_b_4",
   "source_pdf": "https://www.govinfo.gov/content/pkg/CFR-2025-title14-vol4/pdf/CFR-2025-title14-vol4-part259.pdf",
   "carriers": [
     {
       "carrier_code": "AA",
       "remedy": "cancel",
+      "channels_covered": ["airline_direct"],
       "last_verified": "2026-08-24",
       "source_url": "https://www.aa.com/i18n/customer-service/support/customer-service-plan.html",
-      "notes": "CSP 24-hour refund: aa.com / AA Reservations, ≥7 days prior, cancel within 24h for refund."
+      "notes": "CSP 24-hour refund discloses aa.com / AA Reservations. Agency/NDC/GDS coverage not verified from that CSP text — leave unknown."
     },
     {
       "carrier_code": "DL",
       "remedy": "cancel",
+      "channels_covered": ["airline_direct"],
       "last_verified": "2026-08-24",
       "source_url": "https://www.delta.com/us/en/legal/customer-commitment",
-      "notes": "Customer Commitment Risk-Free Cancellation — cancel without penalty path."
+      "notes": "Customer Commitment Risk-Free Cancellation discloses Delta direct paths. Agency/NDC/GDS coverage not verified — leave unknown."
     },
     {
       "carrier_code": "WN",
       "remedy": "cancel",
+      "channels_covered": ["airline_direct"],
       "last_verified": "2026-08-24",
       "source_url": "https://www.southwest.com/swa-resources/pdfs/corporate-commitments/customer-service-plan.pdf",
-      "notes": "CSP: cancel without penalty within 24h if booked one week or more prior to departure."
+      "notes": "CSP §4 cancel path verified. Agency/NDC/GDS channel coverage not verified from CSP — leave unknown."
     },
     {
       "carrier_code": "UA",
       "remedy": "unknown",
+      "channels_covered": [],
       "last_verified": "2026-08-24",
       "source_url": null,
       "notes": "No primary united.com CSP text verified this pass — do not invent."
@@ -34,6 +38,7 @@
     {
       "carrier_code": "AS",
       "remedy": "unknown",
+      "channels_covered": [],
       "last_verified": "2026-08-24",
       "source_url": null,
       "notes": "Not verified from primary public page."
@@ -41,6 +46,7 @@
     {
       "carrier_code": "B6",
       "remedy": "unknown",
+      "channels_covered": [],
       "last_verified": "2026-08-24",
       "source_url": null,
       "notes": "Not verified from primary public page."
@@ -48,6 +54,7 @@
     {
       "carrier_code": "NK",
       "remedy": "unknown",
+      "channels_covered": [],
       "last_verified": "2026-08-24",
       "source_url": null,
       "notes": "Not verified from primary public page."
@@ -55,6 +62,7 @@
     {
       "carrier_code": "F9",
       "remedy": "unknown",
+      "channels_covered": [],
       "last_verified": "2026-08-24",
       "source_url": null,
       "notes": "Not verified from primary public page."
@@ -62,6 +70,7 @@
     {
       "carrier_code": "HA",
       "remedy": "unknown",
+      "channels_covered": [],
       "last_verified": "2026-08-24",
       "source_url": null,
       "notes": "Not verified from primary public page."

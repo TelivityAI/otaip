@@ -4,6 +4,9 @@
  * Hold OR cancel (carrier chooses — not both). Only when booked one week
  * or more prior to departure. Obligation is on covered air carriers.
  *
+ * Channel coverage follows the carrier's disclosed policy — do NOT treat
+ * agency/NDC/GDS as legally excluded. Unverified channels stay unknown.
+ *
  * Knowledge base: docs/knowledge-base/us-dot-24-hour-reservation.md
  * Authority: https://www.govinfo.gov/content/pkg/CFR-2025-title14-vol4/pdf/CFR-2025-title14-vol4-part259.pdf
  *
@@ -14,6 +17,7 @@ import carrierRemedyJson from './data/us-dot-24h-carrier-remedy.json';
 import type {
   ChangeManagementInput,
   UsDot24HourAssessment,
+  UsDot24HourBookingChannel,
   UsDot24HourEntitlement,
   UsDot24HourIneligibilityReason,
   UsDot24HourRemedy,
@@ -35,10 +39,16 @@ for (const row of (carrierRemedyJson as CarrierRemedyFile).carriers) {
 
 export function lookupCarrierRemedy(carrierCode: string): UsDot24HourCarrierRemedyRow {
   const known = remedyByCarrier.get(carrierCode);
-  if (known) return known;
+  if (known) {
+    return {
+      ...known,
+      channels_covered: known.channels_covered ?? [],
+    };
+  }
   return {
     carrier_code: carrierCode,
     remedy: 'unknown',
+    channels_covered: [],
     last_verified: null,
     source_url: null,
     notes: 'Carrier not in KB matrix — default unknown. Do not invent cancel vs hold.',
@@ -50,6 +60,14 @@ function entitlementFor(remedy: UsDot24HourRemedy, eligible: boolean): UsDot24Ho
   if (remedy === 'cancel') return 'penalty_free_cancel';
   if (remedy === 'hold') return 'unpaid_fare_hold';
   return 'unknown';
+}
+
+function channelCoveredByDisclosure(
+  channel: UsDot24HourBookingChannel,
+  covered: UsDot24HourBookingChannel[],
+): boolean {
+  if (channel === 'unknown') return false;
+  return covered.includes(channel);
 }
 
 /**
@@ -103,6 +121,7 @@ export function assessUsDot24Hour(
 
   const row = lookupCarrierRemedy(orig.issuing_carrier);
   const carrierRemedy: UsDot24HourRemedy = row.remedy;
+  const channelsCovered = row.channels_covered;
 
   const bookingDate = orig.booking_date;
   const departureDate = orig.original_departure_date;
@@ -111,7 +130,8 @@ export function assessUsDot24Hour(
   const sevenDay = meetsSevenDayAdvance(bookingDate, departureDate);
 
   const part259 = ctx?.part_259_applicable;
-  const channel = ctx?.booking_channel ?? 'unknown';
+  const channel: UsDot24HourBookingChannel = ctx?.booking_channel ?? 'unknown';
+  const channelCovered = channelCoveredByDisclosure(channel, channelsCovered);
 
   if (part259 === undefined) {
     reasons.push('insufficient_inputs');
@@ -123,10 +143,10 @@ export function assessUsDot24Hour(
     reasons.push('insufficient_inputs');
   }
 
-  if (channel === 'unknown') {
-    reasons.push('insufficient_inputs');
-  } else if (channel === 'third_party') {
-    reasons.push('third_party_booking');
+  // §259.5 is on the airline. Unverified agency/NDC/GDS/unknown channel
+  // stays unknown until the carrier's disclosed policy lists it.
+  if (!channelCovered) {
+    reasons.push('channel_coverage_unknown');
   }
 
   if (sevenDay === false) {
@@ -135,8 +155,6 @@ export function assessUsDot24Hour(
 
   if (hours !== null && hours > DOT_WINDOW_HOURS) {
     reasons.push('outside_24_hour_window');
-  } else if (hours === null && bookingDate === undefined) {
-    // already covered by insufficient_inputs when booking missing
   }
 
   if (carrierRemedy === 'unknown') {
@@ -144,29 +162,35 @@ export function assessUsDot24Hour(
   }
 
   // Hold is a pre-payment fare hold — not a post-purchase change waiver.
-  // Post-booking change assessment never treats hold as free change.
   if (carrierRemedy === 'hold') {
     reasons.push('hold_not_post_purchase_change');
   }
 
   const uniqueReasons = [...new Set(reasons)];
 
-  // Eligible only when Part 259 applies, airline-direct, ≥7 days, within 24h,
-  // remedy is cancel (hold is not a post-purchase change entitlement).
+  // Eligible when Part 259 applies, channel covered by carrier disclosure,
+  // ≥7 days, within 24h, and remedy is cancel (hold ≠ post-purchase change).
   const eligible =
     part259 === true &&
-    channel === 'airline_direct' &&
+    channelCovered &&
     sevenDay === true &&
     hours !== null &&
     hours <= DOT_WINDOW_HOURS &&
     carrierRemedy === 'cancel';
 
   const noteParts: string[] = [
-    '14 CFR §259.5(b)(4): hold OR cancel (carrier chooses), booked ≥7 days before departure. Not free change.',
+    '14 CFR §259.5(b)(4): hold OR cancel (carrier chooses), booked ≥7 days before departure. Rule is on the airline. Not a Cat 31 waiver.',
   ];
   if (row.notes) noteParts.push(row.notes);
+  if (!channelCovered) {
+    noteParts.push(
+      `Channel "${channel}" not verified in carrier disclosure (channels_covered=[${channelsCovered.join(',')}]) — unknown, not a statutory third-party bar.`,
+    );
+  }
   if (eligible) {
-    noteParts.push('DOT cancel entitlement appears available — does not waive Cat 31 change fees or enable free reissue.');
+    noteParts.push(
+      'DOT cancel entitlement appears available — does not waive Cat 31 change fees or enable free reissue.',
+    );
   }
 
   return {
