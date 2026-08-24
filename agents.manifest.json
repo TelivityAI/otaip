@@ -2806,6 +2806,106 @@
               "additionalProperties": false
             }
           },
+          "transaction_type": {
+            "type": "string",
+            "enum": [
+              "shopping",
+              "booking",
+              "ticketing",
+              "servicing",
+              "group",
+              "corporate"
+            ]
+          },
+          "vendor": {
+            "type": "string",
+            "enum": [
+              "sabre",
+              "amadeus",
+              "duffel",
+              "navitaire",
+              "trippro",
+              "airline_direct",
+              "unknown"
+            ]
+          },
+          "plating_carrier": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 3
+          },
+          "capability_matrix": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "carrier": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "vendor": {
+                  "type": "string",
+                  "enum": [
+                    "sabre",
+                    "amadeus",
+                    "duffel",
+                    "navitaire",
+                    "trippro",
+                    "airline_direct",
+                    "unknown"
+                  ]
+                },
+                "transaction": {
+                  "type": "string",
+                  "enum": [
+                    "Shop",
+                    "OrderCreate",
+                    "OrderChange",
+                    "OrderCancel",
+                    "Servicing",
+                    "Groups",
+                    "Corporate"
+                  ]
+                },
+                "channel": {
+                  "type": "string",
+                  "enum": [
+                    "NDC",
+                    "GDS",
+                    "Direct/API",
+                    "Either",
+                    "unknown"
+                  ]
+                },
+                "ndc_version_notes": {
+                  "type": "string"
+                },
+                "fallback": {
+                  "type": "string"
+                },
+                "source": {
+                  "type": "string"
+                },
+                "confidence": {
+                  "type": "string",
+                  "enum": [
+                    "adapter_doc",
+                    "vendor_public",
+                    "unknown"
+                  ]
+                }
+              },
+              "required": [
+                "carrier",
+                "vendor",
+                "transaction",
+                "channel",
+                "ndc_version_notes",
+                "fallback"
+              ],
+              "additionalProperties": false
+            }
+          },
           "preferred_channel": {
             "type": "string",
             "enum": [
@@ -2828,6 +2928,7 @@
         },
         "required": [
           "segments",
+          "transaction_type",
           "include_fallbacks"
         ],
         "additionalProperties": false
@@ -2913,6 +3014,15 @@
                     "NDC_ORDER",
                     "DIRECT_API"
                   ]
+                },
+                "domain_input_required": {
+                  "type": "boolean"
+                },
+                "missing_inputs": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
                 }
               },
               "required": [
