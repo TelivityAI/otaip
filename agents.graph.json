@@ -439,7 +439,7 @@
       "id": "7.1",
       "name": "BSP Reconciliation",
       "stage": "reconciliation",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "contract_status": "active",
       "has_contract": false,
       "source_path": "packages/agents/reconciliation/src/bsp-reconciliation/index.ts"
