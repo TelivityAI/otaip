@@ -59,6 +59,7 @@ Follow the pattern in `packages/agents/reference/src/airport-code-resolver/`:
 ## Domain Knowledge
 - Air: `docs/knowledge-base/` (existing)
 - Lodging: `docs/knowledge-base/lodging.md`
+- BSP HOT (Agent 7.1): `docs/knowledge-base/bsp-hot-reconciliation.md` (DISH Rev 23; multi-currency CUTP; IROE≠ICER; conjunction/exchange/EMD/ADM separate)
 - Agent definitions: `docs/agents/`
 
 ## Repository Structure

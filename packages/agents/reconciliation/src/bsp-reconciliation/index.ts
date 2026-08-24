@@ -5,6 +5,7 @@
  * validates commission, identifies discrepancies, flags issues
  * before remittance deadline.
  *
+ * Domain: docs/knowledge-base/bsp-hot-reconciliation.md (DISH Rev 23).
  * Implements the base Agent interface from @otaip/core.
  */
 
@@ -19,7 +20,7 @@ const CARRIER_RE = /^[A-Z0-9]{2}$/;
 export class BSPReconciliation implements Agent<BSPReconciliationInput, BSPReconciliationOutput> {
   readonly id = '7.1';
   readonly name = 'BSP Reconciliation';
-  readonly version = '0.1.0';
+  readonly version = '0.2.0';
 
   private initialized = false;
 
@@ -47,6 +48,12 @@ export class BSPReconciliation implements Agent<BSPReconciliationInput, BSPRecon
     if (result.summary.patterns.length > 0) {
       warnings.push(`${result.summary.patterns.length} recurring pattern(s) detected.`);
     }
+    if (result.summary.currencies_present.length > 1) {
+      warnings.push(
+        `Multi-currency HOT: transaction CUTP values [${result.summary.currencies_present.join(', ')}]. ` +
+          `Do not assume single-currency; IROE≠ICER — amounts compared only within matching CUTP.`,
+      );
+    }
     if (input.data.remittance_deadline) {
       const now = input.data.current_datetime ? new Date(input.data.current_datetime) : new Date();
       const deadline = new Date(input.data.remittance_deadline);
@@ -57,6 +64,7 @@ export class BSPReconciliation implements Agent<BSPReconciliationInput, BSPRecon
         );
       }
     }
+    // TODO: DOMAIN_QUESTION: DQ-HOT-1 — market remittance calendar / grace not hardcoded
 
     return {
       data: result,
@@ -70,6 +78,7 @@ export class BSPReconciliation implements Agent<BSPReconciliationInput, BSPRecon
         total_hot: result.summary.total_hot_records,
         matched: result.summary.matched_count,
         discrepancies: result.summary.discrepancy_count,
+        currencies_present: result.summary.currencies_present,
         passed: result.passed,
       },
     };
@@ -120,6 +129,24 @@ export class BSPReconciliation implements Agent<BSPReconciliationInput, BSPRecon
           `Invalid airline code: ${ar.airline_code ?? 'missing'}`,
         );
       }
+      if (ar.original_ticket_number && !TICKET_NUMBER_RE.test(ar.original_ticket_number)) {
+        throw new AgentInputValidationError(
+          this.id,
+          'agency_records.original_ticket_number',
+          `Invalid original ticket number: ${ar.original_ticket_number}`,
+        );
+      }
+      if (ar.conjunction_ticket_numbers) {
+        for (const ct of ar.conjunction_ticket_numbers) {
+          if (!TICKET_NUMBER_RE.test(ct)) {
+            throw new AgentInputValidationError(
+              this.id,
+              'agency_records.conjunction_ticket_numbers',
+              `Invalid conjunction ticket number: ${ct}`,
+            );
+          }
+        }
+      }
     }
 
     for (const hot of data.hot_records) {
@@ -141,6 +168,9 @@ export type {
   BSPReconciliationOutput,
   HOTFileRecord,
   HOTFileFormat,
+  HOTTransactionType,
+  DishTransactionCode,
+  RelatedDocumentRef,
   AgencyRecord,
   Discrepancy,
   DiscrepancyType,
