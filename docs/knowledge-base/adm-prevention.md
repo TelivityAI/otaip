@@ -119,3 +119,5 @@ See `packages/agents/settlement/src/adm-prevention/__tests__/fixtures/`:
 2. Sabre MSI normalized field mapping across adapters.
 3. Default timezone when `ttl_timezone` omitted (agency vs origin airport vs BSP market).
 4. Whether legitimate passive-for-ticketing (host claim / airline-held PNR) should warn instead of block when an airline record locator claim is present — needs claim-flow design, not a guess.
+5. Confirm Sabre vs Amadeus **GK** semantics in each adapter's normalized status before treating GK as interchangeable across hosts.
+6. When `gds` is UNKNOWN, host-specific codes are ignored (core only) — should UNKNOWN emit a warning instead of silent skip?

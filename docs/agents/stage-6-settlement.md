@@ -37,7 +37,7 @@ ATPCO Category 33 refund processing: penalty application, commission recall, BSP
 **Class:** `ADMPrevention`
 **Status:** Implemented
 
-Pre-ticketing audit with 10 checks: duplicate booking, fare/class mismatch, passive/unable/risky status (HX/UC/UN/NO/TK + extended), churning (history-required), married segment integrity, TTL expiry (timezone / deadline-day), commission rate (caller-supplied only), endorsement box, tour code format, net remit validation.
+Pre-ticketing audit with 10 checks: duplicate booking, fare/class mismatch, passive/unable/risky status (core HX/UC/UN/NO/TK + **per-host** maps — HN/PK/GK/YK are not universalized), churning (history-required), married segment integrity, TTL expiry (timezone / deadline-day), commission rate (caller-supplied only), endorsement box, tour code format, net remit validation.
 
 **Domain KB:** `docs/knowledge-base/adm-prevention.md` — IATA Reso 850m covers ADM memo windows/dispute (Agent 6.3); passive/UC/churn come from carrier booking policy + host statuses. Travelport: those statuses do not need a ticketing field. No carrier-secret commission tables.
 
