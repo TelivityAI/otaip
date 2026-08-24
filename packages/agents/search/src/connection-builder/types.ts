@@ -39,15 +39,18 @@ export interface MctRule {
 }
 
 export interface ConnectionValidation {
-  /** Whether the connection meets MCT requirements */
+  /** Whether the connection meets MCT requirements (false when MCT unresolved / fail-closed) */
   valid: boolean;
   /** Available connection time in minutes */
   available_minutes: number;
-  /** Required MCT in minutes */
-  required_mct_minutes: number;
-  /** Buffer time (available - required) */
-  buffer_minutes: number;
-  /** MCT rule that was applied */
+  /**
+   * Required MCT in minutes, or null when no curated MCT row matched (fail-closed).
+   * Never invent a substitute minutes value when null.
+   */
+  required_mct_minutes: number | null;
+  /** Buffer time (available - required); null when MCT unresolved */
+  buffer_minutes: number | null;
+  /** MCT rule that was applied (includes mct-unavailable:… when fail-closed) */
   applied_rule: string;
   /** Connection type classification */
   connection_type: ConnectionType;

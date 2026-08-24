@@ -1,0 +1,29 @@
+{
+  "_comment": "SCARY FALSE NEGATIVE: uncleared TK schedule-change — not in classic HX/UN/NO-only sets. Core host set is HX/UC/UN/NO/TK.",
+  "gds": "SABRE",
+  "current_datetime": "2026-04-01T12:00:00Z",
+  "fare_basis": "HOWUS",
+  "booked_class": "H",
+  "endorsement": "NON-ENDO/NON-REF",
+  "booking": {
+    "record_locator": "TKONLY",
+    "passenger_name": "SMITH/JOHN",
+    "base_fare": "450.00",
+    "base_fare_currency": "USD",
+    "segments": [
+      {
+        "carrier": "AA",
+        "flight_number": "100",
+        "origin": "DFW",
+        "destination": "LHR",
+        "departure_date": "2026-07-01",
+        "status": "TK",
+        "booking_class": "H"
+      }
+    ]
+  },
+  "expect": {
+    "PASSIVE_SEGMENT": false,
+    "overall_pass": false
+  }
+}

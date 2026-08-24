@@ -1,0 +1,25 @@
+{
+  "version": "0.1.0",
+  "description": "Carrier-specific MCT overrides (SSIM Ch.8 / PSC Res 765). Starter set only — not a full industry extract.",
+  "authority": [
+    "IATA SSIM Chapter 8",
+    "IATA PSC Resolution 765",
+    "https://www.iata.org/contentassets/638f0938b3dd451b872a1d8357755421/minimum-connecting-time-user-guide_version-1.1.pdf"
+  ],
+  "hierarchy_level": "carrier_override",
+  "overrides": [
+    {
+      "airport": "ORD",
+      "arriving_carrier": "UA",
+      "departing_carrier": "UA",
+      "connection_status": "DD",
+      "connection_type": "domestic",
+      "scope": "online",
+      "minutes": 50,
+      "arrival_terminal": null,
+      "departure_terminal": null,
+      "source": "already-in-code: packages/agents/search/src/connection-builder/mct-data.ts carrier_rules (pre-#141)",
+      "notes": "Online same-carrier domestic at ORD. Not validated against a public SSIM/OAG extract."
+    }
+  ]
+}

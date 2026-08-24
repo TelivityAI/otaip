@@ -141,10 +141,21 @@ function getTaxesForCountry(country: string): TaxRule[] {
 function getConversionRate(from: string, to: string): Decimal {
   if (from === to) return new Decimal(1);
 
+  // TODO: DOMAIN_QUESTION: Ticket-tax / payment FX must use licensed **ICER**
+  // (IATA Consolidated Exchange Rate) — daily BSR-style rates for converting
+  // fares, taxes, and fees to alternate payment currencies.
+  // Do NOT use IROE here. IROE is fare-construction only (Res 024c / NUC×IROE).
+  // See https://www.iata.org/en/services/finance/xrates/ and
+  // docs/knowledge-base/fare-construction-data-dependencies.md (IROE vs ICER).
+  // The invented currency_conversions map in tax-rates.json is demo-only.
   const fromToUsd = taxData.currency_conversions[from];
   const toToUsd = taxData.currency_conversions[to];
 
-  if (!fromToUsd || !toToUsd) return new Decimal(1);
+  if (!fromToUsd || !toToUsd) {
+    // TODO: DOMAIN_QUESTION: fail closed with DomainInputRequired for missing
+    // ICER once TaxCalculationOutput is widened — never silently return 1.0.
+    return new Decimal(1);
+  }
 
   // from -> USD -> to: amount * (fromToUsd / toToUsd)
   return new Decimal(fromToUsd).div(new Decimal(toToUsd));

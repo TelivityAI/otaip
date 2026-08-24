@@ -1,0 +1,28 @@
+{
+  "_comment": "Redacted CONFIRMED booking fixture with voucher URL (DQ-A4 still open for URL access semantics). Confirm statuses are CONFIRMED|CANCELLED only — developer.hotelbeds.com Booking Confirm docs.",
+  "booking": {
+    "reference": "102-123456798",
+    "clientReference": "AVR-ACT-001",
+    "status": "CONFIRMED",
+    "voucherUrl": "https://example.invalid/vouchers/102-123456798.pdf",
+    "activities": [
+      {
+        "status": "CONFIRMED",
+        "cancellationPolicies": [
+          {
+            "dateFrom": "2026-06-09T00:00:00.000Z",
+            "amount": 45.0
+          }
+        ],
+        "vouchers": [
+          {
+            "code": "VCH-REDACATED",
+            "url": "https://example.invalid/vouchers/supplier-barcode.pdf",
+            "dateFrom": "2026-06-01T00:00:00.000Z",
+            "dateTo": "2026-06-30T23:59:59.000Z"
+          }
+        ]
+      }
+    ]
+  }
+}

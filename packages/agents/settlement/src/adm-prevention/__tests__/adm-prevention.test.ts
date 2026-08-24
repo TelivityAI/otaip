@@ -1,12 +1,19 @@
 /**
  * ADM Prevention — Unit Tests
  *
- * Agent 6.2: 9 pre-ticketing audit checks.
+ * Agent 6.2: 10 pre-ticketing audit checks.
+ * Domain: docs/knowledge-base/adm-prevention.md
  */
 
+import { readFileSync, readdirSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { ADMPrevention } from '../index.js';
-import type { ADMPreventionInput, BookingRecord, BookingSegment } from '../types.js';
+import { ADMPrevention, ADM_CHECK_COUNT, CORE_BLOCKING_STATUSES } from '../index.js';
+import type { ADMPreventionInput, BookingRecord, BookingSegment, ADMCheckId } from '../types.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const FIXTURES_DIR = join(__dirname, 'fixtures');
 
 let agent: ADMPrevention;
 
@@ -135,7 +142,7 @@ describe('ADM Prevention', () => {
     });
   });
 
-  describe('Check 3: Passive segment abuse', () => {
+  describe('Check 3: Passive / unable / risky status', () => {
     it('passes with active segments', async () => {
       const result = await agent.execute({ data: makeInput() });
       const check = result.data.result.checks.find((c) => c.check_id === 'PASSIVE_SEGMENT');
@@ -159,9 +166,196 @@ describe('ADM Prevention', () => {
       const check = result.data.result.checks.find((c) => c.check_id === 'PASSIVE_SEGMENT');
       expect(check!.passed).toBe(false);
     });
+
+    it('fails with core set UC / NO / TK', async () => {
+      expect([...CORE_BLOCKING_STATUSES].sort()).toEqual(['HX', 'NO', 'TK', 'UC', 'UN'].sort());
+      for (const status of ['UC', 'NO', 'TK'] as const) {
+        const input = makeInput({
+          booking: makeBooking({ segments: [makeSegment({ status })] }),
+        });
+        const result = await agent.execute({ data: input });
+        const check = result.data.result.checks.find((c) => c.check_id === 'PASSIVE_SEGMENT');
+        expect(check!.passed).toBe(false);
+        expect(check!.reason).toContain(status);
+      }
+    });
+
+    it('fails with Amadeus HN pending need when gds is AMADEUS', async () => {
+      const input = makeInput({
+        gds: 'AMADEUS',
+        booking: makeBooking({ segments: [makeSegment({ status: 'HN' })] }),
+      });
+      const result = await agent.execute({ data: input });
+      const check = result.data.result.checks.find((c) => c.check_id === 'PASSIVE_SEGMENT');
+      expect(check!.passed).toBe(false);
+      expect(check!.reason).toMatch(/AMADEUS/i);
+    });
+
+    it('does not treat HN as universal when gds is omitted', async () => {
+      const input = makeInput({
+        booking: makeBooking({ segments: [makeSegment({ status: 'HN' })] }),
+      });
+      const result = await agent.execute({ data: input });
+      const check = result.data.result.checks.find((c) => c.check_id === 'PASSIVE_SEGMENT');
+      expect(check!.passed).toBe(true);
+    });
+
+    it('fails with Amadeus passive PK when gds is AMADEUS', async () => {
+      const input = makeInput({
+        gds: 'AMADEUS',
+        booking: makeBooking({ segments: [makeSegment({ status: 'PK' })] }),
+      });
+      const result = await agent.execute({ data: input });
+      const check = result.data.result.checks.find((c) => c.check_id === 'PASSIVE_SEGMENT');
+      expect(check!.passed).toBe(false);
+      expect(check!.reason).toMatch(/AMADEUS/i);
+    });
+
+    it('does not treat PK/GK/YK as universal when gds is omitted', async () => {
+      for (const status of ['PK', 'GK', 'YK'] as const) {
+        const input = makeInput({
+          booking: makeBooking({ segments: [makeSegment({ status })] }),
+        });
+        const result = await agent.execute({ data: input });
+        const check = result.data.result.checks.find((c) => c.check_id === 'PASSIVE_SEGMENT');
+        expect(check!.passed).toBe(true);
+      }
+    });
+
+    it('fails with Sabre YK only when gds is SABRE', async () => {
+      const withoutHost = makeInput({
+        booking: makeBooking({ segments: [makeSegment({ status: 'YK' })] }),
+      });
+      const withSabre = makeInput({
+        gds: 'SABRE',
+        booking: makeBooking({ segments: [makeSegment({ status: 'YK' })] }),
+      });
+      expect(
+        (await agent.execute({ data: withoutHost })).data.result.checks.find(
+          (c) => c.check_id === 'PASSIVE_SEGMENT',
+        )!.passed,
+      ).toBe(true);
+      expect(
+        (await agent.execute({ data: withSabre })).data.result.checks.find(
+          (c) => c.check_id === 'PASSIVE_SEGMENT',
+        )!.passed,
+      ).toBe(false);
+    });
+
+    it('notes Travelport needs no ticketing field', async () => {
+      const input = makeInput({
+        gds: 'TRAVELPORT',
+        booking: makeBooking({ segments: [makeSegment({ status: 'UC' })] }),
+      });
+      const result = await agent.execute({ data: input });
+      const check = result.data.result.checks.find((c) => c.check_id === 'PASSIVE_SEGMENT');
+      expect(check!.passed).toBe(false);
+      expect(check!.reason).toMatch(/no ticketing field/i);
+    });
   });
 
-  describe('Check 4: Married segment integrity', () => {
+  describe('Check 4: Churning (history-required)', () => {
+    it('skips when no segment history (does not assume clear from HK alone)', async () => {
+      const result = await agent.execute({ data: makeInput() });
+      const check = result.data.result.checks.find((c) => c.check_id === 'CHURNING');
+      expect(check!.passed).toBe(true);
+      expect(check!.reason).toMatch(/skipped/i);
+      expect(check!.reason).toMatch(/history/i);
+    });
+
+    it('fails when history shows cancel→rebook cycles on same flight', async () => {
+      const input = makeInput({
+        segment_history: [
+          {
+            timestamp: '2026-03-28T08:00:00Z',
+            action: 'BOOKED',
+            carrier: 'BA',
+            flight_number: '115',
+            departure_date: '2026-06-15',
+          },
+          {
+            timestamp: '2026-03-28T10:00:00Z',
+            action: 'CANCELLED',
+            carrier: 'BA',
+            flight_number: '115',
+            departure_date: '2026-06-15',
+          },
+          {
+            timestamp: '2026-03-28T10:05:00Z',
+            action: 'REBOOKED',
+            carrier: 'BA',
+            flight_number: '115',
+            departure_date: '2026-06-15',
+          },
+          {
+            timestamp: '2026-03-29T09:00:00Z',
+            action: 'CANCELLED',
+            carrier: 'BA',
+            flight_number: '115',
+            departure_date: '2026-06-15',
+          },
+          {
+            timestamp: '2026-03-29T09:10:00Z',
+            action: 'REBOOKED',
+            carrier: 'BA',
+            flight_number: '115',
+            departure_date: '2026-06-15',
+          },
+          {
+            timestamp: '2026-03-30T11:00:00Z',
+            action: 'CANCELLED',
+            carrier: 'BA',
+            flight_number: '115',
+            departure_date: '2026-06-15',
+          },
+          {
+            timestamp: '2026-03-30T11:15:00Z',
+            action: 'REBOOKED',
+            carrier: 'BA',
+            flight_number: '115',
+            departure_date: '2026-06-15',
+          },
+        ],
+      });
+      const result = await agent.execute({ data: input });
+      const check = result.data.result.checks.find((c) => c.check_id === 'CHURNING');
+      expect(check!.passed).toBe(false);
+      expect(check!.severity).toBe('blocking');
+    });
+
+    it('passes when history has fewer than threshold cycles', async () => {
+      const input = makeInput({
+        segment_history: [
+          {
+            timestamp: '2026-03-28T08:00:00Z',
+            action: 'BOOKED',
+            carrier: 'BA',
+            flight_number: '115',
+            departure_date: '2026-06-15',
+          },
+          {
+            timestamp: '2026-03-28T10:00:00Z',
+            action: 'CANCELLED',
+            carrier: 'BA',
+            flight_number: '115',
+            departure_date: '2026-06-15',
+          },
+          {
+            timestamp: '2026-03-28T10:05:00Z',
+            action: 'REBOOKED',
+            carrier: 'BA',
+            flight_number: '115',
+            departure_date: '2026-06-15',
+          },
+        ],
+      });
+      const result = await agent.execute({ data: input });
+      const check = result.data.result.checks.find((c) => c.check_id === 'CHURNING');
+      expect(check!.passed).toBe(true);
+    });
+  });
+
+  describe('Check 5: Married segment integrity', () => {
     it('passes when married segments have same status', async () => {
       const input = makeInput({
         booking: makeBooking({
@@ -189,9 +383,22 @@ describe('ADM Prevention', () => {
       const check = result.data.result.checks.find((c) => c.check_id === 'MARRIED_SEGMENT');
       expect(check!.passed).toBe(false);
     });
+
+    it('fails Travelport DX as marriage break (no ticketing field)', async () => {
+      const input = makeInput({
+        gds: 'TRAVELPORT',
+        booking: makeBooking({
+          segments: [makeSegment({ status: 'DX', married_group: 'M1' })],
+        }),
+      });
+      const result = await agent.execute({ data: input });
+      const check = result.data.result.checks.find((c) => c.check_id === 'MARRIED_SEGMENT');
+      expect(check!.passed).toBe(false);
+      expect(check!.reason).toMatch(/Travelport DX/i);
+    });
   });
 
-  describe('Check 5: TTL expired', () => {
+  describe('Check 6: TTL expired', () => {
     it('passes when TTL is in the future', async () => {
       const input = makeInput({ ttl_deadline: '2026-04-02T12:00:00Z' });
       const result = await agent.execute({ data: input });
@@ -219,9 +426,22 @@ describe('ADM Prevention', () => {
       expect(check!.passed).toBe(true);
       expect(check!.reason).toContain('skipped');
     });
+
+    it('fails on local deadline-day even when UTC has remaining hours', async () => {
+      const input = makeInput({
+        current_datetime: '2026-04-01T16:00:00Z',
+        ttl_deadline: '2026-04-02T00:00:00Z',
+        ttl_timezone: 'America/New_York',
+        ttl_source: 'BOOKING',
+      });
+      const result = await agent.execute({ data: input });
+      const check = result.data.result.checks.find((c) => c.check_id === 'TTL_EXPIRED');
+      expect(check!.passed).toBe(false);
+      expect(check!.reason).toMatch(/deadline-day/i);
+    });
   });
 
-  describe('Check 6: Commission rate', () => {
+  describe('Check 7: Commission rate', () => {
     it('passes when commission within contracted rate', async () => {
       const input = makeInput({ commission_rate: 5, carrier_contracted_rate: 7 });
       const result = await agent.execute({ data: input });
@@ -236,15 +456,16 @@ describe('ADM Prevention', () => {
       expect(check!.passed).toBe(false);
     });
 
-    it('skips when no commission data', async () => {
+    it('skips when no commission data and does not embed carrier tables', async () => {
       const result = await agent.execute({ data: makeInput() });
       const check = result.data.result.checks.find((c) => c.check_id === 'COMMISSION_RATE');
       expect(check!.passed).toBe(true);
-      expect(check!.reason).toContain('skipped');
+      expect(check!.reason).toMatch(/skipped/i);
+      expect(check!.reason).toMatch(/no embedded carrier commission tables/i);
     });
   });
 
-  describe('Check 7: Endorsement box', () => {
+  describe('Check 8: Endorsement box', () => {
     it('warns when restricted fare has no endorsement', async () => {
       const result = await agent.execute({ data: makeInput({ fare_basis: 'HOWUS' }) });
       const check = result.data.result.checks.find((c) => c.check_id === 'ENDORSEMENT_BOX');
@@ -268,7 +489,7 @@ describe('ADM Prevention', () => {
     });
   });
 
-  describe('Check 8: Tour code format', () => {
+  describe('Check 9: Tour code format', () => {
     it('passes with valid tour code', async () => {
       const result = await agent.execute({ data: makeInput({ tour_code: 'BT123ABC' }) });
       const check = result.data.result.checks.find((c) => c.check_id === 'TOUR_CODE_FORMAT');
@@ -295,7 +516,7 @@ describe('ADM Prevention', () => {
     });
   });
 
-  describe('Check 9: Net remit', () => {
+  describe('Check 10: Net remit', () => {
     it('passes when base fare within net contracted', async () => {
       const input = makeInput({ is_net_remit: true, net_contracted_amount: '500.00' });
       const result = await agent.execute({ data: input });
@@ -323,6 +544,47 @@ describe('ADM Prevention', () => {
       const check = result.data.result.checks.find((c) => c.check_id === 'NET_REMIT');
       expect(check!.passed).toBe(true);
     });
+  });
+
+  describe('Scary false-negative fixtures', () => {
+    const files = readdirSync(FIXTURES_DIR).filter((f) => f.endsWith('.json'));
+
+    it('loads all five scary fixtures', () => {
+      expect(files.sort()).toEqual(
+        [
+          'churn-all-hk-now.json',
+          'ttl-deadline-day-tz.json',
+          'travelport-dx-marriage.json',
+          'uc-hn-passive-pk.json',
+          'uncleared-tk.json',
+        ].sort(),
+      );
+    });
+
+    for (const file of files) {
+      it(`encodes fixture ${file}`, async () => {
+        const raw = JSON.parse(readFileSync(join(FIXTURES_DIR, file), 'utf8')) as Record<
+          string,
+          unknown
+        >;
+        const expectMap = raw['expect'] as Record<string, boolean>;
+        const { expect: _e, _comment: _c, ...inputFields } = raw;
+        const result = await agent.execute({
+          data: inputFields as unknown as ADMPreventionInput,
+        });
+
+        expect(result.data.result.overall_pass).toBe(expectMap['overall_pass']);
+
+        for (const [checkId, passed] of Object.entries(expectMap)) {
+          if (checkId === 'overall_pass') continue;
+          const check = result.data.result.checks.find(
+            (c) => c.check_id === (checkId as ADMCheckId),
+          );
+          expect(check, `missing check ${checkId}`).toBeDefined();
+          expect(check!.passed).toBe(passed);
+        }
+      });
+    }
   });
 
   describe('Overall result', () => {
@@ -355,9 +617,10 @@ describe('ADM Prevention', () => {
       expect(result.data.result.warning_count).toBeGreaterThan(0);
     });
 
-    it('runs all 9 checks', async () => {
+    it(`runs all ${ADM_CHECK_COUNT} checks`, async () => {
       const result = await agent.execute({ data: makeInput() });
-      expect(result.data.result.checks).toHaveLength(9);
+      expect(result.data.result.checks).toHaveLength(ADM_CHECK_COUNT);
+      expect(ADM_CHECK_COUNT).toBe(10);
     });
   });
 
@@ -403,7 +666,7 @@ describe('ADM Prevention', () => {
     it('returns metadata in output', async () => {
       const result = await agent.execute({ data: makeInput() });
       expect(result.metadata!['agent_id']).toBe('6.2');
-      expect(result.metadata!['checks_run']).toBe(9);
+      expect(result.metadata!['checks_run']).toBe(ADM_CHECK_COUNT);
     });
 
     it('warns on blocking issues', async () => {
