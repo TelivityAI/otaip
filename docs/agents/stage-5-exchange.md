@@ -18,7 +18,10 @@ ATPCO Category 31 voluntary change assessment: change fees, fare difference, res
 
 - `original_ticket` -- ticket number, issuing carrier, passenger name, record locator, issue date, base fare, total tax, fare basis, refundable flag, booking date
 - `requested_itinerary` -- new segments (carrier, flight, origin, destination, date, class, fare basis), new fare, new taxes
-- `waiver_code?` -- airline-provided waiver code
+- `waiver_code?` -- airline-provided waiver identity (not skip-penalty by itself)
+- `waiver_effect?` -- required when `waiver_code` set: `ELIMINATE_PENALTY | REDUCE_PENALTY | CHANGE_REFUND_FORM | CHANGE_REBOOKING_CLASS | IRROP_INVOLUNTARY` (see `docs/knowledge-base/waiver-typology.md`)
+- `waiver_penalty_reduction?` -- required for `REDUCE_PENALTY`
+- `permitted_booking_classes?` / `permitted_fare_basis_patterns?` -- required for `CHANGE_REBOOKING_CLASS`
 - `current_datetime?` -- ISO datetime
 
 **Output (`ChangeManagementOutput`):**

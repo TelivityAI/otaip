@@ -20,7 +20,8 @@ ATPCO Category 33 refund processing: penalty application, commission recall, BSP
 - `base_fare`, `base_fare_currency`, `taxes`, `commission?`
 - `refund_type` -- `'FULL' | 'PARTIAL' | 'TAX_ONLY'`
 - `coupons_to_refund?` -- specific coupons (for partial)
-- `total_coupons`, `waiver_code?`, `fare_basis`, `is_refundable`
+- `total_coupons`, `waiver_code?`, `waiver_effect?` (required with code), `fare_basis`, `is_refundable`
+- `waiver_penalty_reduction?`, `waiver_refund_form?` -- companions per typology in `docs/knowledge-base/waiver-typology.md`
 - `settlement_system` -- `'BSP' | 'ARC'`
 
 **Output (`RefundProcessingOutput`):**
