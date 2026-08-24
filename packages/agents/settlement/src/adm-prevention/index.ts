@@ -1,9 +1,10 @@
 /**
  * ADM Prevention — Agent 6.2
  *
- * Pre-ticketing audit: 9 checks covering fare integrity,
- * segment validity, and compliance to prevent Agency Debit Memos.
+ * Pre-ticketing audit covering fare integrity, passive/UC/churning,
+ * married-segment integrity, TTL, and compliance to prevent ADMs.
  *
+ * Domain: docs/knowledge-base/adm-prevention.md
  * Implements the base Agent interface from @otaip/core.
  */
 
@@ -19,7 +20,7 @@ const CLASS_RE = /^[A-Z]$/;
 export class ADMPrevention implements Agent<ADMPreventionInput, ADMPreventionOutput> {
   readonly id = '6.2';
   readonly name = 'ADM Prevention';
-  readonly version = '0.1.0';
+  readonly version = '0.2.0';
 
   private initialized = false;
 
@@ -107,6 +108,16 @@ export class ADMPrevention implements Agent<ADMPreventionInput, ADMPreventionOut
   }
 }
 
+export { ADM_CHECK_COUNT } from './audit-engine.js';
+export {
+  CORE_BLOCKING_STATUSES,
+  HOST_BLOCKING_STATUSES,
+  isBlockingSegmentStatus,
+  isCoreBlockingStatus,
+  DEFAULT_CHURN_CYCLE_THRESHOLD,
+  DEFAULT_CHURN_WINDOW_HOURS,
+} from './status-codes.js';
+
 export type {
   ADMPreventionInput,
   ADMPreventionOutput,
@@ -117,4 +128,8 @@ export type {
   BookingRecord,
   BookingSegment,
   DuplicateCheckPnr,
+  SegmentHistoryEvent,
+  SegmentHistoryAction,
+  TtlSource,
+  GdsHost,
 } from './types.js';

@@ -25,7 +25,16 @@ export type {
 } from './refund-processing/index.js';
 export { WAIVER_EFFECTS } from './refund-processing/index.js';
 
-export { ADMPrevention } from './adm-prevention/index.js';
+export {
+  ADMPrevention,
+  ADM_CHECK_COUNT,
+  CORE_BLOCKING_STATUSES,
+  HOST_BLOCKING_STATUSES,
+  isBlockingSegmentStatus,
+  isCoreBlockingStatus,
+  DEFAULT_CHURN_CYCLE_THRESHOLD,
+  DEFAULT_CHURN_WINDOW_HOURS,
+} from './adm-prevention/index.js';
 export type {
   ADMPreventionInput,
   ADMPreventionOutput,
@@ -36,6 +45,10 @@ export type {
   BookingRecord,
   BookingSegment,
   DuplicateCheckPnr,
+  SegmentHistoryEvent,
+  SegmentHistoryAction,
+  TtlSource,
+  GdsHost,
 } from './adm-prevention/index.js';
 
 export { ADMACMProcessingAgent } from './adm-acm-processing/index.js';

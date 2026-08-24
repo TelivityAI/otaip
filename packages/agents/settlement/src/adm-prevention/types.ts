@@ -2,13 +2,21 @@
  * ADM Prevention — Types
  *
  * Agent 6.2: Pre-ticketing audit to prevent Agency Debit Memos.
- * Nine checks covering fare integrity, segment validity, and compliance.
+ * Checks cover fare integrity, segment validity (passive/UC/churn),
+ * married integrity, TTL, and compliance.
+ *
+ * Domain source: docs/knowledge-base/adm-prevention.md
  */
+
+import type { GdsHost } from './status-codes.js';
+
+export type { GdsHost };
 
 export type ADMCheckId =
   | 'DUPLICATE_BOOKING'
   | 'FARE_CLASS_MISMATCH'
   | 'PASSIVE_SEGMENT'
+  | 'CHURNING'
   | 'MARRIED_SEGMENT'
   | 'TTL_EXPIRED'
   | 'COMMISSION_RATE'
@@ -42,12 +50,37 @@ export interface BookingSegment {
   destination: string;
   /** Departure date (ISO) */
   departure_date: string;
-  /** Segment status (HK, KK, SS, HX, UN, etc.) */
+  /** Segment status (HK, KK, HX, UC, UN, NO, TK, …). Host-specific codes require `gds`. */
   status: string;
   /** Booked class */
   booking_class: string;
   /** Married segment group (segments in same group must travel together) */
   married_group?: string;
+}
+
+/**
+ * Historical segment event — required for churning detection.
+ * Current status alone cannot prove or disprove churn.
+ */
+export type SegmentHistoryAction = 'BOOKED' | 'CANCELLED' | 'REBOOKED';
+
+export interface SegmentHistoryEvent {
+  /** ISO timestamp of the event */
+  timestamp: string;
+  /** What happened */
+  action: SegmentHistoryAction;
+  /** Carrier */
+  carrier: string;
+  /** Flight number */
+  flight_number: string;
+  /** Departure date (ISO date) */
+  departure_date: string;
+  /** Origin (optional — strengthens identity match) */
+  origin?: string;
+  /** Destination (optional) */
+  destination?: string;
+  /** Status after the event, if known */
+  status?: string;
 }
 
 export interface DuplicateCheckPnr {
@@ -76,6 +109,9 @@ export interface BookingRecord {
   base_fare_currency: string;
 }
 
+/** Where the TTL value came from — affects messaging, not invented rules. */
+export type TtlSource = 'BOOKING' | 'FARE_QUOTE' | 'CARRIER_RULE' | 'UNKNOWN';
+
 export interface ADMPreventionInput {
   /** Booking record to audit */
   booking: BookingRecord;
@@ -83,9 +119,12 @@ export interface ADMPreventionInput {
   fare_basis: string;
   /** Booked class (single letter) */
   booked_class: string;
-  /** Commission rate on this ticket (percentage, e.g. 7.0) */
+  /**
+   * Commission rate on this ticket (percentage, e.g. 7.0).
+   * Compared only to caller-supplied contracted rate — no embedded carrier tables.
+   */
   commission_rate?: number;
-  /** Carrier's contracted commission rate (percentage) */
+  /** Carrier's contracted commission rate (percentage) — supplied by caller */
   carrier_contracted_rate?: number;
   /** Endorsement text on ticket */
   endorsement?: string;
@@ -97,10 +136,25 @@ export interface ADMPreventionInput {
   net_contracted_amount?: string;
   /** TTL deadline (ISO timestamp) */
   ttl_deadline?: string;
+  /** IANA timezone for deadline-day evaluation (e.g. America/New_York) */
+  ttl_timezone?: string;
+  /** How TTL was established */
+  ttl_source?: TtlSource;
   /** Other PNRs to check for duplicates */
   duplicate_check_pnrs?: DuplicateCheckPnr[];
   /** Current date/time (ISO — for TTL check) */
   current_datetime?: string;
+  /**
+   * Ordered segment history for churning detection.
+   * Without this, CHURNING is skipped (not assumed clear).
+   */
+  segment_history?: SegmentHistoryEvent[];
+  /** Host GDS — used for marriage-break signals (e.g. Travelport DX) */
+  gds?: GdsHost;
+  /** Override default churn cycle threshold (default 3) */
+  churn_cycle_threshold?: number;
+  /** Override default churn window in hours (default 72) */
+  churn_window_hours?: number;
 }
 
 export interface ADMPreventionResult {

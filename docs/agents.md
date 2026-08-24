@@ -83,7 +83,7 @@
 | ID | Class | Name | Description | Contract |
 |----|-------|------|-------------|----------|
 | 6.1 | `RefundProcessing` | Refund Processing | ATPCO Category 33 refund processing: penalty application, commission recall, BSP/ARC reporting, conjunction ticket handling | -- |
-| 6.2 | `ADMPrevention` | ADM Prevention | Pre-ticketing audit: 9 checks covering fare integrity, segment validity, and compliance to prevent Agency Debit Memos | -- |
+| 6.2 | `ADMPrevention` | ADM Prevention | Pre-ticketing audit: 10 checks covering fare integrity, passive/UC/churn (history-required), married integrity, TTL, and compliance to prevent Agency Debit Memos | -- |
 | 6.3 | `ADMACMProcessingAgent` | ADM/ACM Processing | Agency Debit Memo receipt, assessment, dispute, and Agency Credit Memo application workflows | -- |
 | 6.4 | `CustomerCommunication` | Customer Communication | Multi-channel customer notification generation for flight disruptions, refunds, and operational changes. 8 notification types x 4 channels | -- |
 | 6.5 | `FeedbackComplaintAgent` | Feedback & Complaint | Complaint submission, EU261/US DOT compensation calculation, case management, and regulatory DOT record generation | -- |
