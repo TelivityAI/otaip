@@ -63,6 +63,8 @@ Licensed IROE / 024d / TPM-MPM data are **not** shipped in the package. Pass the
 
 Per-segment tax computation with exemption engine, ~30 countries, ~50 tax codes, currency conversion. All financial math uses `decimal.js`.
 
+**FX note:** Ticket-tax / payment currency conversion must use licensed **ICER** (IATA Consolidated Exchange Rate, daily) — **not** IROE. IROE is fare construction only (Res 024c / Agent 2.2). See [IATA Exchange Rates](https://www.iata.org/en/services/finance/xrates/) and `docs/knowledge-base/fare-construction-data-dependencies.md`. The bundled `currency_conversions` map is demo-only; production must fail closed on missing ICER.
+
 **Input (`TaxCalculationInput`):**
 - `segments` -- itinerary segments (origin/destination airports and countries, carrier, cabin class, base fare NUC)
 - `passenger_type` -- `'adult' | 'child' | 'infant' | 'crew' | 'diplomatic'`

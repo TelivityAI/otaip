@@ -1,13 +1,20 @@
 # Fare Construction — Data Dependencies (Agent 2.2)
 
-Authoritative contracts for NUC × IROE construction, published TPM/MPM,
-and IATA Resolution **024d** currency rounding. This document describes
-**what to ingest**, not the proprietary table contents.
+Authoritative contracts for NUC × IROE construction (Resolution **024c**),
+published TPM/MPM, and IATA Resolution **024d** currency rounding. This
+document describes **what to ingest**, not the proprietary table contents.
 
-Do **not** commit IROE rates, 024d rounding tables, or TPM/MPM datasets to
-this repository. Licensed feeds belong in deployment secrets / private
-object storage and are passed into the agent at runtime via
-`FareConstructionInput.data_sources`.
+Do **not** commit IROE rates, ICER rates, 024d rounding tables, or TPM/MPM
+datasets to this repository. Licensed feeds belong in deployment secrets /
+private object storage and are passed into agents at runtime.
+
+**IATA exchange-rate products (do not conflate):**
+[IATA Exchange Rates](https://www.iata.org/en/services/finance/xrates/)
+
+| Product | Cadence | Use in OTAIP |
+|---|---|---|
+| **IROE** (IATA Rates of Exchange) | Monthly (5-day average ending on the 10th) | **Fare / rate construction only** — NUC ↔ local under Res **024c**. Agent 2.2. |
+| **ICER** (IATA Consolidated Exchange Rate) | Daily (BSR-style) | **Payment / tax / fee** conversion to alternate currencies of payment. Agent 2.3 tax aggregation and ticketing payment FX — **not** IROE. |
 
 ---
 
@@ -15,11 +22,14 @@ object storage and are passed into the agent at runtime via
 
 1. Construct / sum fare components in **NUC** (Neutral Unit of Construction).
 2. Convert total NUC → local currency of sale / COC using **IROE**
-   (IATA Rate of Exchange): `local = NUC × IROE`.
+   (IATA Rate of Exchange, Res **024c**): `local = NUC × IROE`.
 3. Apply **Resolution 024d** rounding (method **HX** or **NX**, per currency
    unit published in the IROE / 024d table).
 4. Mileage-system checks (HIP / BHC / CTM) and MPM excess surcharges require
    **published TPM** (and MPM) — never great-circle / haversine substitutes.
+
+Ticket taxes and payment-currency conversion are **out of scope for IROE**.
+Those paths ingest **ICER** (see below).
 
 ---
 
@@ -27,7 +37,8 @@ object storage and are passed into the agent at runtime via
 
 | Ban | Why |
 |---|---|
-| **No hardcoded IROE** in production code or shipped packages | IROE is published periodically by IATA; hardcoded rates go stale immediately and produce wrong local-currency fares. |
+| **No hardcoded IROE** in production code or shipped packages | IROE is published monthly by IATA; hardcoded rates go stale immediately and produce wrong local-currency fares. |
+| **No IROE as ticket-tax / payment FX** | Tax and payment conversions use **ICER**, not IROE. Do not wire Agent 2.3 (or payment) to `data_sources.iroe`. |
 | **No haversine / great-circle as TPM** | TPM is a published ticketed-point mileage from the IATA TPM Manual (non-stop / through scheduled services). It is **not** geodesic distance. HIP/BHC/CTM and MPM excess depend on exact published TPM. |
 | **No banker's rounding as “IATA rounding”** | Resolution **024d** uses per-currency units with methods **HX** (round up to next higher unit) or **NX** (round to nearest unit). IEEE banker's / half-to-even rounding is not a substitute. |
 | **No equal-sector proration as TPM proration** | IATA proration uses TPM-based allocation, not equal split. |
@@ -35,18 +46,37 @@ object storage and are passed into the agent at runtime via
 
 ---
 
-## Data dependency 1 — IROE (IATA Rate of Exchange)
+## Data dependency 1 — IROE (IATA Rate of Exchange) — fare construction only
 
 | Field | Contract |
 |---|---|
 | **What** | Per-currency conversion factor: NUC → local currency (and inverse for published local → NUC). |
-| **Source** | IATA Rates of Exchange (IROE) / Clearing House publication. Related: ICER (Consolidated Exchange Rates). |
-| **Cadence** | Periodic IATA publication (subscribe / license; do not scrape or pirate). |
-| **Ingestion shape** | `Record<ISO4217, decimal-string>` plus optional `effective_date` / period metadata at the feed boundary. |
+| **Resolution context** | Fare construction conversion under Res **024c**; rounding units/methods under Res **024d**. |
+| **Source** | [IATA Rates of Exchange (IROE)](https://www.iata.org/en/services/finance/xrates/) — monthly electronic data file. |
+| **Cadence** | Monthly (average of five banking days ending on the 10th). |
+| **Ingestion shape** | `Record<ISO4217, decimal-string>` plus optional `effective_date` / period metadata at the feed boundary (`FareConstructionInput.data_sources.iroe`). |
 | **Fail-closed** | If the selling currency has no IROE entry → return `DomainInputRequired` with `missing: ['iroe_table_entry:{CCY}']`. **Never** fall back to `1.0`. |
+| **Not for** | Ticket-tax aggregation, payment-currency conversion, interline billing FX. |
 
-Contributor note: purchase / subscribe via IATA publications (IROE). Do not
-vendor the rate file into git.
+Contributor note: purchase / subscribe via IATA (IROE). Do not vendor the
+rate file into git.
+
+---
+
+## Data dependency — ICER (tax / payment FX) — not Agent 2.2
+
+| Field | Contract |
+|---|---|
+| **What** | Daily exchange rates (sometimes called BSR) for converting fares, **taxes**, and **fees** to alternate currencies of payment. |
+| **Source** | [IATA Consolidated Exchange Rate (ICER)](https://www.iata.org/en/services/finance/xrates/) — official industry source for international payment currency conversions used in pricing and ticketing. |
+| **Cadence** | Daily electronic data file. |
+| **Consumers** | Agent 2.3 Tax Calculation (and payment / ticketing FX paths). **Must not** consume IROE. |
+| **Fail-closed** | Missing ICER for a currency pair → `DomainInputRequired` / halt conversion. **Never** invent rates or silently use `1.0`. |
+| **Commit to git?** | **No** proprietary ICER files. |
+
+Agent 2.3 currently still has a demo `currency_conversions` map marked
+TEST/DEMO ONLY, with `DOMAIN_QUESTION` markers to ingest ICER and fail
+closed. Do not “fix” that map by pointing it at IROE.
 
 ---
 
@@ -94,6 +124,9 @@ absent:
    local-currency amount.
 
 Silent approximation is a CLAUDE.md Agent 2.2 violation.
+
+For tax / payment FX, the same fail-closed rule applies to **ICER** (Agent
+2.3+) — independently of IROE.
 
 ---
 
@@ -144,7 +177,8 @@ HIP amounts, backhaul hits, or CT minima.
 
 | Need | Where to obtain (buy / subscribe) | Commit to git? |
 |---|---|---|
-| IROE rates | IATA Rates of Exchange (IROE); related ICER | **No** |
+| IROE (fare construction / Res 024c) | [IATA Exchange Rates — IROE](https://www.iata.org/en/services/finance/xrates/) | **No** |
+| ICER (tax / payment FX) | [IATA Exchange Rates — ICER](https://www.iata.org/en/services/finance/xrates/) | **No** |
 | 024d units + HX/NX | Resolution 024d via IATA Passenger Standards / IROE materials | **No** |
 | TPM city-pair mileages | [IATA TPM Manual](https://www.iata.org/en/publications/manuals/mileage/ticketed-point-mileage-tpm/) (`.txt` / API) | **No** |
 | MPM | IATA Maximum Permitted Mileage Manual | **No** |
@@ -161,8 +195,8 @@ by the production engine module graph.
 
 ## Related code
 
-- `packages/agents/pricing/src/fare-construction/` — Agent 2.2
+- `packages/agents/pricing/src/fare-construction/` — Agent 2.2 (IROE + 024d + TPM)
+- `packages/agents/pricing/src/tax-calculation/` — Agent 2.3 (ICER for FX; not IROE)
 - `@otaip/core` `DomainInputRequired` / `domainInputRequired`
 - `CLAUDE.md` — Agent 2.2 anti-rationalization guards
-- Tax calculation still has separate FX TODOs — do not reuse invented
-  tax `currency_conversions` as IROE
+- [IATA Exchange Rates](https://www.iata.org/en/services/finance/xrates/) — IROE vs ICER product split
