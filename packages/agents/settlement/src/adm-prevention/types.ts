@@ -50,7 +50,7 @@ export interface BookingSegment {
   destination: string;
   /** Departure date (ISO) */
   departure_date: string;
-  /** Segment status (HK, KK, HX, UC, UN, NO, TK, HN, PK, …) */
+  /** Segment status (HK, KK, HX, UC, UN, NO, TK, …). Host-specific codes require `gds`. */
   status: string;
   /** Booked class */
   booking_class: string;

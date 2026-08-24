@@ -180,22 +180,66 @@ describe('ADM Prevention', () => {
       }
     });
 
-    it('fails with HN pending need', async () => {
+    it('fails with Amadeus HN pending need when gds is AMADEUS', async () => {
       const input = makeInput({
+        gds: 'AMADEUS',
         booking: makeBooking({ segments: [makeSegment({ status: 'HN' })] }),
       });
       const result = await agent.execute({ data: input });
       const check = result.data.result.checks.find((c) => c.check_id === 'PASSIVE_SEGMENT');
       expect(check!.passed).toBe(false);
+      expect(check!.reason).toMatch(/AMADEUS/i);
     });
 
-    it('fails with Amadeus passive PK', async () => {
+    it('does not treat HN as universal when gds is omitted', async () => {
       const input = makeInput({
+        booking: makeBooking({ segments: [makeSegment({ status: 'HN' })] }),
+      });
+      const result = await agent.execute({ data: input });
+      const check = result.data.result.checks.find((c) => c.check_id === 'PASSIVE_SEGMENT');
+      expect(check!.passed).toBe(true);
+    });
+
+    it('fails with Amadeus passive PK when gds is AMADEUS', async () => {
+      const input = makeInput({
+        gds: 'AMADEUS',
         booking: makeBooking({ segments: [makeSegment({ status: 'PK' })] }),
       });
       const result = await agent.execute({ data: input });
       const check = result.data.result.checks.find((c) => c.check_id === 'PASSIVE_SEGMENT');
       expect(check!.passed).toBe(false);
+      expect(check!.reason).toMatch(/AMADEUS/i);
+    });
+
+    it('does not treat PK/GK/YK as universal when gds is omitted', async () => {
+      for (const status of ['PK', 'GK', 'YK'] as const) {
+        const input = makeInput({
+          booking: makeBooking({ segments: [makeSegment({ status })] }),
+        });
+        const result = await agent.execute({ data: input });
+        const check = result.data.result.checks.find((c) => c.check_id === 'PASSIVE_SEGMENT');
+        expect(check!.passed).toBe(true);
+      }
+    });
+
+    it('fails with Sabre YK only when gds is SABRE', async () => {
+      const withoutHost = makeInput({
+        booking: makeBooking({ segments: [makeSegment({ status: 'YK' })] }),
+      });
+      const withSabre = makeInput({
+        gds: 'SABRE',
+        booking: makeBooking({ segments: [makeSegment({ status: 'YK' })] }),
+      });
+      expect(
+        (await agent.execute({ data: withoutHost })).data.result.checks.find(
+          (c) => c.check_id === 'PASSIVE_SEGMENT',
+        )!.passed,
+      ).toBe(true);
+      expect(
+        (await agent.execute({ data: withSabre })).data.result.checks.find(
+          (c) => c.check_id === 'PASSIVE_SEGMENT',
+        )!.passed,
+      ).toBe(false);
     });
 
     it('notes Travelport needs no ticketing field', async () => {

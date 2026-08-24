@@ -25,8 +25,9 @@ export {
   ADMPrevention,
   ADM_CHECK_COUNT,
   CORE_BLOCKING_STATUSES,
-  EXTENDED_BLOCKING_STATUSES,
+  HOST_BLOCKING_STATUSES,
   isBlockingSegmentStatus,
+  isCoreBlockingStatus,
   DEFAULT_CHURN_CYCLE_THRESHOLD,
   DEFAULT_CHURN_WINDOW_HOURS,
 } from './adm-prevention/index.js';

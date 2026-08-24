@@ -1,5 +1,5 @@
 {
-  "_comment": "SCARY FALSE NEGATIVE: UC + HN + PK — beyond HX/UN/NO. Passive entry (PK) plus unable (UC) and pending need (HN).",
+  "_comment": "SCARY FALSE NEGATIVE: Amadeus UC + HN + PK — beyond HX/UN/NO. HN/PK are Amadeus host-specific (not a universal IATA meaning).",
   "gds": "AMADEUS",
   "current_datetime": "2026-04-01T12:00:00Z",
   "fare_basis": "HOWUS",

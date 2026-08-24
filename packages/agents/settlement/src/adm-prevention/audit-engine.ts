@@ -19,7 +19,6 @@ import type {
 } from './types.js';
 import {
   isBlockingSegmentStatus,
-  isCoreBlockingStatus,
   isTravelportMarriageBreakStatus,
   DEFAULT_CHURN_CYCLE_THRESHOLD,
   DEFAULT_CHURN_WINDOW_HOURS,
@@ -148,8 +147,10 @@ function checkFareClassMismatch(input: ADMPreventionInput): ADMCheck {
 
 /**
  * Passive / unable / schedule-change / pending statuses.
- * Core set HX/UC/UN/NO/TK from carrier booking policy + host practice.
- * Travelport: status alone is enough — no ticketing field required.
+ * Core set HX/UC/UN/NO/TK applies cross-host.
+ * HN/PK/GK/YK and other extended codes apply only via per-host maps
+ * (not one universal IATA meaning). Travelport: status alone is enough —
+ * no ticketing field required.
  */
 function checkPassiveSegments(input: ADMPreventionInput): ADMCheck {
   const check: ADMCheck = {
@@ -161,19 +162,21 @@ function checkPassiveSegments(input: ADMPreventionInput): ADMCheck {
   };
 
   for (const seg of input.booking.segments) {
-    if (!isBlockingSegmentStatus(seg.status)) continue;
+    const verdict = isBlockingSegmentStatus(seg.status, input.gds);
+    if (!verdict.blocking) continue;
 
     const code = seg.status.toUpperCase();
-    const core = isCoreBlockingStatus(code);
     const travelportNote =
-      input.gds === 'TRAVELPORT'
+      verdict.host === 'TRAVELPORT'
         ? ' Travelport: status alone is sufficient (no ticketing field required).'
         : '';
 
     check.passed = false;
-    check.reason = core
-      ? `Risky host status: ${seg.carrier}${seg.flight_number} status ${code} (core set HX/UC/UN/NO/TK) — must be cleared before ticketing.${travelportNote}`
-      : `Risky host status: ${seg.carrier}${seg.flight_number} status ${code} — passive/pending/cancel residue must be removed before ticketing.${travelportNote}`;
+    if (verdict.scope === 'core') {
+      check.reason = `Risky host status: ${seg.carrier}${seg.flight_number} status ${code} (core set HX/UC/UN/NO/TK) — must be cleared before ticketing.${travelportNote}`;
+    } else {
+      check.reason = `Risky ${verdict.host} host status: ${seg.carrier}${seg.flight_number} status ${code} — host-specific passive/pending/cancel residue (not a universal IATA code meaning) — must be removed before ticketing.${travelportNote}`;
+    }
     return check;
   }
 

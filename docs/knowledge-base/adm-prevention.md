@@ -25,22 +25,22 @@ Carrier booking policies and host queues treat these **advice / status** codes a
 
 **Travelport note:** On Travelport hosts, the statuses above are sufficient for detection — they do **not** require an additional ticketing-specific field on the segment. Status alone drives the passive/unable/schedule-change queue action.
 
-### Also flag before ticketing (extended matrix)
+### Per-host extended codes (NOT one IATA meaning)
 
-Beyond the core set, public GDS docs list codes that are passive-entry, pending, or otherwise unsafe to ticket. Agent 6.2 treats these as blocking when present on air segments:
+**Do not globalize** HN / PK / GK / YK (or other extended codes) as a single industry-wide meaning. The same two-letter string can mean different things on Sabre vs Amadeus vs Travelport. Agent 6.2 applies these **only when `gds` is set** to that host. If `gds` is omitted / `UNKNOWN`, only the core set above applies.
 
-| Code                  | Role                                                                             | Notes (public docs)                                                      |
-| --------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| **HN**                | Holding need / pending need                                                      | Not confirmed — CLAUDE Agent 6.2 guard: must check HN, not only HX/UN/NO |
-| **PK / PL**           | Passive confirmed / waitlisted (Amadeus)                                         | Passive sell — airline may reply NO/UC/UN/HX                             |
-| **GK / GL / GN**      | Ghost / guaranteed passive-style                                                 | Amadeus ghost; Sabre/Travelport meanings vary by host                    |
-| **YK**                | Sabre administrative / itinerary passive (common ops usage)                      | Often used for invoice/itinerary, not live sell                          |
-| **AK / AL / AN**      | Travelport Galileo passive outside system                                        | Confirmed / waitlisted / requested outside 1G                            |
-| **BK / BL**           | Travelport passive booked / waitlist with carrier                                | Cancel may message carrier                                               |
-| **MK / PS / ZK / LK** | Travelport passive / non-messaging / API / link                                  | Host-specific passive families                                           |
-| **DX**                | Travelport: passive broken marriage **or** authorized partial cancel in marriage | Married-integrity signal — see below                                     |
-| **UU / US**           | Unable, waitlisted / unable to sell                                              | Not sellable confirmed space                                             |
-| **XX / XK**           | Cancel segment / cancel with change                                              | Residual cancel statuses must be cleaned                                 |
+| Host           | Codes treated as blocking (public host tables / ops)       | Notes                                                              |
+| -------------- | ---------------------------------------------------------- | ------------------------------------------------------------------ |
+| **Amadeus**    | HN, PK, PL, GK, GL, GN, UU, US, XX                         | PK/PL = passive sell; GK/GL/GN = ghost — Amadeus semantics         |
+| **Sabre**      | YK, GK, HN, XX                                             | YK = Sabre administrative/itinerary passive; GK ≠ Amadeus ghost    |
+| **Travelport** | HN, AK, AL, AN, BK, BL, DX, MK, PS, ZK, LK, UU, US, XX, XK | DX = broken marriage / marriage-integrity signal (Travelport-only) |
+
+```
+// TODO: DOMAIN_QUESTION: Confirm Sabre vs Amadeus GK semantics in each adapter's
+// normalized status before treating GK as interchangeable across hosts.
+// TODO: DOMAIN_QUESTION: When gds is UNKNOWN, host-specific codes are ignored
+// (core only). Should UNKNOWN emit a warning instead of silent skip?
+```
 
 Active / ticketable examples (not exhaustive): **HK**, **KK**, **KL**, **RR**, **HS** (context-dependent). Do not treat “looks confirmed now” as proof the PNR was never churned — see churning.
 
@@ -109,7 +109,7 @@ See `packages/agents/settlement/src/adm-prevention/__tests__/fixtures/`:
 | ----------------------------- | --------------------------------------------------------------------------- |
 | `churn-all-hk-now.json`       | Current statuses all HK — HX/UN/NO-only scanners pass; history proves churn |
 | `uncleared-tk.json`           | TK schedule-change left on PNR — not in classic HX/UN/NO set                |
-| `uc-hn-passive-pk.json`       | UC + HN + PK together — beyond HX/UN/NO                                     |
+| `uc-hn-passive-pk.json`       | Amadeus UC + HN + PK — host-specific HN/PK, not a universal IATA meaning    |
 | `travelport-dx-marriage.json` | Travelport DX / broken marriage without needing a ticketing field           |
 | `ttl-deadline-day-tz.json`    | UTC still “has time” but local deadline day has begun                       |
 

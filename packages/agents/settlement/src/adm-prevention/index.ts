@@ -111,8 +111,9 @@ export class ADMPrevention implements Agent<ADMPreventionInput, ADMPreventionOut
 export { ADM_CHECK_COUNT } from './audit-engine.js';
 export {
   CORE_BLOCKING_STATUSES,
-  EXTENDED_BLOCKING_STATUSES,
+  HOST_BLOCKING_STATUSES,
   isBlockingSegmentStatus,
+  isCoreBlockingStatus,
   DEFAULT_CHURN_CYCLE_THRESHOLD,
   DEFAULT_CHURN_WINDOW_HOURS,
 } from './status-codes.js';
