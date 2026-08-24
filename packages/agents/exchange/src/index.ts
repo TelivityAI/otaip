@@ -15,7 +15,13 @@ export type {
   ChangeAction,
 } from './change-management/index.js';
 
-export { ExchangeReissue } from './exchange-reissue/index.js';
+export {
+  ExchangeReissue,
+  decideTaxCarryforward,
+  decideAllTaxCarryforwards,
+  CARRIER_IMPOSED_SURCHARGE_CODES,
+  TaxCarryforwardRuleMissingError,
+} from './exchange-reissue/index.js';
 export type {
   ExchangeReissueInput,
   ExchangeReissueOutput,
@@ -27,6 +33,13 @@ export type {
   ExchangeSegment,
   TaxItem,
   FormOfPayment,
+  TaxCarryforwardAction,
+  TaxCarryforwardDecision,
+  TaxCarryforwardContext,
+  TaxCarryforwardRule,
+  TaxGeographyMatch,
+  TaxItineraryFlownStatus,
+  TaxNature,
 } from './exchange-reissue/index.js';
 
 export { InvoluntaryRebook } from './involuntary-rebook/index.js';
@@ -54,10 +67,7 @@ export type {
   RebookingReason,
 } from './self-service-rebooking/index.js';
 export { selfServiceRebookingContract } from './self-service-rebooking/contract.js';
-export {
-  rebookingInputSchema,
-  rebookingOutputSchema,
-} from './self-service-rebooking/schema.js';
+export { rebookingInputSchema, rebookingOutputSchema } from './self-service-rebooking/schema.js';
 export { WaitlistManagementAgent } from './waitlist-management/index.js';
 export type {
   WaitlistInput,
@@ -77,7 +87,4 @@ export type {
   ClearanceRateMap,
 } from './waitlist-management/index.js';
 export { waitlistManagementContract } from './waitlist-management/contract.js';
-export {
-  waitlistInputSchema,
-  waitlistOutputSchema,
-} from './waitlist-management/schema.js';
+export { waitlistInputSchema, waitlistOutputSchema } from './waitlist-management/schema.js';

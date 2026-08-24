@@ -1,15 +1,14 @@
 /**
  * PNR Command Builder — GDS-specific command generation.
  *
- * GDS command syntax reference:
- *   Amadeus: NM1SURNAME/FIRSTNAME MR
- *   Sabre:   -SURNAME/FIRSTNAME
- *   Travelport: N:1SURNAME/FIRSTNAME
+ * Name-field cryptic syntax (adult / child / infant) is documented in
+ * `docs/knowledge-base/gds-pnr-name-commands.md`. Only forms verified from
+ * public Amadeus Service Hub, Travelport Formats, and Delta agency Sabre
+ * samples are emitted. Unverified hosts/forms stay as DOMAIN_QUESTION —
+ * do not map "probably like Amadeus".
  *
- * TODO: [NEEDS DOMAIN INPUT] Knowledge base file
- *   knowledge-base/core/distribution/gds_command_comparison.md
- *   not found. Commands below are based on standard GDS documentation.
- *   Verify against actual GDS API specs before production use.
+ * TRAVELPORT dialect here follows Apollo colon (`N:`) to match existing
+ * adult/contact/ticketing emissions (see DQ-N8 in the KB).
  */
 
 import type {
@@ -46,6 +45,57 @@ function formatDateDocs(isoDate: string): string {
   return `${day}${mon}${year}`;
 }
 
+/** DDMMMYY — Amadeus CHD/INF, Sabre 3INFT, Travelport infant name remark. */
+function formatDateDobYy(isoDate: string): string {
+  const d = new Date(isoDate);
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  const mon = MONTHS[d.getUTCMonth()]!;
+  const year = String(d.getUTCFullYear()).slice(-2);
+  // TODO: DOMAIN_QUESTION: DQ-N4 — YY century window across hosts
+  return `${day}${mon}${year}`;
+}
+
+/**
+ * Whole years between DOB and a reference date (UTC date parts).
+ * TODO: DOMAIN_QUESTION: DQ-N7 — Travelport P-Cxx age as-of booking vs first departure.
+ */
+function ageYearsAt(isoDob: string, isoOn: string): number {
+  const dob = new Date(isoDob);
+  const on = new Date(isoOn);
+  let age = on.getUTCFullYear() - dob.getUTCFullYear();
+  const monthDelta = on.getUTCMonth() - dob.getUTCMonth();
+  if (monthDelta < 0 || (monthDelta === 0 && on.getUTCDate() < dob.getUTCDate())) {
+    age -= 1;
+  }
+  return age;
+}
+
+/** Sabre seated name number (n.1) for a passenger index, excluding lap infants. */
+function sabreSeatedNameNumber(passengers: PnrPassenger[], passengerIndex: number): string {
+  let n = 0;
+  for (let i = 0; i <= passengerIndex && i < passengers.length; i++) {
+    if (passengers[i]!.passenger_type !== 'INF') {
+      n += 1;
+    }
+  }
+  return `${n}.1`;
+}
+
+function amadeusInfantSuffix(adult: PnrPassenger, infant: PnrPassenger): string | undefined {
+  const infFirst = infant.first_name.toUpperCase();
+  const infLast = infant.last_name.toUpperCase();
+  const adultLast = adult.last_name.toUpperCase();
+  if (!infant.date_of_birth) {
+    // TODO: DOMAIN_QUESTION: Amadeus INF without DOB — Service Hub examples always include DDMMMYY
+    return undefined;
+  }
+  const dob = formatDateDobYy(infant.date_of_birth);
+  if (infLast === adultLast) {
+    return `(INF/${infFirst}/${dob})`;
+  }
+  return `(INF${infLast}/${infFirst}/${dob})`;
+}
+
 // ---------------------------------------------------------------------------
 // Name commands
 // ---------------------------------------------------------------------------
@@ -55,6 +105,7 @@ function buildNameCommands(
   passengers: PnrPassenger[],
   isGroup: boolean,
   groupName?: string,
+  referenceDateIso?: string,
 ): PnrCommand[] {
   const commands: PnrCommand[] = [];
 
@@ -87,77 +138,139 @@ function buildNameCommands(
     }
   }
 
-  // Individual names (non-infant passengers only for initial entry)
-  const adults = passengers.filter((p) => p.passenger_type !== 'INF');
-  const infants = passengers.filter((p) => p.passenger_type === 'INF');
+  // Seated names first (ADT + CHD). Amadeus lap INF is attached to the adult name.
+  for (let i = 0; i < passengers.length; i++) {
+    const pax = passengers[i]!;
+    if (pax.passenger_type === 'INF') continue;
 
-  for (const pax of adults) {
     const surname = pax.last_name.toUpperCase();
     const firstname = pax.first_name.toUpperCase();
     const title = pax.title ? ` ${pax.title.toUpperCase()}` : '';
+    const linkedInfants = passengers.filter(
+      (p) => p.passenger_type === 'INF' && p.infant_accompanying_adult === i,
+    );
 
     switch (gds) {
-      case 'AMADEUS':
-        // NM1SURNAME/FIRSTNAME MR
+      case 'AMADEUS': {
+        let command = `NM1${surname}/${firstname}${title}`;
+        if (pax.passenger_type === 'CHD') {
+          if (pax.date_of_birth) {
+            // Amadeus Service Hub: NM1SURNAME/FIRST(CHD/DDMMMYY)
+            command = `NM1${surname}/${firstname}(CHD/${formatDateDobYy(pax.date_of_birth)})`;
+          } else {
+            // TODO: DOMAIN_QUESTION: Amadeus CHD without DOB — Service Hub examples always include DDMMMYY
+            command = `NM1${surname}/${firstname}${title}`;
+          }
+        } else if (linkedInfants.length > 0) {
+          // Service Hub: infant is on the adult name element, not a separate NM1
+          const suffixes = linkedInfants
+            .map((inf) => amadeusInfantSuffix(pax, inf))
+            .filter((s): s is string => s !== undefined);
+          if (suffixes.length > 0) {
+            command = `NM1${surname}/${firstname}${title}${suffixes.join('')}`;
+          } else {
+            // TODO: DOMAIN_QUESTION: Amadeus INF linked but missing DOB — cannot emit verified (INF/…) form
+            command = `NM1${surname}/${firstname}${title}`;
+          }
+        }
         commands.push({
-          command: `NM1${surname}/${firstname}${title}`,
-          description: `Name: ${surname}/${firstname}`,
+          command,
+          description:
+            linkedInfants.length > 0
+              ? `Name: ${surname}/${firstname} with infant(s)`
+              : `Name: ${surname}/${firstname}`,
           element_type: 'NAME',
         });
         break;
-      case 'SABRE':
-        // -SURNAME/FIRSTNAME
+      }
+      case 'SABRE': {
+        // TODO: DOMAIN_QUESTION: DQ-N1 — Sabre child age/PTC in name field not cited in public Format Finder
+        // Adult-style name skeleton is verified (Travelport Formats Sabre column / Transavia Sabre PDF).
         commands.push({
           command: `-${surname}/${firstname}${title}`,
           description: `Name: ${surname}/${firstname}`,
           element_type: 'NAME',
         });
         break;
-      case 'TRAVELPORT':
-        // N:1SURNAME/FIRSTNAME
-        commands.push({
-          command: `N:1${surname}/${firstname}${title}`,
-          description: `Name: ${surname}/${firstname}`,
-          element_type: 'NAME',
-        });
+      }
+      case 'TRAVELPORT': {
+        // Apollo colon dialect (DQ-N8). Travelport+ uses N. / Worldspan uses -…*INF for infants.
+        if (pax.passenger_type === 'CHD' && pax.date_of_birth && referenceDateIso) {
+          const age = ageYearsAt(pax.date_of_birth, referenceDateIso);
+          const ageCode = String(Math.max(0, Math.min(99, age))).padStart(2, '0');
+          // Apollo: N:RYAN/TIM*P-C08 (Formats 1VBFFields). Leading 1 kept for parity with ADT emission.
+          commands.push({
+            command: `N:1${surname}/${firstname}*P-C${ageCode}`,
+            description: `Child name: ${surname}/${firstname}`,
+            element_type: 'NAME',
+          });
+        } else {
+          if (pax.passenger_type === 'CHD' && !pax.date_of_birth) {
+            // TODO: DOMAIN_QUESTION: Travelport/Apollo CHD without DOB — cannot build *P-Cxx
+          }
+          commands.push({
+            command: `N:1${surname}/${firstname}${title}`,
+            description: `Name: ${surname}/${firstname}`,
+            element_type: 'NAME',
+          });
+        }
         break;
+      }
     }
   }
 
-  // Infant names (linked to accompanying adult)
-  for (const inf of infants) {
+  // Lap infant name fields (Sabre + Travelport). Amadeus INF is on the adult element above.
+  for (const inf of passengers) {
+    if (inf.passenger_type !== 'INF') continue;
+
     const surname = inf.last_name.toUpperCase();
     const firstname = inf.first_name.toUpperCase();
     const adultIdx = inf.infant_accompanying_adult ?? 0;
-    const adultPaxNum = adultIdx + 1;
+    const adultNameNum = sabreSeatedNameNumber(passengers, adultIdx);
 
     switch (gds) {
       case 'AMADEUS':
-        // Amadeus infant: NM1SURNAME/FIRSTNAME(INF)
+        // Already attached to adult NM1 when DOB present.
+        break;
+      case 'SABRE': {
+        // Delta agency + Travelport Formats Sabre column: -I/SURNAME/FIRSTNAME
+        // Do NOT emit Worldspan -SURNAME/FIRST*INF as Sabre.
         commands.push({
-          command: `NM1${surname}/${firstname}(INF)`,
-          description: `Infant: ${surname}/${firstname} with adult P${adultPaxNum}`,
+          command: `-I/${surname}/${firstname}`,
+          description: `Infant: ${surname}/${firstname} with adult ${adultNameNum}`,
           element_type: 'NAME',
         });
+        if (inf.date_of_birth) {
+          // Delta: 3INFT/SURNAME/FIRST/DDMMMYY-1.1
+          commands.push({
+            command: `3INFT/${surname}/${firstname}/${formatDateDobYy(inf.date_of_birth)}-${adultNameNum}`,
+            description: `SSR INFT for ${surname}/${firstname} linked to ${adultNameNum}`,
+            element_type: 'SSR',
+          });
+        } else {
+          // TODO: DOMAIN_QUESTION: Sabre 3INFT requires DOB — name field emitted without SSR when DOB absent
+        }
         break;
-      case 'SABRE':
-        // Sabre infant: -SURNAME/FIRSTNAME*INF
-        // TODO: [NEEDS DOMAIN INPUT] Verify exact Sabre infant name syntax
-        commands.push({
-          command: `-${surname}/${firstname}*INF`,
-          description: `Infant: ${surname}/${firstname} with adult P${adultPaxNum}`,
-          element_type: 'NAME',
-        });
+      }
+      case 'TRAVELPORT': {
+        if (inf.date_of_birth) {
+          // Apollo Formats: N:I/LEE/ANN*17JUL22/P-INF01
+          commands.push({
+            command: `N:I/${surname}/${firstname}*${formatDateDobYy(inf.date_of_birth)}/P-INF01`,
+            description: `Infant: ${surname}/${firstname} with adult ${adultNameNum}`,
+            element_type: 'NAME',
+          });
+        } else {
+          // TODO: DOMAIN_QUESTION: Apollo/Travelport+ infant name requires *DDMMMYY (and Apollo /P-INF01)
+          // Emit I/ prefix only — do not invent a DOB or Worldspan *INF.
+          commands.push({
+            command: `N:I/${surname}/${firstname}`,
+            description: `Infant: ${surname}/${firstname} with adult ${adultNameNum} (DOB missing — incomplete)`,
+            element_type: 'NAME',
+          });
+        }
         break;
-      case 'TRAVELPORT':
-        // Travelport infant: N:I/1SURNAME/FIRSTNAME
-        // TODO: [NEEDS DOMAIN INPUT] Verify exact Travelport infant syntax
-        commands.push({
-          command: `N:I/1${surname}/${firstname}`,
-          description: `Infant: ${surname}/${firstname} with adult P${adultPaxNum}`,
-          element_type: 'NAME',
-        });
-        break;
+      }
     }
   }
 
@@ -476,9 +589,19 @@ export function buildPnrCommands(input: PnrBuilderInput): PnrBuilderOutput {
   const commands: PnrCommand[] = [];
   const isGroup = input.is_group ?? false;
   const infants = input.passengers.filter((p) => p.passenger_type === 'INF');
+  // Used for Travelport *P-Cxx age (DQ-N7: first segment departure as provisional reference).
+  const referenceDateIso = input.segments[0]?.departure_date;
 
-  // 1. Names (or group header + names)
-  commands.push(...buildNameCommands(input.gds, input.passengers, isGroup, input.group_name));
+  // 1. Names (or group header + names) + Sabre INFT SSR when DOB present
+  commands.push(
+    ...buildNameCommands(
+      input.gds,
+      input.passengers,
+      isGroup,
+      input.group_name,
+      referenceDateIso,
+    ),
+  );
 
   // 2. Air segments
   commands.push(...buildSegmentCommands(input.gds, input.segments));
