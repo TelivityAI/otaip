@@ -70,19 +70,24 @@ Ticket reissue with residual value application, **per-tax** carryforward (`CARRY
 **Class:** `InvoluntaryRebook`
 **Status:** Implemented
 
-Carrier-initiated schedule change handling: trigger assessment (time change, routing change, equipment downgrade, cancellation), airline protection logic (same carrier > alliance > interline), and regulatory entitlement flags (EU261, US DOT).
+Carrier-initiated schedule change / IRROP handling. Domain KB: `docs/knowledge-base/involuntary-rebook-irrop.md` (Regulation (EC) No 261/2004 — [CELEX:32004R0261](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32004R0261)).
+
+- **Triggers:** time change, routing change, equipment downgrade, cancellation, misconnect — with explicit dep vs arr measurement. **No hardcoded 60-minute threshold**; fail closed when carrier threshold input is missing.
+- **Reprotection candidates:** same operating → marketing → alliance → interline → other, with endorsement fail-closed. Alliance ≠ any alliance flight. **Do not silently "same carrier first"** — when EU261 applies, Art.8 passenger choice (refund vs re-route) is required before execution.
+- **EU261:** Art.3(1) matrix (EU depart any carrier / EU arrive Community carrier only). Art.7 compensation via great-circle bands only (never TPM). Art.8 choice surfaced on output.
+- **US DOT:** 14 CFR §250 IDB is oversale-specific — delays/cancels report `applies: false`.
 
 **Input (`InvoluntaryRebookInput`):**
-
-- `original_pnr` -- record locator, passenger, affected segment, issuing carrier, countries, checked-in flag, EU carrier flag
-- `schedule_change` -- change type, original/new times, time change minutes, routing changes, equipment changes
-- `available_flights?` -- protection flight options with carrier/alliance/interline flags
-- `thresholds?` -- override involuntary trigger thresholds
+- `original_pnr` -- record locator, passenger, affected segment, issuing carrier, countries, checked-in flag, EU/Community carrier flag, optional endorsement
+- `schedule_change` -- change type (incl. MISCONNECT), times, routing/equipment, misconnect shortfall
+- `available_flights?` -- protection candidates with operating/marketing/alliance/interline + `endorsement_allows`
+- `thresholds?` -- carrier-specific `time_change_minutes`, `measurement_point` (DEPARTURE|ARRIVAL), `misconnect_minutes` — required for those triggers
 - `is_passenger_no_show?` -- no-show flag
+- `is_oversale_denied_boarding?` -- only true for 14 CFR §250 oversales
+- `eu261_inputs?` -- great-circle `distance_km` (Art.7(4)), delay/notice/rerouting/extraordinary, third-country benefits caveat
 
 **Output (`InvoluntaryRebookOutput`):**
-
-- `result` -- involuntary flag, trigger type, protection options (ordered by priority), protection path taken, regulatory flags (EU261/US DOT applicability), original routing credit flag, summary
+- `result` -- involuntary flag, trigger, ranked protection candidates (not executed), `art8_passenger_choice_required` + `art8_choices`, measurement point, regulatory flags (EU261/US DOT), original routing credit flag, summary
 
 ---
 
