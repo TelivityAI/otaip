@@ -74,8 +74,9 @@ export interface ActivitiesChannelCapability {
   /** True when the channel sets retail price; Hotelbeds returns net. */
   setsRetailPrice: false;
   /**
-   * Whether this surface returns `'ON_REQUEST'` statuses in addition to
-   * `'CONFIRMED'`. Hotelbeds does — see DQ-A3 in the activities KB.
+   * Whether this surface returns supplier `'ON_REQUEST'` on confirm.
+   * Hotelbeds Activities does **not** — DQ-A3 CLOSED (confirm =
+   * CONFIRMED|CANCELLED; PRECONFIRMED is the separate preconfirm hold).
    */
   supportsOnRequest: boolean;
   testEnvDailyRequestLimit?: number;
@@ -90,8 +91,9 @@ export interface TransfersChannelCapability {
   supportedMarkets: string[];
   supportedFunctions: Array<'availability' | 'book' | 'cancel'>;
   setsRetailPrice: false;
+  /** Hotelbeds Transfers does **not** return ON_REQUEST — DQ-T6 CLOSED. */
   supportsOnRequest: boolean;
-  /** Whether the channel supports `inbound` (return-leg) — out of scope here. */
+  /** Official Availability Simple documents inbound; adapter surface is one-way (DQ-T8). */
   supportsRoundTrip: boolean;
   testEnvDailyRequestLimit?: number;
   updatedAt: string;
@@ -103,9 +105,9 @@ export const hotelbedsActivitiesCapabilities: ActivitiesChannelCapability = {
   supportedMarkets: ['*'],
   supportedFunctions: ['availability', 'book', 'cancel'],
   setsRetailPrice: false,
-  supportsOnRequest: true,
+  supportsOnRequest: false,
   testEnvDailyRequestLimit: 50,
-  updatedAt: '2026-05-06',
+  updatedAt: '2026-08-24',
 };
 
 export const hotelbedsTransfersCapabilities: TransfersChannelCapability = {
@@ -114,8 +116,8 @@ export const hotelbedsTransfersCapabilities: TransfersChannelCapability = {
   supportedMarkets: ['*'],
   supportedFunctions: ['availability', 'book', 'cancel'],
   setsRetailPrice: false,
-  supportsOnRequest: true,
+  supportsOnRequest: false,
   supportsRoundTrip: false,
   testEnvDailyRequestLimit: 50,
-  updatedAt: '2026-05-06',
+  updatedAt: '2026-08-24',
 };

@@ -1,22 +1,30 @@
 # Hotelbeds Transfers API — Domain Knowledge
 
-Source: vendor brief, May 2026. This file is the authoritative domain input for the `@otaip/adapter-hotelbeds` Transfers surface. Anything missing here is captured as an open `DOMAIN_QUESTION` at the bottom — never invent.
+Source: vendor brief, May 2026, plus official Hotelbeds public docs
+(https://developer.hotelbeds.com/). This file is the authoritative domain input
+for the `@otaip/adapter-hotelbeds` Transfers surface. Anything missing here is
+captured as an open `DOMAIN_QUESTION` at the bottom — never invent.
 
 ## Endpoints
 
-| Operation     | Method | Path                            |
-| ------------- | ------ | ------------------------------- |
-| Availability  | POST   | `/transfer-api/1.0/availability` |
-| Booking       | POST   | `/transfer-api/1.0/bookings`     |
-| Cancellation  | DELETE | `/transfer-api/1.0/bookings/{ref}` *(see DQ-T1)* |
+| Operation     | Method | Path |
+| ------------- | ------ | ---- |
+| Availability  | GET/POST | `/transfer-api/1.0/availability` *(Simple = path params; adapter currently POSTs brief JSON body)* |
+| Booking       | POST   | `/transfer-api/1.0/bookings` |
+| Booking detail | GET  | `/transfer-api/1.0/bookings/{language}/reference/{booking_reference}` |
+| Cancellation  | DELETE | `/transfer-api/1.0/bookings/{language}/reference/{booking_reference}` |
 
-Base URL is the same Hotelbeds host as Hotels (`api.test.hotelbeds.com` for sandbox, `api.hotelbeds.com` for production). Path prefix is `/transfer-api/1.0`.
+Base URL is the same Hotelbeds host as Hotels (`api.test.hotelbeds.com` for
+sandbox, `api.hotelbeds.com` for production). Path prefix is `/transfer-api/1.0`.
 
 ## Auth
 
-Identical to Hotels API — `Api-key` + `X-Signature: SHA256(apiKey + secret + utcSeconds)`. Reuse `buildAuthHeaders()` from `auth.ts`.
+Identical to Hotels API — `Api-key` + `X-Signature: SHA256(apiKey + secret + utcSeconds)`.
+Reuse `buildAuthHeaders()` from `auth.ts`.
 
 ## Availability — request
+
+Vendor brief shape (what the adapter currently posts):
 
 ```json
 {
@@ -29,55 +37,68 @@ Identical to Hotels API — `Api-key` + `X-Signature: SHA256(apiKey + secret + u
 }
 ```
 
-- `from.type` / `to.type`: one of `'IATA' | 'ATLAS' | 'GPS'`.
-  - `IATA` — three-letter airport/station code (BCN, LHR, JFK).
-  - `ATLAS` — Hotelbeds' internal location identifier. The full code-set is not documented here; expect numeric strings.
-  - `GPS` — latitude/longitude pair encoded as `code` (format unverified — DQ-T2).
-- `outbound.time` is HH:mm in 24-hour clock. Whether this is local time at `from` or UTC is unverified — DQ-T3.
-- The brief documents one-way only (`outbound`). Round-trip / `inbound` leg is NOT in scope this session.
+Official Availability Simple uses path segments and a combined outbound
+dateTime, e.g.
+`.../from/ATLAS/265/to/IATA/PMI/2021-08-17T12:15:00/2/0/0`.
 
-## Availability — response shape
+Cited: https://developer.hotelbeds.com/documentation/transfers/booking-api/search-availability/availability-simple/
 
-The brief documents the OTAIP-canonical mapping (`TransferOffer[]` with vehicle types, prices, pickup info) but does NOT specify the raw Hotelbeds wire field names. The adapter's raw response type is best-effort based on the OTAIP shape. Each transfer carries:
+- `from.type` / `to.type`: `IATA | ATLAS | GPS | PORT | STATION` (official; brief
+  documented IATA/ATLAS/GPS only).
+- **GPS code format (DQ-T2 CLOSED):** *"Latitude and longitude coordinates, A
+  minimum of three decimal places is required"*. Observed encoding (Activities
+  GPS filter example and Transfers confirmation rateKey samples):
+  `"lat, lon"` comma-separated, e.g. `"41.40529898888071, 2.181130939007672"` /
+  `"41.39347365813525, 2.1628669129116207"`. Description + full address required
+  at confirmation for GPS services.
+- Optional `inbound` dateTime for round-trip (documented; adapter one-way scope).
 
-- `transferType`: `'PRIVATE' | 'SHARED' | 'LUXURY'` per brief. Hotelbeds may publish other classes; the adapter passes the raw string through and the field-mapper validates against the documented enum, falling back to the literal value if unknown.
-- `vehicleType`: free-form descriptor (e.g. "Sedan", "Minibus 8pax").
-- `maxPassengers`: integer cap.
-- `price`: per-vehicle (not per-pax). DQ-T4.
-- `pickupInfo` / `dropoffInfo`: `location` is free text; `time` for pickup is HH:mm (or ISO datetime — DQ-T5); `estimatedTime` for drop-off is similarly underspecified.
+## Availability — response shape (official)
 
-## Booking — request
+Cited Availability Simple response parameters + published response sample:
 
-```json
-{
-  "transferCode": "...",
-  "holder": { "name": "John", "surname": "Smith" },
-  "passengers": [{ "type": "ADULT", "name": "John", "surname": "Smith" }],
-  "clientReference": "AVR-TRF-001"
-}
-```
-
-- `passengers[].type`: `'ADULT' | 'CHILD'` per brief.
-- `transferCode` is opaque, returned in availability.
+- `services[].transferType`: `SHARED | PRIVATE` (official; brief also listed LUXURY).
+- `services[].price.totalAmount` / `services[].price.netAmount` / `currencyId`.
+- `services[].maxPaxCapacity` — passenger limit of the **transfer service**
+  (vehicle/service capacity), not a per-seat price unit.
+- `services[].pickupInformation.date` + `.time` — pickup date and time.
+- `services[].cancellationPolicies[]`: `{ amount, from, currencyId, utcOffset? }`.
+  Official text: *"The date and time are always based on the destination's local
+  time."* Cancel docs likewise: *"Cancellations always take into account day and
+  time of the destination."*
 
 ## Booking — response
 
-Returns `{ bookingReference, status: 'CONFIRMED' | 'ON_REQUEST', clientReference, pickupDetails: { location, time, instructions? } }`.
+Cited: https://developer.hotelbeds.com/documentation/transfers/booking-api/booking-post-booking/booking-request/
+and Booking Detail / Booking List / Booking Cancellation docs.
 
-- `'ON_REQUEST'` semantics same as Activities — see DQ-T6.
-- `pickupDetails.instructions` free text passed through.
+Booking / transfer status restricted values: **`CONFIRMED` | `CANCELLED` |
+`MODIFIED`**.
+
+Hotelbeds Transfers product marketing (developer portal): *"100% of our product
+guaranteed on confirmation: No OnRequest or pending stages."*
+
+**`ON_REQUEST` is not a Hotelbeds Transfers confirm status.**
+
+Retrieval: `GET .../bookings/{language}/reference/{booking_reference}`
+(Booking Detail) — not an ON_REQUEST poll.
 
 ## Cancellation
 
-Official Hotelbeds Transfers Booking API cancel:
+Official:
 
 `DELETE /transfer-api/1.0/bookings/{language}/reference/{booking_reference}`
 
-Optional `?simulation=true`. Absent simulation = hard cancel. Partial cancel via `/id/{service_id}` is out of scope for the adapter.
+Optional `?simulation=true`. Absent simulation = hard cancel. Partial cancel via
+`/id/{service_id}` is out of scope for the adapter.
 
 Source: https://developer.hotelbeds.com/documentation/transfers/booking-api/booking-post-booking/booking-cancellation/
 
-OTAIP method: `cancelTransfer(bookingReference, options?)` → `{ status: 'CANCELLED', cancellationReference }`.
+**Cancellation policy timing = destination local time** (cancel docs + availability
+`cancellationPolicies.from` description).
+
+OTAIP method: `cancelTransfer(bookingReference, options?)` →
+`{ status: 'CANCELLED', cancellationReference }`.
 
 **DQ-T1: CLOSED** (official docs above).
 
@@ -87,20 +108,43 @@ OTAIP method: `cancelTransfer(bookingReference, options?)` → `{ status: 'CANCE
 - Sandbox returns synthetic results for airport→hotel routes.
 - Same daily quota.
 
-## Open DOMAIN_QUESTIONs
+## DOMAIN_QUESTIONs
 
-- **DQ-T2** — `GPS` location code format. The brief lists `'GPS'` as a `from.type` / `to.type` value but does not document the `code` payload — comma-separated `lat,lon`? URL-encoded JSON? Unknown. The adapter passes the supplied string through verbatim; callers must format correctly until verified.
-- **DQ-T3** — `outbound.time` timezone. Local at `from` or UTC? The adapter passes through unchanged. Operators using non-IATA `from` types must confirm.
-- **DQ-T4** — Per-vehicle vs per-pax pricing. Brief implies per-vehicle but doesn't state. The adapter exposes a single `price` and treats it as the booking-line total.
-- **DQ-T5** — Pickup `time` format. HH:mm string vs full ISO datetime. The adapter passes through unchanged.
-- **DQ-T6** — `'ON_REQUEST'` confirmation flow. Same as Activities — no retrieval endpoint documented. Caller decides.
-- **DQ-T7** — Net vs selling rate. The brief uses a single `Money` price. Hotels exposes both. Whether Transfers does is unverified — the adapter currently treats the price as net.
-- **DQ-T8** — Round-trip / inbound leg. Out of scope this session. A future revision will need to model `inbound` symmetrically with `outbound`.
+### CLOSED (official docs / observed response shapes)
+
+- **DQ-T1** — Cancel path + `simulation` query. Evidence: Booking Cancellation docs.
+- **DQ-T2** — GPS code format. Evidence: Availability Simple — lat/lon, ≥3 decimal
+  places; observed `"lat, lon"` comma-separated examples on developer.hotelbeds.com.
+- **DQ-T4** — Per-vehicle vs per-pax pricing. Evidence: Availability Simple —
+  `price.totalAmount` / `price.netAmount` are amounts of the **transfer service /
+  booking**, with separate `maxPaxCapacity`. Not a per-pax line item.
+- **DQ-T5** — Pickup `time` format. Evidence: official availability response sample
+  uses `"time": "10:00:00"` (HH:mm:ss) alongside separate `date`. Request Simple
+  path uses ISO-like `YYYY-MM-DDTHH:mm:ss` outbound dateTime. Adapter still passes
+  brief `{ date, time }` through unchanged.
+- **DQ-T6** — `ON_REQUEST` confirmation flow. Evidence: booking status enum
+  CONFIRMED|CANCELLED|MODIFIED; “No OnRequest”; Booking Detail for retrieval.
+- **DQ-T7** — Net vs selling rate. Evidence: `price.netAmount` + `price.totalAmount`
+  (not Hotels `sellingRate`). Adapter prefers `netAmount` when present, else
+  `totalAmount` / brief `amount`.
+
+### Partially closed / still open
+
+- **DQ-T3** — `outbound.time` timezone (local at `from` vs UTC).
+  **Closed for cancellation policy timing:** destination local time (cited above).
+  **Still open for the availability request clock:** official Simple examples use
+  `2021-08-17T12:15:00` with no `Z`/offset. Pickup-time KB maps request time to
+  flight/train arrival or departure depending on direction — not an explicit
+  “UTC vs local-at-from” rule for the request field. Adapter passes through
+  unchanged.
+- **DQ-T8** — Round-trip / inbound leg. Official Availability Simple documents
+  optional `inbound` dateTime for round-trip. Adapter surface remains one-way
+  this session; modeling `inbound` symmetrically is future work.
 
 ## Method surface (for the adapter)
 
 ```ts
 searchTransfers(request: TransferSearchRequest): Promise<TransferOffer[]>;
 bookTransfer(request: TransferBookRequest): Promise<TransferBookResponse>;
-cancelTransfer(bookingReference: string): Promise<{ status: 'CANCELLED'; cancellationReference: string }>;
+cancelTransfer(bookingReference: string, options?): Promise<{ status: 'CANCELLED'; cancellationReference: string }>;
 ```
