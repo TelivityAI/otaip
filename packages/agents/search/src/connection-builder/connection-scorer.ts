@@ -12,7 +12,8 @@ import type { QualityFactor } from './types.js';
 
 export interface ScoringInput {
   availableMinutes: number;
-  requiredMctMinutes: number;
+  /** Null when MCT unresolved (fail-closed) — connection_time scores 0 */
+  requiredMctMinutes: number | null;
   sameCarrier: boolean;
   sameAlliance: boolean;
   terminalChange: boolean;
@@ -59,14 +60,17 @@ export function scoreConnection(input: ScoringInput): {
   const factors: QualityFactor[] = [];
 
   // Factor 1: Connection time (weight: 0.4)
-  const timeScore = scoreConnectionTime(input.availableMinutes, input.requiredMctMinutes);
+  const mct = input.requiredMctMinutes;
+  const timeScore = mct === null ? 0 : scoreConnectionTime(input.availableMinutes, mct);
   factors.push({
     name: 'connection_time',
     score: timeScore,
     description:
-      timeScore === 0
-        ? `${input.availableMinutes}min < ${input.requiredMctMinutes}min MCT - illegal connection`
-        : `${input.availableMinutes}min available, ${input.requiredMctMinutes}min required`,
+      mct === null
+        ? 'MCT unavailable (fail-closed) — no curated SSIM row'
+        : timeScore === 0
+          ? `${input.availableMinutes}min < ${mct}min MCT - illegal connection`
+          : `${input.availableMinutes}min available, ${mct}min required`,
   });
 
   // Factor 2: Same carrier (weight: 0.25)
