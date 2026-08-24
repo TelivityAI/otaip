@@ -160,3 +160,6 @@ internal/
 .DS_Store
 .AppleDouble
 .LSOverride.tmp-mcp-appr-test/
+
+# Local-only domain source dumps — never commit
+/gitignore/
