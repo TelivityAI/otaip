@@ -13,7 +13,11 @@ export type {
   RequestedItinerary,
   ChangeFeeRule,
   ChangeAction,
+  WaiverEffect,
+  WaiverPenaltyReduction,
+  WaiverRefundForm,
 } from './change-management/index.js';
+export { WAIVER_EFFECTS } from './change-management/index.js';
 
 export { ExchangeReissue } from './exchange-reissue/index.js';
 export type {

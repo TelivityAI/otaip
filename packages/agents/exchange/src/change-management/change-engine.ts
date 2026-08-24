@@ -7,16 +7,19 @@
  *   rules: pattern-match the fare basis, use the rule's penalty, free-
  *   change window, and downgrade-forfeit flag.
  * - When `input.cat31_rules` is absent, the engine uses the ATPCO
- *   default per the project's domain spec: voluntary changes are
- *   PERMITTED AT NO CHARGE; involuntary changes have the fee waived.
+ *   public default: voluntary changes are PERMITTED AT NO CHARGE;
+ *   involuntary changes have the fee waived.
+ *   Source: https://atpco.net/single-blog/what-are-atpco-fare-rules-categories/
  *
- * The previous "$200 default" fallback was a CLAUDE.md violation and
- * has been removed. Carrier-specific rules MUST flow in via input.
+ * Waiver codes: presence ≠ skip penalty. Typed `waiver_effect` required.
+ * See docs/knowledge-base/waiver-typology.md.
  *
  * // DOMAIN_QUESTION: per-carrier ATPCO Cat31 data ingestion pipeline.
+ * // DOMAIN_QUESTION: DQ-W1 — map free-text waiver codes → WaiverEffect.
  */
 
 import Decimal from 'decimal.js';
+import { AgentInputValidationError } from '@otaip/core';
 import type {
   ChangeManagementInput,
   ChangeManagementOutput,
@@ -24,7 +27,12 @@ import type {
   ChangeFeeRule,
   ChangeAction,
   Cat31Rules,
+  WaiverEffect,
+  WaiverPenaltyReduction,
 } from './types.js';
+import { WAIVER_EFFECTS } from './types.js';
+
+const AGENT_ID = '5.1';
 
 function currentTime(input: ChangeManagementInput): Date {
   return input.current_datetime ? new Date(input.current_datetime) : new Date();
@@ -56,12 +64,148 @@ function isWithinFreeChangeWindow(
   return hoursSinceBooking <= freeChangeHours;
 }
 
+/**
+ * Fail closed when waiver identity is present without a known typed effect,
+ * or when effect companions are incomplete.
+ */
+export function assertChangeWaiverInput(input: ChangeManagementInput): void {
+  const hasCode = input.waiver_code !== undefined && input.waiver_code !== '';
+  const effect = input.waiver_effect;
+
+  if (!hasCode && effect === undefined) return;
+
+  if (hasCode && effect === undefined) {
+    // TODO: DOMAIN_QUESTION: DQ-W1 — what is the waiver type and its specific effect?
+    throw new AgentInputValidationError(
+      AGENT_ID,
+      'waiver_effect',
+      'Required when waiver_code is set. Presence of a waiver code ≠ skip penalty. See docs/knowledge-base/waiver-typology.md.',
+    );
+  }
+
+  if (effect !== undefined && !(WAIVER_EFFECTS as readonly string[]).includes(effect)) {
+    throw new AgentInputValidationError(
+      AGENT_ID,
+      'waiver_effect',
+      `Unknown waiver_effect "${String(effect)}". Fail closed — do not invent semantics.`,
+    );
+  }
+
+  if (!hasCode && effect !== undefined) {
+    throw new AgentInputValidationError(
+      AGENT_ID,
+      'waiver_code',
+      'Required when waiver_effect is set.',
+    );
+  }
+
+  if (effect === 'REDUCE_PENALTY') {
+    assertReduction(input.waiver_penalty_reduction);
+  }
+
+  if (effect === 'CHANGE_REFUND_FORM') {
+    if (!input.waiver_refund_form) {
+      throw new AgentInputValidationError(
+        AGENT_ID,
+        'waiver_refund_form',
+        'Required when waiver_effect is CHANGE_REFUND_FORM.',
+      );
+    }
+  }
+
+  if (effect === 'CHANGE_REBOOKING_CLASS') {
+    const classes = input.permitted_booking_classes ?? [];
+    const patterns = input.permitted_fare_basis_patterns ?? [];
+    if (classes.length === 0 && patterns.length === 0) {
+      // TODO: DOMAIN_QUESTION: DQ-W4 — carrier class-substitution tables
+      throw new AgentInputValidationError(
+        AGENT_ID,
+        'permitted_booking_classes',
+        'CHANGE_REBOOKING_CLASS requires permitted_booking_classes and/or permitted_fare_basis_patterns.',
+      );
+    }
+  }
+}
+
+function assertReduction(reduction: WaiverPenaltyReduction | undefined): void {
+  if (!reduction) {
+    throw new AgentInputValidationError(
+      AGENT_ID,
+      'waiver_penalty_reduction',
+      'Required when waiver_effect is REDUCE_PENALTY. Do not invent reduction amounts.',
+    );
+  }
+  if (reduction.kind === 'FIXED') {
+    if (!reduction.amount || isNaN(Number(reduction.amount))) {
+      throw new AgentInputValidationError(
+        AGENT_ID,
+        'waiver_penalty_reduction.amount',
+        'FIXED reduction requires a decimal amount string (remaining change fee).',
+      );
+    }
+  } else if (reduction.kind === 'PERCENT_WAIVED') {
+    if (
+      typeof reduction.percent !== 'number' ||
+      Number.isNaN(reduction.percent) ||
+      reduction.percent < 0 ||
+      reduction.percent > 100
+    ) {
+      throw new AgentInputValidationError(
+        AGENT_ID,
+        'waiver_penalty_reduction.percent',
+        'PERCENT_WAIVED must be a number from 0 to 100.',
+      );
+    }
+  } else {
+    throw new AgentInputValidationError(
+      AGENT_ID,
+      'waiver_penalty_reduction.kind',
+      'Must be FIXED or PERCENT_WAIVED.',
+    );
+  }
+}
+
+function applyWaiverToFee(
+  filedFee: Decimal,
+  effect: WaiverEffect | undefined,
+  reduction: WaiverPenaltyReduction | undefined,
+): Decimal {
+  if (!effect) return filedFee;
+
+  switch (effect) {
+    case 'ELIMINATE_PENALTY':
+    case 'IRROP_INVOLUNTARY':
+      return new Decimal('0.00');
+    case 'REDUCE_PENALTY': {
+      const r = reduction!;
+      if (r.kind === 'FIXED') {
+        return Decimal.max(Decimal.min(new Decimal(r.amount), filedFee), new Decimal(0));
+      }
+      const waived = filedFee.times(r.percent).dividedBy(100);
+      return Decimal.max(filedFee.minus(waived), new Decimal(0)).toDecimalPlaces(2);
+    }
+    case 'CHANGE_REFUND_FORM':
+    case 'CHANGE_REBOOKING_CLASS':
+      // Constraint only — filed Cat 31 charge still applies
+      return filedFee;
+    default:
+      throw new AgentInputValidationError(
+        AGENT_ID,
+        'waiver_effect',
+        `Unknown waiver_effect "${String(effect)}". Fail closed.`,
+      );
+  }
+}
+
 export function assessChange(input: ChangeManagementInput): ChangeManagementOutput {
+  assertChangeWaiverInput(input);
+
   const now = currentTime(input);
   const orig = input.original_ticket;
   const req = input.requested_itinerary;
   const currency = orig.base_fare_currency;
   const isInvoluntary = input.is_involuntary === true;
+  const effect = input.waiver_effect;
 
   // Reject path applies only when filed rules say so.
   if (isRejectFare(input.cat31_rules, orig.fare_basis)) {
@@ -80,6 +224,8 @@ export function assessChange(input: ChangeManagementInput): ChangeManagementOutp
       currency,
       summary: `Change not permitted for fare basis ${orig.fare_basis}. This fare type does not allow voluntary changes (filed Cat31 rejection).`,
       is_free_change: false,
+      ...(input.waiver_code !== undefined ? { waiver_code: input.waiver_code } : {}),
+      ...(effect !== undefined ? { waiver_effect: effect } : {}),
     };
     return { assessment };
   }
@@ -90,22 +236,31 @@ export function assessChange(input: ChangeManagementInput): ChangeManagementOutp
 
   // Penalty source-of-truth:
   //   1. Filed Cat31 rule for this fare basis  → rule.change_fee
-  //   2. No rule + involuntary                  → 0 (carrier-initiated)
-  //   3. No rule + voluntary                    → 0 (ATPCO default)
-  // The previous "$200 default when no rule" path was an invention.
+  //   2. No rule + involuntary / IRROP         → 0
+  //   3. No rule + voluntary                   → 0 (ATPCO public default)
   const changeFeeAmount = rule ? new Decimal(rule.change_fee) : new Decimal('0.00');
   const freeChangeHours = rule?.free_change_hours ?? 0;
   const forfeitOnDowngrade = rule?.forfeit_difference_on_downgrade ?? false;
 
-  // Check free change window
   const isFreeChange = isWithinFreeChangeWindow(orig.booking_date, now, freeChangeHours);
 
-  // Check waiver code
-  const hasWaiver = !!input.waiver_code;
+  let effectiveChangeFee: Decimal;
+  if (isFreeChange || isInvoluntary) {
+    effectiveChangeFee = new Decimal('0.00');
+  } else {
+    effectiveChangeFee = applyWaiverToFee(
+      changeFeeAmount,
+      effect,
+      input.waiver_penalty_reduction,
+    );
+  }
 
-  // Effective change fee: 0 if free window, waiver, or involuntary; else the filed amount.
-  const effectiveChangeFee =
-    isFreeChange || hasWaiver || isInvoluntary ? new Decimal('0.00') : changeFeeAmount;
+  const feeWaived =
+    isFreeChange ||
+    isInvoluntary ||
+    effect === 'ELIMINATE_PENALTY' ||
+    effect === 'IRROP_INVOLUNTARY' ||
+    (effect === 'REDUCE_PENALTY' && effectiveChangeFee.equals(0));
 
   // Fare difference
   const originalFare = new Decimal(orig.base_fare);
@@ -125,32 +280,43 @@ export function assessChange(input: ChangeManagementInput): ChangeManagementOutp
   let forfeitedAmount = new Decimal('0.00');
 
   if (fareDifference.greaterThan(0)) {
-    // Upgrade: passenger pays the difference
     additionalCollection = fareDifference;
   } else if (fareDifference.lessThan(0)) {
-    // Downgrade
     if (!orig.is_refundable && forfeitOnDowngrade) {
-      // Non-refundable AND filed rule says forfeit: forfeit the difference
       forfeitedAmount = fareDifference.abs();
     }
-    // Refundable fares: the negative difference would be credited (handled by agent 5.2)
   }
 
-  // Total due from passenger
   const taxDue = taxDifference.greaterThan(0) ? taxDifference : new Decimal('0.00');
   const totalDue = effectiveChangeFee.plus(additionalCollection).plus(taxDue);
 
-  // Determine action
   let action: ChangeAction = 'REISSUE';
   if (totalDue.equals(0) && fareDifference.equals(0) && effectiveChangeFee.equals(0)) {
-    action = 'REBOOK'; // Simple same-fare rebook
+    action = 'REBOOK';
   }
 
-  // Build summary
   const summaryParts: string[] = [];
-  if (isInvoluntary) summaryParts.push('Involuntary change — fee waived per carrier/regulatory practice.');
+  if (isInvoluntary || effect === 'IRROP_INVOLUNTARY') {
+    summaryParts.push('Involuntary change — fee waived per carrier/regulatory practice.');
+  }
   if (isFreeChange) summaryParts.push('Free change (within booking window).');
-  if (hasWaiver) summaryParts.push(`Waiver code ${input.waiver_code!} applied — penalty waived.`);
+  if (effect === 'ELIMINATE_PENALTY') {
+    summaryParts.push(`Waiver code ${input.waiver_code!} effect ELIMINATE_PENALTY — change fee eliminated.`);
+  } else if (effect === 'REDUCE_PENALTY') {
+    summaryParts.push(
+      `Waiver code ${input.waiver_code!} effect REDUCE_PENALTY — change fee ${currency} ${effectiveChangeFee.toFixed(2)}.`,
+    );
+  } else if (effect === 'CHANGE_REBOOKING_CLASS') {
+    summaryParts.push(
+      `Waiver code ${input.waiver_code!} effect CHANGE_REBOOKING_CLASS — filed change fee still applies; rebooking class/fare constrained.`,
+    );
+  } else if (effect === 'CHANGE_REFUND_FORM') {
+    summaryParts.push(
+      `Waiver code ${input.waiver_code!} effect CHANGE_REFUND_FORM (${input.waiver_refund_form}) — filed change fee still applies.`,
+    );
+  } else if (input.waiver_code) {
+    summaryParts.push(`Waiver code ${input.waiver_code} recorded.`);
+  }
   if (!rule && !input.cat31_rules)
     summaryParts.push('No Cat31 rules supplied — applying ATPCO default (no charge).');
   if (effectiveChangeFee.greaterThan(0))
@@ -167,8 +333,15 @@ export function assessChange(input: ChangeManagementInput): ChangeManagementOutp
     action,
     change_fee: effectiveChangeFee.toFixed(2),
     change_fee_currency: currency,
-    fee_waived: isFreeChange || hasWaiver || isInvoluntary,
+    fee_waived: feeWaived,
     ...(input.waiver_code !== undefined ? { waiver_code: input.waiver_code } : {}),
+    ...(effect !== undefined ? { waiver_effect: effect } : {}),
+    ...(input.permitted_booking_classes !== undefined
+      ? { permitted_booking_classes: input.permitted_booking_classes }
+      : {}),
+    ...(input.permitted_fare_basis_patterns !== undefined
+      ? { permitted_fare_basis_patterns: input.permitted_fare_basis_patterns }
+      : {}),
     fare_difference: fareDifference.toFixed(2),
     additional_collection: additionalCollection.toFixed(2),
     residual_value: residualValue.toFixed(2),

@@ -225,19 +225,97 @@ describe('Change Management', () => {
     });
   });
 
-  describe('Waiver codes', () => {
-    it('waives penalty with waiver code', async () => {
-      const input = makeInput({ waiver_code: 'WAIVER123' });
+  describe('Waiver typology', () => {
+    it('fail closed: waiver_code without waiver_effect', async () => {
+      await expect(
+        agent.execute({ data: makeInput({ waiver_code: 'WAIVER123' }) }),
+      ).rejects.toThrow('waiver_effect');
+    });
+
+    it('fail closed: unknown waiver_effect', async () => {
+      await expect(
+        agent.execute({
+          data: makeInput({
+            waiver_code: 'X',
+            waiver_effect: 'SKIP_EVERYTHING' as 'ELIMINATE_PENALTY',
+          }),
+        }),
+      ).rejects.toThrow('waiver_effect');
+    });
+
+    it('ELIMINATE_PENALTY zeros filed Cat 31 fee', async () => {
+      const input = makeInput({
+        waiver_code: 'WAIVER123',
+        waiver_effect: 'ELIMINATE_PENALTY',
+      });
       const result = await agent.execute({ data: input });
       expect(result.data.assessment.fee_waived).toBe(true);
       expect(result.data.assessment.change_fee).toBe('0.00');
       expect(result.data.assessment.waiver_code).toBe('WAIVER123');
+      expect(result.data.assessment.waiver_effect).toBe('ELIMINATE_PENALTY');
     });
 
-    it('stores waiver code on assessment', async () => {
-      const input = makeInput({ waiver_code: 'ABCDEF' });
+    it('REDUCE_PENALTY FIXED keeps remaining fee', async () => {
+      const result = await agent.execute({
+        data: makeInput({
+          waiver_code: 'RD75',
+          waiver_effect: 'REDUCE_PENALTY',
+          waiver_penalty_reduction: { kind: 'FIXED', amount: '75.00', currency: 'USD' },
+        }),
+      });
+      expect(result.data.assessment.change_fee).toBe('75.00');
+      expect(result.data.assessment.fee_waived).toBe(false);
+    });
+
+    it('CHANGE_REBOOKING_CLASS keeps filed fee and records constraints', async () => {
+      const result = await agent.execute({
+        data: makeInput({
+          waiver_code: 'CLASSY',
+          waiver_effect: 'CHANGE_REBOOKING_CLASS',
+          permitted_booking_classes: ['B', 'H'],
+        }),
+      });
+      expect(Number(result.data.assessment.change_fee)).toBeGreaterThan(0);
+      expect(result.data.assessment.fee_waived).toBe(false);
+      expect(result.data.assessment.permitted_booking_classes).toEqual(['B', 'H']);
+      expect(result.data.assessment.summary).toContain('CHANGE_REBOOKING_CLASS');
+    });
+
+    it('fail closed: CHANGE_REBOOKING_CLASS without permitted lists', async () => {
+      await expect(
+        agent.execute({
+          data: makeInput({
+            waiver_code: 'CLASSY',
+            waiver_effect: 'CHANGE_REBOOKING_CLASS',
+          }),
+        }),
+      ).rejects.toThrow('permitted_booking_classes');
+    });
+
+    it('IRROP_INVOLUNTARY zeros voluntary Cat 31 fee', async () => {
+      const result = await agent.execute({
+        data: makeInput({
+          waiver_code: 'IRROP1',
+          waiver_effect: 'IRROP_INVOLUNTARY',
+        }),
+      });
+      expect(result.data.assessment.change_fee).toBe('0.00');
+      expect(result.data.assessment.fee_waived).toBe(true);
+    });
+
+    it('stores waiver code when effect is typed', async () => {
+      const input = makeInput({
+        waiver_code: 'ABCDEF',
+        waiver_effect: 'ELIMINATE_PENALTY',
+      });
       const result = await agent.execute({ data: input });
       expect(result.data.assessment.waiver_code).toBe('ABCDEF');
+    });
+
+    it('never treats bare waiver_code as general skip-penalty rule', async () => {
+      await expect(
+        agent.execute({ data: makeInput({ waiver_code: 'ANYTHING' }) }),
+      ).rejects.toThrow(/waiver_effect|skip penalty/i);
     });
   });
 
@@ -284,10 +362,14 @@ describe('Change Management', () => {
       expect(result.data.assessment.summary.length).toBeGreaterThan(10);
     });
 
-    it('summary mentions waiver when applied', async () => {
-      const input = makeInput({ waiver_code: 'WAIVER123' });
+    it('summary mentions waiver when eliminate effect applied', async () => {
+      const input = makeInput({
+        waiver_code: 'WAIVER123',
+        waiver_effect: 'ELIMINATE_PENALTY',
+      });
       const result = await agent.execute({ data: input });
       expect(result.data.assessment.summary).toContain('Waiver');
+      expect(result.data.assessment.summary).toContain('ELIMINATE_PENALTY');
     });
 
     it('summary includes total due', async () => {
