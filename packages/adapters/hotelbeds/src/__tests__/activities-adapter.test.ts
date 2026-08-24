@@ -85,11 +85,11 @@ const BOOKING_RESPONSE: HotelbedsActivitiesBookingResponse = {
   },
 };
 
-const ON_REQUEST_BOOKING_RESPONSE: HotelbedsActivitiesBookingResponse = {
+const PRECONFIRMED_BOOKING_RESPONSE: HotelbedsActivitiesBookingResponse = {
   booking: {
     reference: 'HB-ACT-9002',
     clientReference: 'AVR-ACT-002',
-    status: 'ON_REQUEST',
+    status: 'PRECONFIRMED',
   },
 };
 
@@ -319,8 +319,8 @@ describe('HotelbedsAdapter.bookActivity', () => {
     });
   });
 
-  it('preserves the ON_REQUEST status for unconfirmed bookings', async () => {
-    captureFetch([{ status: 200, body: ON_REQUEST_BOOKING_RESPONSE }]);
+  it('preserves PRECONFIRMED (preconfirm hold — not ON_REQUEST; DQ-A3)', async () => {
+    captureFetch([{ status: 200, body: PRECONFIRMED_BOOKING_RESPONSE }]);
     const result = await adapter.bookActivity({
       activityCode: 'E-A10-000100301',
       modalityCode: 'TOUR_GUIDE|EN|1',
@@ -329,8 +329,33 @@ describe('HotelbedsAdapter.bookActivity', () => {
       holder: { name: 'John', surname: 'Smith' },
       clientReference: 'AVR-ACT-002',
     });
-    expect(result.status).toBe('ON_REQUEST');
+    expect(result.status).toBe('PRECONFIRMED');
     expect(result.voucherUrl).toBeUndefined();
+  });
+
+  it('rejects unsupported ON_REQUEST confirm status (DQ-A3 CLOSED)', async () => {
+    captureFetch([
+      {
+        status: 200,
+        body: {
+          booking: {
+            reference: 'HB-ACT-BAD',
+            clientReference: 'AVR-ACT-BAD',
+            status: 'ON_REQUEST',
+          },
+        },
+      },
+    ]);
+    await expect(
+      adapter.bookActivity({
+        activityCode: 'E-A10-000100301',
+        modalityCode: 'TOUR_GUIDE|EN|1',
+        date: '2026-06-01',
+        paxes: [{ age: 30 }],
+        holder: { name: 'John', surname: 'Smith' },
+        clientReference: 'AVR-ACT-BAD',
+      }),
+    ).rejects.toThrow(/ON_REQUEST|unsupported status/i);
   });
 
   it('throws when the response has no booking object', async () => {
@@ -404,7 +429,7 @@ describe('HotelbedsAdapter.cancelActivity', () => {
 // ---------------------------------------------------------------------------
 
 describe('HotelbedsAdapter Activities — cancellation policy fallback', () => {
-  it('defaults unknown policy strings to NRF (safe assumption — DQ-A5)', async () => {
+  it('defaults unknown policy strings to NRF (safe fallback; NOR/NRF documented — DQ-A5 CLOSED)', async () => {
     captureFetch([
       {
         status: 200,
