@@ -141,6 +141,64 @@ describe('HOT File Parser', () => {
     );
     expect(records.length).toBe(1);
   });
+
+  it('auto-detects synthetic DISH Rev 23 format', () => {
+    const content = loadFixture('hot-dish-rev23-synthetic.txt');
+    expect(HOTFileParser.detectFormat(content)).toBe('DISH_REV23');
+  });
+
+  it('parses multi-currency CUTP from synthetic DISH HOT (never assumes single currency)', () => {
+    const content = loadFixture('hot-dish-rev23-synthetic.txt');
+    const parser = new HOTFileParser();
+    const records = parser.parse(content);
+    const currencies = [...new Set(records.map((r) => r.currency))].sort();
+    expect(currencies).toEqual(['EUR', 'GBP', 'HKD', 'USD']);
+    expect(records.every((r) => r.reporting_currency === 'GBP')).toBe(true);
+  });
+
+  it('parses exchange-linked ticket via FPTP=EX and ORIT', () => {
+    const content = loadFixture('hot-dish-rev23-synthetic.txt');
+    const parser = new HOTFileParser();
+    const records = parser.parse(content);
+    const exch = records.find((r) => r.ticket_number === '1259999000001');
+    expect(exch).toBeDefined();
+    expect(exch!.transaction_type).toBe('EXCHANGE');
+    expect(exch!.original_ticket_number).toBe('1259999000000');
+    expect(exch!.payment_type).toBe('EX');
+  });
+
+  it('parses conjunction set sharing TRNN', () => {
+    const content = loadFixture('hot-dish-rev23-synthetic.txt');
+    const parser = new HOTFileParser();
+    const records = parser.parse(content);
+    const primary = records.find((r) => r.ticket_number === '1258888000000');
+    const cnj = records.find((r) => r.ticket_number === '1258888000001');
+    expect(primary).toBeDefined();
+    expect(cnj).toBeDefined();
+    expect(primary!.transaction_number).toBe(cnj!.transaction_number);
+    expect(primary!.conjunction_ticket_numbers).toContain('1258888000001');
+    expect(cnj!.is_conjunction).toBe(true);
+    expect(cnj!.conjunction_primary).toBe('1258888000000');
+  });
+
+  it('parses ADM as separate TRNC with RTDN related document', () => {
+    const content = loadFixture('hot-dish-rev23-synthetic.txt');
+    const parser = new HOTFileParser();
+    const records = parser.parse(content);
+    const adm = records.find((r) => r.transaction_type === 'ADM');
+    expect(adm).toBeDefined();
+    expect(adm!.transaction_code).toBe('ADMA');
+    expect(adm!.related_documents?.[0]?.ticket_number).toBe('1251234567895');
+  });
+
+  it('parses EMD as separate category from TKTT/ADM', () => {
+    const content = loadFixture('hot-dish-rev23-synthetic.txt');
+    const parser = new HOTFileParser();
+    const records = parser.parse(content);
+    const emd = records.find((r) => r.transaction_type === 'EMD');
+    expect(emd).toBeDefined();
+    expect(emd!.transaction_code).toBe('EMDS');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -354,7 +412,7 @@ describe('BSP Reconciliation', () => {
     it('has correct metadata', () => {
       expect(agent.id).toBe('7.1');
       expect(agent.name).toBe('BSP Reconciliation');
-      expect(agent.version).toBe('0.1.0');
+      expect(agent.version).toBe('0.2.0');
     });
 
     it('reports healthy', async () => {
@@ -375,6 +433,232 @@ describe('BSP Reconciliation', () => {
     it('reports unhealthy when not initialized', async () => {
       const uninit = new BSPReconciliation();
       expect((await uninit.health()).status).toBe('unhealthy');
+    });
+  });
+
+  describe('Multi-currency + cross-refs (DISH Rev 23 / #143)', () => {
+    it('lists currencies_present and warns on multi-currency HOT', async () => {
+      const input = makeInput({
+        agency_records: [
+          makeAgency({ ticket_number: '1251234567890', currency: 'GBP', ticket_amount: '550.00' }),
+          makeAgency({
+            ticket_number: '1251234567891',
+            currency: 'EUR',
+            ticket_amount: '780.00',
+            commission_amount: '54.60',
+            tax_amount: '95.00',
+            airline_code: 'AF',
+          }),
+        ],
+        hot_records: [
+          makeHot({
+            ticket_number: '1251234567890',
+            currency: 'GBP',
+            reporting_currency: 'GBP',
+            ticket_amount: '550.00',
+          }),
+          makeHot({
+            ticket_number: '1251234567891',
+            currency: 'EUR',
+            reporting_currency: 'GBP',
+            ticket_amount: '780.00',
+            commission_amount: '54.60',
+            tax_amount: '95.00',
+            airline_code: 'AF',
+          }),
+        ],
+        threshold_currency: 'GBP',
+      });
+      const result = await agent.execute({ data: input });
+      expect(result.data.summary.currencies_present).toEqual(['EUR', 'GBP']);
+      expect(result.warnings!.some((w) => w.includes('Multi-currency HOT'))).toBe(true);
+      expect(result.warnings!.some((w) => w.includes('IROE'))).toBe(true);
+      expect(result.data.passed).toBe(true);
+    });
+
+    it('flags currency mismatch without converting via IROE/ICER', async () => {
+      const input = makeInput({
+        agency_records: [makeAgency({ currency: 'GBP' })],
+        hot_records: [makeHot({ currency: 'EUR', reporting_currency: 'GBP' })],
+      });
+      const result = await agent.execute({ data: input });
+      const curr = result.data.discrepancies.find((d) => d.type === 'CURRENCY_MISMATCH');
+      expect(curr).toBeDefined();
+      expect(curr!.description).toMatch(/IROE/);
+      expect(result.data.discrepancies.some((d) => d.type === 'AMOUNT_MISMATCH')).toBe(false);
+    });
+
+    it('matches exchange-linked tickets via ORIT cross-ref', async () => {
+      const input = makeInput({
+        agency_records: [
+          makeAgency({
+            ticket_number: '1259999000001',
+            transaction_type: 'EXCHANGE',
+            original_ticket_number: '1259999000000',
+            ticket_amount: '100.00',
+            commission_amount: '7.00',
+            tax_amount: '20.00',
+            currency: 'GBP',
+          }),
+        ],
+        hot_records: [
+          makeHot({
+            ticket_number: '1259999000001',
+            transaction_type: 'EXCHANGE',
+            transaction_code: 'TKTT',
+            original_ticket_number: '1259999000000',
+            payment_type: 'EX',
+            ticket_amount: '100.00',
+            commission_amount: '7.00',
+            tax_amount: '20.00',
+            currency: 'GBP',
+            reporting_currency: 'GBP',
+          }),
+        ],
+        threshold_currency: 'GBP',
+      });
+      const result = await agent.execute({ data: input });
+      expect(result.data.discrepancies).toHaveLength(0);
+      expect(result.data.summary.matched_count).toBe(1);
+    });
+
+    it('flags unmatched exchange when ORIT linkage is missing on HOT', async () => {
+      const input = makeInput({
+        agency_records: [
+          makeAgency({
+            ticket_number: '1259999000001',
+            transaction_type: 'EXCHANGE',
+            original_ticket_number: '1259999000000',
+            ticket_amount: '100.00',
+            currency: 'GBP',
+          }),
+        ],
+        hot_records: [],
+        threshold_currency: 'GBP',
+      });
+      const result = await agent.execute({ data: input });
+      const unmatched = result.data.discrepancies.find((d) => d.type === 'UNMATCHED_EXCHANGE');
+      expect(unmatched).toBeDefined();
+      expect(unmatched!.related_ticket_number).toBe('1259999000000');
+    });
+
+    it('detects conjunction set mismatch', async () => {
+      const input = makeInput({
+        agency_records: [
+          makeAgency({
+            ticket_number: '1258888000000',
+            conjunction_ticket_numbers: ['1258888000001'],
+            ticket_amount: '900.00',
+            commission_amount: '63.00',
+            currency: 'HKD',
+            airline_code: 'CX',
+          }),
+        ],
+        hot_records: [
+          makeHot({
+            ticket_number: '1258888000000',
+            ticket_amount: '900.00',
+            commission_amount: '63.00',
+            currency: 'HKD',
+            airline_code: 'CX',
+            // HOT missing conjunction companion
+          }),
+        ],
+        threshold_currency: 'HKD',
+      });
+      const result = await agent.execute({ data: input });
+      const cnj = result.data.discrepancies.find((d) => d.type === 'CONJUNCTION_SET_MISMATCH');
+      expect(cnj).toBeDefined();
+      expect(cnj!.severity).toBe('critical');
+    });
+
+    it('matches ADM via RTDN related ticket', async () => {
+      const input = makeInput({
+        agency_records: [
+          makeAgency({
+            ticket_number: '1256666000001',
+            transaction_type: 'ADM',
+            related_ticket_number: '1251234567895',
+            ticket_amount: '890.00',
+            commission_amount: '0.00',
+            tax_amount: '0.00',
+            airline_code: 'NH',
+            currency: 'USD',
+          }),
+        ],
+        hot_records: [
+          makeHot({
+            ticket_number: '1256666000001',
+            transaction_type: 'ADM',
+            transaction_code: 'ADMA',
+            ticket_amount: '890.00',
+            commission_amount: '0.00',
+            tax_amount: '0.00',
+            airline_code: 'NH',
+            currency: 'USD',
+            related_documents: [{ ticket_number: '1251234567895', coupons: '1230' }],
+          }),
+        ],
+      });
+      const result = await agent.execute({ data: input });
+      expect(result.data.discrepancies).toHaveLength(0);
+      expect(result.data.passed).toBe(true);
+    });
+
+    it('end-to-end: parse synthetic DISH fixture and reconcile exchange + multi-currency', async () => {
+      const content = loadFixture('hot-dish-rev23-synthetic.txt');
+      const hot_records = new HOTFileParser().parse(content);
+      const input = makeInput({
+        agency_records: [
+          makeAgency({
+            ticket_number: '1251234567890',
+            currency: 'GBP',
+            ticket_amount: '550.00',
+            commission_amount: '38.50',
+          }),
+          makeAgency({
+            ticket_number: '1259999000001',
+            transaction_type: 'EXCHANGE',
+            original_ticket_number: '1259999000000',
+            ticket_amount: '100.00',
+            commission_amount: '7.00',
+            tax_amount: '20.00',
+            currency: 'GBP',
+          }),
+          makeAgency({
+            ticket_number: '1258888000000',
+            conjunction_ticket_numbers: ['1258888000001'],
+            ticket_amount: '900.00',
+            commission_amount: '63.00',
+            tax_amount: '110.00',
+            currency: 'HKD',
+            airline_code: 'CX',
+          }),
+          makeAgency({
+            ticket_number: '1258888000001',
+            conjunction_ticket_numbers: ['1258888000000'],
+            ticket_amount: '0.00',
+            commission_amount: '0.00',
+            tax_amount: '0.00',
+            currency: 'HKD',
+            airline_code: 'CX',
+          }),
+        ],
+        hot_records,
+        threshold_currency: 'GBP',
+        min_threshold: '10.00',
+      });
+
+      const result = await agent.execute({ data: input });
+      expect(result.data.summary.currencies_present.length).toBeGreaterThan(1);
+      expect(
+        result.data.discrepancies.some(
+          (d) =>
+            d.ticket_number === '1259999000001' &&
+            (d.type === 'MISSING_IN_HOT' || d.type === 'UNMATCHED_EXCHANGE'),
+        ),
+      ).toBe(false);
+      expect(result.warnings!.some((w) => w.includes('Multi-currency'))).toBe(true);
     });
   });
 });
