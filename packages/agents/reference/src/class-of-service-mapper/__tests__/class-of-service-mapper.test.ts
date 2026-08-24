@@ -345,5 +345,145 @@ describe('Class of Service Mapper', () => {
       expect(result.data.mapping!.loyalty_earning!.rdm_percent).toBe(0);
       expect(result.data.mapping!.loyalty_earning!.status_earning).toBe(false);
     });
+
+    it('AA B earns 0% RDM (Basic Economy)', async () => {
+      const result = await mapper.execute({
+        data: { booking_class: 'B', carrier: 'AA', include_loyalty: true },
+      });
+
+      expect(result.data.mapping!.fare_family).toBe('Basic Economy');
+      expect(result.data.mapping!.loyalty_earning).not.toBeNull();
+      expect(result.data.mapping!.loyalty_earning!.rdm_percent).toBe(0);
+      expect(result.data.mapping!.loyalty_earning!.status_earning).toBe(false);
+    });
+  });
+
+  describe('Issue #148 verified RBD→cabin corrections', () => {
+    it('maps AA B to Basic Economy (not Main Cabin Flexible)', async () => {
+      const result = await mapper.execute({
+        data: { booking_class: 'B', carrier: 'AA' },
+      });
+
+      expect(result.data.mapping).not.toBeNull();
+      expect(result.data.mapping!.cabin_class).toBe('economy');
+      expect(result.data.mapping!.fare_family).toBe('Basic Economy');
+      expect(result.data.mapping!.upgrade_eligible).toBe(false);
+      expect(result.data.match_confidence).toBe(1.0);
+    });
+
+    it('maps AA O to Main Cabin (not Basic Economy)', async () => {
+      const result = await mapper.execute({
+        data: { booking_class: 'O', carrier: 'AA' },
+      });
+
+      expect(result.data.mapping).not.toBeNull();
+      expect(result.data.mapping!.cabin_class).toBe('economy');
+      expect(result.data.mapping!.fare_family).toBe('Main Cabin');
+    });
+
+    it('maps SQ W to Economy Standard (not Premium Economy)', async () => {
+      const result = await mapper.execute({
+        data: { booking_class: 'W', carrier: 'SQ' },
+      });
+
+      expect(result.data.mapping).not.toBeNull();
+      expect(result.data.mapping!.cabin_class).toBe('economy');
+      expect(result.data.mapping!.fare_family).toBe('Economy Standard');
+    });
+
+    it('maps SQ S/T/R/L/P to Premium Economy', async () => {
+      for (const booking_class of ['S', 'T', 'R', 'L', 'P'] as const) {
+        const result = await mapper.execute({
+          data: { booking_class, carrier: 'SQ' },
+        });
+        expect(result.data.mapping!.cabin_class).toBe('premium_economy');
+      }
+    });
+
+    it('maps SQ U to Business Standard', async () => {
+      const result = await mapper.execute({
+        data: { booking_class: 'U', carrier: 'SQ' },
+      });
+
+      expect(result.data.mapping!.cabin_class).toBe('business');
+      expect(result.data.mapping!.fare_family).toBe('Business Standard');
+    });
+
+    it('maps SQ E to Economy Flexi (not restricted)', async () => {
+      const result = await mapper.execute({
+        data: { booking_class: 'E', carrier: 'SQ' },
+      });
+
+      expect(result.data.mapping!.cabin_class).toBe('economy');
+      expect(result.data.mapping!.fare_family).toBe('Economy Flexi');
+    });
+
+    it('maps QF T to Premium Economy Sale (not Economy)', async () => {
+      const result = await mapper.execute({
+        data: { booking_class: 'T', carrier: 'QF' },
+      });
+
+      expect(result.data.mapping!.cabin_class).toBe('premium_economy');
+      expect(result.data.mapping!.fare_family).toBe('Premium Economy Sale');
+    });
+
+    it('maps QF Z via IATA fallback only (removed from QF Business; Classic PE reward unmapped)', async () => {
+      const result = await mapper.execute({
+        data: { booking_class: 'Z', carrier: 'QF' },
+      });
+
+      // Known carrier, class not in QF revenue map → IATA default (0.7), not carrier-specific (1.0)
+      expect(result.data.match_confidence).toBe(0.7);
+      expect(result.data.mapping!.cabin_brand_name).toBeNull();
+    });
+
+    it('maps QF M to Economy Saver (not Flex)', async () => {
+      const result = await mapper.execute({
+        data: { booking_class: 'M', carrier: 'QF' },
+      });
+
+      expect(result.data.mapping!.cabin_class).toBe('economy');
+      expect(result.data.mapping!.fare_family).toBe('Economy Saver');
+      expect(result.data.match_confidence).toBe(1.0);
+    });
+
+    it('maps NH G/E/N to Premium Economy (not Economy / not W,R)', async () => {
+      for (const booking_class of ['G', 'E', 'N'] as const) {
+        const result = await mapper.execute({
+          data: { booking_class, carrier: 'NH' },
+        });
+        expect(result.data.mapping!.cabin_class).toBe('premium_economy');
+        expect(result.data.match_confidence).toBe(1.0);
+      }
+    });
+
+    it('maps NH W to Economy Restricted (was wrongly PE)', async () => {
+      const result = await mapper.execute({
+        data: { booking_class: 'W', carrier: 'NH' },
+      });
+
+      expect(result.data.mapping!.cabin_class).toBe('economy');
+      expect(result.data.mapping!.fare_family).toBe('Economy (Restricted)');
+      expect(result.data.match_confidence).toBe(1.0);
+    });
+
+    it('maps NH P to Business (deep discount)', async () => {
+      const result = await mapper.execute({
+        data: { booking_class: 'P', carrier: 'NH' },
+      });
+
+      expect(result.data.mapping!.cabin_class).toBe('business');
+      expect(result.data.mapping!.fare_family).toBe('Business (Deep Discount)');
+      expect(result.data.match_confidence).toBe(1.0);
+    });
+
+    it('maps NH R via IATA fallback only (not eligible on ANA accrual; left unmapped)', async () => {
+      const result = await mapper.execute({
+        data: { booking_class: 'R', carrier: 'NH' },
+      });
+
+      expect(result.data.match_confidence).toBe(0.7);
+      expect(result.data.mapping!.cabin_brand_name).toBeNull();
+    });
   });
 });

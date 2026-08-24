@@ -106,6 +106,7 @@ export type {
   QueuePriority,
   QueueItemStatus,
   QueueGdsSystem,
+  TravelportHost,
   QueueAction,
 } from './queue-management/index.js';
 

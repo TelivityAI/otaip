@@ -13,6 +13,7 @@ import type {
   PnrCheckResult,
   PnrIssue,
 } from './types.js';
+import { classifyTtlUrgency } from './ttl-policy.js';
 
 const PASSIVE_STATUSES = new Set(['HX', 'UN', 'NO', 'UC']);
 const ACTIVE_STATUSES = new Set(['HK', 'KL']);
@@ -72,28 +73,20 @@ export class MidOfficeAgent implements Agent<MidOfficeInput, MidOfficeOutput> {
     const issues: PnrIssue[] = [];
     let checksRun = 0;
 
-    // 1. TTL check
+    // 1. TTL check — Zulu instants + deadline-day ADM pattern
+    // (docs/knowledge-base/tmc-mid-office-ttl-queues.md)
     checksRun++;
     if (pnr.ticket_deadline) {
-      const deadline = new Date(pnr.ticket_deadline);
-      const hoursUntil = (deadline.getTime() - now.getTime()) / (1000 * 60 * 60);
-      if (hoursUntil < 0) {
+      const ttl = classifyTtlUrgency({
+        ticketDeadline: pnr.ticket_deadline,
+        now,
+        ticketIssuedAt: pnr.ticket_issued_at,
+      });
+      if (ttl) {
         issues.push({
-          code: 'TTL_URGENT',
-          severity: 'urgent',
-          message: `Ticketing deadline expired at ${pnr.ticket_deadline}.`,
-        });
-      } else if (hoursUntil <= 1) {
-        issues.push({
-          code: 'TTL_URGENT',
-          severity: 'urgent',
-          message: `Ticketing deadline in ${Math.round(hoursUntil * 60)} minutes.`,
-        });
-      } else if (hoursUntil <= 4) {
-        issues.push({
-          code: 'TTL_APPROACHING',
-          severity: 'high',
-          message: `Ticketing deadline in ${Math.round(hoursUntil)} hours.`,
+          code: ttl.code,
+          severity: ttl.severity,
+          message: ttl.message,
         });
       }
     }

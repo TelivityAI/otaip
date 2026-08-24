@@ -4,6 +4,9 @@
  * Validates connections against MCT rules, scores connection quality,
  * and checks interline agreements.
  *
+ * MCT authority: IATA SSIM Chapter 8 + PSC Resolution 765
+ * (see docs/knowledge-base/mct.md). Missing curated rows fail closed.
+ *
  * Implements the base Agent interface from @otaip/core.
  */
 
@@ -46,7 +49,8 @@ export class ConnectionBuilder implements Agent<ConnectionBuilderInput, Connecti
     const airport = data.connection_airport.toUpperCase().trim();
 
     // Determine connection type
-    // TODO: [NEEDS DOMAIN INPUT] Real domestic/international classification using country data
+    // TODO: DOMAIN_QUESTION: DQ-MCT-2 — real domestic/international classification
+    //   using country data; DI vs ID for mixed.
     const sameCarrier = arriving.carrier === departing.carrier;
     const connectionType: ConnectionType = data.is_interline ? 'international' : 'domestic';
 
@@ -59,7 +63,7 @@ export class ConnectionBuilder implements Agent<ConnectionBuilderInput, Connecti
     const departureTime = new Date(departing.departure_time).getTime();
     const availableMinutes = Math.round((departureTime - arrivalTime) / 60000);
 
-    // Resolve MCT
+    // Resolve MCT (fail-closed when no curated row)
     const mct = resolveMct(
       airport,
       connectionType,
@@ -68,8 +72,9 @@ export class ConnectionBuilder implements Agent<ConnectionBuilderInput, Connecti
       departing.carrier,
     );
 
-    const valid = availableMinutes >= mct.minutes;
-    const bufferMinutes = availableMinutes - mct.minutes;
+    const valid = mct.resolved && mct.minutes !== null && availableMinutes >= mct.minutes;
+    const bufferMinutes =
+      mct.resolved && mct.minutes !== null ? availableMinutes - mct.minutes : null;
 
     const validation = {
       valid,
@@ -102,12 +107,16 @@ export class ConnectionBuilder implements Agent<ConnectionBuilderInput, Connecti
 
     // Build warnings
     const warnings: string[] = [];
-    if (!valid) {
+    if (!mct.resolved) {
+      warnings.push(
+        `MCT unavailable at ${airport} for ${arriving.carrier}→${departing.carrier} (${connectionType}) — fail-closed (no curated SSIM row).`,
+      );
+    } else if (!valid && mct.minutes !== null) {
       warnings.push(
         `Connection time ${availableMinutes}min is below MCT ${mct.minutes}min at ${airport}.`,
       );
     }
-    if (bufferMinutes >= 0 && bufferMinutes < 15) {
+    if (bufferMinutes !== null && bufferMinutes >= 0 && bufferMinutes < 15) {
       warnings.push('Very tight connection — less than 15 minutes buffer over MCT.');
     }
     if (availableMinutes > 360) {
@@ -131,6 +140,7 @@ export class ConnectionBuilder implements Agent<ConnectionBuilderInput, Connecti
         agent_version: this.version,
         connection_airport: airport,
         mct_rule: mct.rule,
+        mct_level: mct.level,
       },
     };
   }
@@ -192,3 +202,6 @@ export type {
   TerminalChangeType,
   MctRule,
 } from './types.js';
+
+export type { MctResolution, MctHierarchyLevel } from './mct-data.js';
+export { resolveMct, checkInterline, getMctDataDir } from './mct-data.js';

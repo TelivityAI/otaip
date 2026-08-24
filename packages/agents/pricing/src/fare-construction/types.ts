@@ -1,13 +1,15 @@
 /**
  * Fare Construction — Input/Output types
  *
- * Agent 2.2: NUC × ROE fare construction with mileage validation,
- * HIP/BHC/CTM checks, surcharges, and IATA rounding.
+ * Agent 2.2: NUC × IROE with published TPM/MPM, Resolution 024d (HX/NX)
+ * rounding, and fail-closed HIP/BHC/CTM hooks.
  *
- * Output is `FareConstructionResult` — a discriminated union that may be
- * either a successful `FareConstructionOutput` or a `DomainInputRequired`
- * sentinel when authoritative inputs (ROE, intermediate-point fare
- * lookups, etc.) are unavailable.
+ * Authoritative contracts:
+ *   docs/knowledge-base/fare-construction-data-dependencies.md
+ *
+ * Output is `FareConstructionResult` — either a successful
+ * `FareConstructionOutput` or `DomainInputRequired` when IROE, TPM/MPM,
+ * or 024d rounding is unavailable.
  */
 
 import type { DomainInputRequired } from '@otaip/core';
@@ -16,10 +18,58 @@ export type FareConstructionResult = FareConstructionOutput | DomainInputRequire
 
 export type JourneyType = 'OW' | 'RT' | 'CT';
 
-export interface FareComponent {
-  /** Origin airport */
+/**
+ * Resolution 024d rounding method.
+ * HX = round up to the next higher unit (unless already exact).
+ * NX = round to the nearest unit.
+ * Never use IEEE banker's / half-to-even as a substitute.
+ */
+export type Rounding024dMethod = 'HX' | 'NX';
+
+export interface Rounding024dRule {
+  /** Smallest rounding increment as a decimal string (e.g. "0.01", "1", "100"). */
+  unit: string;
+  method: Rounding024dMethod;
+}
+
+/**
+ * Published TPM/MPM for one city pair from a licensed IATA feed.
+ * source must never be haversine / great-circle derived.
+ */
+export interface PublishedCityPairMileage {
   origin: string;
-  /** Destination airport */
+  destination: string;
+  /** Ticketed Point Mileage (IATA TPM Manual). */
+  tpm: number;
+  /** Maximum Permitted Mileage (IATA MPM Manual). */
+  mpm: number;
+}
+
+/**
+ * Caller-supplied licensed data. Absent or incomplete → fail closed.
+ * Do not commit proprietary IROE/TPM/024d tables to the repo; pass them
+ * at runtime from a licensed subscription.
+ */
+export interface FareConstructionDataSources {
+  /**
+   * IROE rates keyed by ISO 4217 currency (decimal strings).
+   * Example: { USD: "1.000000", EUR: "…" } from the current IROE period.
+   */
+  iroe: Record<string, string>;
+  /**
+   * Resolution 024d rounding rules keyed by currency.
+   */
+  rounding_024d: Record<string, Rounding024dRule>;
+  /**
+   * Published TPM/MPM city pairs from the IATA TPM/MPM manuals.
+   */
+  mileage: PublishedCityPairMileage[];
+}
+
+export interface FareComponent {
+  /** Origin airport / city code */
+  origin: string;
+  /** Destination airport / city code */
   destination: string;
   /** Carrier */
   carrier: string;
@@ -34,118 +84,121 @@ export interface FareConstructionInput {
   journey_type: JourneyType;
   /** Fare components (segments with NUC amounts) */
   components: FareComponent[];
-  /** Point of sale currency (ISO 4217) */
+  /** Point of sale / selling currency (ISO 4217) */
   selling_currency: string;
-  /** Point of sale country (for ROE selection) */
+  /** Point of sale country (for IROE selection context) */
   point_of_sale?: string;
+  /**
+   * Licensed IROE / 024d / TPM-MPM data. Required for construction.
+   * When omitted or incomplete, the engine returns DomainInputRequired.
+   */
+  data_sources?: FareConstructionDataSources;
 }
 
 export interface MileageCheck {
-  /** City pair */
   origin: string;
   destination: string;
-  /** Ticketed Point Mileage */
+  /** Ticketed Point Mileage (published). Null when unavailable. */
   tpm: number | null;
-  /** Maximum Permitted Mileage */
-  mph: number | null;
-  /** Whether mileage data was found */
+  /** Maximum Permitted Mileage (published). Null when unavailable. */
+  mpm: number | null;
+  /** Whether published mileage data was found for this pair */
   data_available: boolean;
 }
 
+/**
+ * Minimal HIP sketch — comparison rules are NOT implemented.
+ * See docs/knowledge-base/fare-construction-data-dependencies.md.
+ */
 export interface HipCheck {
-  /** Whether HIP (Higher Intermediate Point) was detected */
   detected: boolean;
-  /** The intermediate point that triggered HIP */
   hip_point: string | null;
-  /** HIP fare amount in NUC */
   hip_nuc: string | null;
-  /** Description */
   description: string;
   /**
-   * Set when intermediate-point fare lookup data was not provided. Each
-   * entry names a missing input (e.g. 'intermediate_point_fares:JFK-LON').
-   * Real HIP detection requires per-airline filed fares between every
-   * intermediate point pair — see ATPCO Fare Construction guide.
+   * Missing authoritative inputs (e.g. intermediate_point_fares:JFK-LON).
+   * Real HIP needs per-airline filed fares between intermediate points.
    */
   missing_inputs?: string[];
 }
 
+/**
+ * Minimal BHC sketch — comparison rules are NOT implemented.
+ */
 export interface BhcCheck {
-  /** Whether BHC (Backhaul Check) was detected */
   detected: boolean;
-  /** Description */
   description: string;
-  /**
-   * Set when geographic-direction analysis data was not provided. Real
-   * BHC detection compares fare-component directionality against great-
-   * circle bearing of the intended journey, which requires geographic
-   * direction analysis beyond simple "city revisited" string matching.
-   */
   missing_inputs?: string[];
 }
 
+/**
+ * Minimal CTM sketch — comparison rules are NOT implemented.
+ */
 export interface CtmCheck {
-  /** Whether CTM (Circle Trip Minimum) applies */
   applies: boolean;
-  /** CTM amount in NUC */
   ctm_nuc: string | null;
-  /** Description */
   description: string;
+  missing_inputs?: string[];
 }
 
 export interface MileageSurcharge {
-  /** Whether a mileage surcharge applies */
   applies: boolean;
-  /** Surcharge percentage (5, 10, 15, 20, 25) */
+  /** EMS-style percentage band when MPM excess is computed from published TPM/MPM. */
   percentage: number;
-  /** Surcharge amount in NUC */
   surcharge_nuc: string;
-  /** Description */
   description: string;
 }
 
 export interface AuditStep {
-  /** Step number */
   step: number;
-  /** Step name */
   name: string;
-  /** Description of calculation */
   description: string;
-  /** Input value */
   input: string;
-  /** Output value */
   output: string;
 }
 
 export interface FareConstructionOutput {
-  /** Total NUC amount (sum of components + surcharges) */
   total_nuc: string;
-  /** ROE used for conversion */
+  /** IROE used for NUC → local conversion */
+  iroe: string;
+  /** @deprecated Use `iroe`. Kept for transitional consumers. */
   roe: string;
-  /** Local currency amount before rounding */
   local_amount_raw: string;
-  /** Local currency amount after IATA rounding */
   local_amount: string;
-  /** Selling currency */
   currency: string;
-  /** Rounding rule applied */
   rounding_unit: string;
-  /** Mileage validation per component */
+  rounding_method: Rounding024dMethod;
   mileage_checks: MileageCheck[];
-  /** Total ticketed mileage */
   total_tpm: number;
-  /** Total maximum permitted mileage */
+  total_mpm: number;
+  /** @deprecated Use `total_mpm`. */
   total_mph: number;
-  /** Whether total mileage exceeds MPM */
   mileage_exceeded: boolean;
-  /** Mileage surcharge (if applicable) */
   mileage_surcharge: MileageSurcharge;
-  /** HIP check result */
   hip_check: HipCheck;
-  /** BHC check result */
   bhc_check: BhcCheck;
-  /** CTM check result (CT journeys only) */
   ctm_check: CtmCheck;
-  /** Full audit trail */
   audit_trail: AuditStep[];
+}
+
+/**
+ * Requirements documents for HIP/BHC/CTM — interface sketch only.
+ * Engines must not invent comparison logic from these shapes alone.
+ */
+export interface HipCheckRequirements {
+  intermediate_point_fares: Array<{
+    origin: string;
+    destination: string;
+    carrier: string;
+    nuc_amount: string;
+  }>;
+}
+
+export interface BhcCheckRequirements {
+  /** Opaque until DOMAIN_QUESTION on published BHC rules is answered. */
+  geographic_direction_analysis: unknown;
+}
+
+export interface CtmCheckRequirements {
+  circle_trip_minima_nuc: Array<{ component_index: number; ctm_nuc: string }>;
 }

@@ -92,11 +92,14 @@ Pre-ticketing validation with 13 checks to catch errors before ADMs: segment sta
 
 GDS queue monitoring and processing: priority assignment, categorization, action routing, and queue command generation.
 
+Travelport place/list/remove commands are **per host** (Apollo / Galileo≡Travelport+ / Worldspan) from the public format-compare table — see `docs/knowledge-base/tmc-mid-office-ttl-queues.md`. TTL priority uses Zulu deadline-day urgency.
+
 **Input (`QueueManagementInput`):**
 - `entries` -- queue items (record locator, GDS, queue number, entry type, deadline, remark)
 - `current_time?` -- ISO timestamp for priority calculation
 - `gds?` -- GDS system for command generation
 - `queue_number?` -- queue to generate read commands for
+- `travelport_host?` -- `'APOLLO' | 'GALILEO' | 'WORLDSPAN'` when `gds` is `TRAVELPORT`
 
 **Output (`QueueManagementOutput`):**
 - `results` -- processed items with priority, status, recommended action, target agent

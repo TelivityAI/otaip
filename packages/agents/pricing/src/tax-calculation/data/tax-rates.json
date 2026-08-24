@@ -86,7 +86,7 @@
     { "type": "involuntary", "description": "Involuntary reroute or denied boarding", "exempt_from": "carrier_surcharges" }
   ],
   "currency_conversions": {
-    "_comment": "Simplified conversion rates to USD for tax aggregation. Use ROE data for fare conversion.",
+    "_comment": "TEST/DEMO ONLY — invented FX for tax aggregation. Do NOT treat as IROE or ICER. Ticket-tax / payment currency conversion must ingest licensed IATA ICER (daily), not IROE. IROE is fare construction only (Res 024c). See https://www.iata.org/en/services/finance/xrates/ and docs/knowledge-base/fare-construction-data-dependencies.md. Missing ICER should fail closed, not default to 1.0.",
     "USD": "1.000000",
     "EUR": "1.086950",
     "GBP": "1.260000",

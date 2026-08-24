@@ -2,10 +2,11 @@
  * Connection Builder — Unit Tests
  *
  * Agent 1.3: MCT validation, connection quality scoring, interline checking.
+ * MCT authority: SSIM Ch.8 + PSC Res 765 — fail-closed when no curated row.
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { ConnectionBuilder } from '../index.js';
+import { ConnectionBuilder, resolveMct, getMctDataDir } from '../index.js';
 import type { FlightSegment } from '@otaip/core';
 
 let agent: ConnectionBuilder;
@@ -37,6 +38,12 @@ function makeSegment(
 }
 
 describe('Connection Builder', () => {
+  describe('MCT dataset', () => {
+    it('loads curated dataset from data/reference/mct/', () => {
+      expect(getMctDataDir()).toMatch(/data[/\\]reference[/\\]mct$/);
+    });
+  });
+
   describe('MCT validation — valid connections', () => {
     it('validates a valid domestic connection at ORD (UA→UA)', async () => {
       const result = await agent.execute({
@@ -61,12 +68,12 @@ describe('Connection Builder', () => {
 
       expect(result.data.validation.valid).toBe(true);
       expect(result.data.validation.available_minutes).toBe(90);
-      // UA→UA at ORD domestic = 50 minutes (carrier-specific)
+      // UA→UA at ORD domestic = 50 minutes (carrier-specific curated row)
       expect(result.data.validation.required_mct_minutes).toBe(50);
       expect(result.data.validation.buffer_minutes).toBe(40);
     });
 
-    it('validates a valid connection at ATL (short MCT)', async () => {
+    it('fail-closes when no curated MCT row exists (ATL DL→DL)', async () => {
       const result = await agent.execute({
         data: {
           arriving_segment: makeSegment({
@@ -83,54 +90,79 @@ describe('Connection Builder', () => {
         },
       });
 
-      // ATL domestic default = 45 min, available = 60 min
-      expect(result.data.validation.valid).toBe(true);
-      expect(result.data.validation.required_mct_minutes).toBe(45);
+      // No invented ATL airport constant — fail-closed
+      expect(result.data.validation.valid).toBe(false);
+      expect(result.data.validation.required_mct_minutes).toBeNull();
+      expect(result.data.validation.applied_rule).toContain('mct-unavailable');
+      expect(result.data.warnings.some((w) => w.includes('fail-closed'))).toBe(true);
     });
   });
 
   describe('MCT validation — invalid connections', () => {
-    it('flags connection below MCT', async () => {
+    it('flags connection below carrier MCT (UA→UA ORD)', async () => {
+      // Carrier MCT = 50; available = 30 → below MCT
       const result = await agent.execute({
         data: {
           arriving_segment: makeSegment({
-            carrier: 'AA',
-            arrival_time: '2025-06-15T10:00:00-04:00',
+            carrier: 'UA',
+            arrival_time: '2025-06-15T10:00:00-05:00',
             departure_time: '2025-06-15T08:00:00-04:00',
           }),
           departing_segment: makeSegment({
-            carrier: 'AA',
-            departure_time: '2025-06-15T10:30:00-04:00',
+            carrier: 'UA',
+            departure_time: '2025-06-15T10:30:00-05:00',
             arrival_time: '2025-06-15T13:00:00-07:00',
           }),
-          connection_airport: 'JFK',
+          connection_airport: 'ORD',
         },
       });
 
-      // JFK domestic default = 75 min, available = 30 min
       expect(result.data.validation.valid).toBe(false);
       expect(result.data.validation.available_minutes).toBe(30);
+      expect(result.data.validation.required_mct_minutes).toBe(50);
       expect(result.data.validation.buffer_minutes).toBeLessThan(0);
     });
 
-    it('includes warning for invalid connection', async () => {
+    it('includes warning for connection below MCT', async () => {
       const result = await agent.execute({
         data: {
           arriving_segment: makeSegment({
-            carrier: 'AA',
-            arrival_time: '2025-06-15T10:00:00-04:00',
+            carrier: 'UA',
+            arrival_time: '2025-06-15T10:00:00-05:00',
             departure_time: '2025-06-15T08:00:00-04:00',
           }),
           departing_segment: makeSegment({
-            carrier: 'AA',
-            departure_time: '2025-06-15T10:30:00-04:00',
+            carrier: 'UA',
+            departure_time: '2025-06-15T10:30:00-05:00',
             arrival_time: '2025-06-15T13:00:00-07:00',
           }),
-          connection_airport: 'JFK',
+          connection_airport: 'ORD',
         },
       });
 
       expect(result.data.warnings.some((w) => w.includes('below MCT'))).toBe(true);
+    });
+
+    it('fail-closes (invalid) when no curated row — does not invent JFK airport MCT', async () => {
+      const result = await agent.execute({
+        data: {
+          arriving_segment: makeSegment({
+            carrier: 'AA',
+            arrival_time: '2025-06-15T10:00:00-04:00',
+            departure_time: '2025-06-15T08:00:00-04:00',
+          }),
+          departing_segment: makeSegment({
+            carrier: 'AA',
+            departure_time: '2025-06-15T10:30:00-04:00',
+            arrival_time: '2025-06-15T13:00:00-07:00',
+          }),
+          connection_airport: 'JFK',
+        },
+      });
+
+      expect(result.data.validation.valid).toBe(false);
+      expect(result.data.validation.required_mct_minutes).toBeNull();
+      expect(result.data.validation.applied_rule).toContain('mct-unavailable');
     });
   });
 
@@ -154,9 +186,11 @@ describe('Connection Builder', () => {
 
       expect(result.data.validation.applied_rule).toContain('carrier-specific');
       expect(result.data.validation.required_mct_minutes).toBe(50);
+      expect(result.metadata!['mct_level']).toBe('carrier_override');
     });
 
-    it('uses airport default MCT for DL→DL at ORD (no carrier-specific rule)', async () => {
+    it('prefers carrier-specific row over airport-level absence (DL→DL at ORD fail-closed)', async () => {
+      // No DL@ORD carrier row and no airport-rules → fail-closed (not a fake airport default)
       const result = await agent.execute({
         data: {
           arriving_segment: makeSegment({
@@ -173,11 +207,13 @@ describe('Connection Builder', () => {
         },
       });
 
-      expect(result.data.validation.applied_rule).toContain('airport default');
-      expect(result.data.validation.required_mct_minutes).toBe(60);
+      expect(result.data.validation.applied_rule).toContain('mct-unavailable');
+      expect(result.data.validation.required_mct_minutes).toBeNull();
+      expect(result.data.validation.valid).toBe(false);
+      expect(result.metadata!['mct_level']).toBe('unavailable');
     });
 
-    it('falls back to IATA default for unknown airport', async () => {
+    it('fail-closes for unknown airport — no invented IATA global default', async () => {
       const result = await agent.execute({
         data: {
           arriving_segment: makeSegment({
@@ -194,8 +230,21 @@ describe('Connection Builder', () => {
         },
       });
 
-      expect(result.data.validation.applied_rule).toContain('IATA default');
-      expect(result.data.validation.required_mct_minutes).toBe(60);
+      expect(result.data.validation.applied_rule).toContain('mct-unavailable');
+      expect(result.data.validation.required_mct_minutes).toBeNull();
+      expect(result.data.validation.valid).toBe(false);
+    });
+
+    it('resolveMct: carrier override beats empty airport table', () => {
+      const carrier = resolveMct('ORD', 'domestic', 'unknown', 'UA', 'UA');
+      expect(carrier.resolved).toBe(true);
+      expect(carrier.level).toBe('carrier_override');
+      expect(carrier.minutes).toBe(50);
+
+      const other = resolveMct('ORD', 'domestic', 'unknown', 'DL', 'DL');
+      expect(other.resolved).toBe(false);
+      expect(other.level).toBe('unavailable');
+      expect(other.minutes).toBeNull();
     });
   });
 
@@ -221,7 +270,7 @@ describe('Connection Builder', () => {
       expect(result.data.quality.factors.length).toBeGreaterThan(0);
     });
 
-    it('scores an invalid connection as 0 for time factor', async () => {
+    it('scores fail-closed MCT as 0 for time factor', async () => {
       const result = await agent.execute({
         data: {
           arriving_segment: makeSegment({
@@ -241,6 +290,7 @@ describe('Connection Builder', () => {
       const timeFactor = result.data.quality.factors.find((f) => f.name === 'connection_time');
       expect(timeFactor).toBeDefined();
       expect(timeFactor!.score).toBe(0);
+      expect(timeFactor!.description).toContain('fail-closed');
     });
 
     it('warns about very long connections', async () => {
@@ -329,6 +379,9 @@ describe('Connection Builder', () => {
       expect(result.data.interline!.same_alliance).toBe(true);
       expect(result.data.interline!.alliance).toBe('star_alliance');
       expect(result.data.interline!.interline_allowed).toBe(true);
+      // No interline MCT row curated → fail-closed (DQ-MCT-1)
+      expect(result.data.validation.applied_rule).toContain('mct-unavailable');
+      expect(result.data.validation.valid).toBe(false);
     });
 
     it('detects different-alliance interline', async () => {
