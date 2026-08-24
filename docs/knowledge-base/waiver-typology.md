@@ -24,9 +24,10 @@ ATPCO frames fare **rules** as the **conditions of travel** for fares (the charg
 
 | Situation | Correct engine behavior |
 | --- | --- |
-| No Cat 31 / Cat 33 rules supplied, or no provision matches | ATPCO public default: **free** change / refund (no invented penalty) |
+| No Cat 31 / Cat 33 rules supplied, or no provision matches | ATPCO public default: **free** change / refund. **Not** fail-closed. **Not** a DOMAIN_QUESTION. |
 | Filed provision matches | Apply **filed** conditions and charges as supplied on input |
-| A `waiver_code` string is present | **Does not** by itself mean skip penalty |
+| A `waiver_code` string is present without typed `waiver_effect` | **Fail closed** / DOMAIN_QUESTION — code alone does **not** skip penalty |
+| A `waiver_code` string is present | **Does not** by itself mean skip penalty (effect must be typed) |
 
 ---
 
@@ -125,4 +126,12 @@ permitted_fare_basis_patterns?: string[];
 3. **DQ-W3:** Which tax codes and residual forms interact with `CHANGE_REFUND_FORM` (MCO vs EMD-S vs original FOP) per carrier EMD profile — see paid ATPCO DA / settlement docs; do not invent.
 4. **DQ-W4:** Cat 31 permitted booking-class substitution tables when `CHANGE_REBOOKING_CLASS` is filed only as free text.
 
-Until those are answered, callers must supply the typed effect (and companions). Engines fail closed otherwise.
+**Do not collapse these cases:**
+
+| Situation | Engine behavior |
+| --- | --- |
+| No Cat 31 / Cat 33 data, or no applicable provision matched | **Free** change / refund (ATPCO public default). Not fail-closed. Not a DOMAIN_QUESTION. |
+| `waiver_code` present, `waiver_effect` missing or unknown | **Fail closed** / DOMAIN_QUESTION (DQ-W1). |
+| Typed effect with missing companions (e.g. REDUCE without reduction) | **Fail closed**. |
+
+DQ-W1–W4 apply only when interpreting or applying a **present** waiver (or carrier-specific companion data). Absence of Cat 31/33 filings is already answered by the ATPCO public no-match default.

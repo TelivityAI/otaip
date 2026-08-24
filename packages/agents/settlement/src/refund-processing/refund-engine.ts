@@ -12,11 +12,16 @@
  *   refunds are full refunds.
  *   Source: https://atpco.net/single-blog/what-are-atpco-fare-rules-categories/
  *
- * Waiver codes: presence ≠ skip penalty. Typed `waiver_effect` required.
+ * Two separate rules (do not collapse):
+ * 1. No Cat 33 data / no matched provision → ATPCO public default = free refund
+ *    (never fail-closed, never DOMAIN_QUESTION for missing Cat data).
+ * 2. `waiver_code` present without typed `waiver_effect` → fail closed.
+ *    Presence of a waiver code ≠ skip penalty.
  * See docs/knowledge-base/waiver-typology.md.
  *
  * // DOMAIN_QUESTION: per-carrier ATPCO Cat33 data ingestion pipeline.
- * // DOMAIN_QUESTION: DQ-W1 — map free-text waiver codes → WaiverEffect.
+ * // DOMAIN_QUESTION: DQ-W1 — map free-text waiver codes → WaiverEffect
+ * //   (only when a waiver_code is present; not when Cat 33 data is absent).
  */
 
 import Decimal from 'decimal.js';
@@ -106,8 +111,9 @@ function buildArcFields(
 }
 
 /**
- * Fail closed when waiver identity is present without a known typed effect,
- * or when effect companions are incomplete.
+ * Fail closed only for waiver semantics — never for missing Cat 33 data.
+ * Absence of Cat 33 / no matched provision is handled by the ATPCO free default
+ * in processRefund; this assert does not throw in that case.
  */
 export function assertRefundWaiverInput(input: RefundProcessingInput): void {
   const hasCode = input.waiver_code !== undefined && input.waiver_code !== '';

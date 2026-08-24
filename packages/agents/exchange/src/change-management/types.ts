@@ -4,7 +4,8 @@
  * Agent 5.1: ATPCO Category 31 voluntary change assessment.
  *
  * Waiver typology: docs/knowledge-base/waiver-typology.md
- * (presence of waiver_code ≠ skip penalty; fail closed when effect unspecified).
+ * - No Cat 31 data / no match → free change (ATPCO default; not fail-closed).
+ * - Bare waiver_code without waiver_effect → fail closed (≠ skip penalty).
  */
 
 export type ChangeAction = 'REISSUE' | 'REBOOK' | 'REJECT';

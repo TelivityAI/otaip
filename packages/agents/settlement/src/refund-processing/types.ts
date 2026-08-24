@@ -5,7 +5,8 @@
  * commission recall, BSP/ARC reporting, conjunction ticket handling.
  *
  * Waiver typology: docs/knowledge-base/waiver-typology.md
- * (presence of waiver_code ≠ skip penalty; fail closed when effect unspecified).
+ * - No Cat 33 data / no match → free refund (ATPCO default; not fail-closed).
+ * - Bare waiver_code without waiver_effect → fail closed (≠ skip penalty).
  */
 
 export type RefundType = 'FULL' | 'PARTIAL' | 'TAX_ONLY';

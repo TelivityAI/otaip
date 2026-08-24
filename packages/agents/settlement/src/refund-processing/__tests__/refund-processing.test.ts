@@ -102,10 +102,31 @@ describe('Refund Processing', () => {
     });
   });
 
-  describe('ATPCO default — no Cat33 rules supplied', () => {
-    it('voluntary refund with no rules: penalty = 0, full base refund', async () => {
+  describe('ATPCO default — no Cat33 conditions/charges matched', () => {
+    it('voluntary refund with no Cat33 data: free refund (not fail-closed)', async () => {
       const result = await agent.execute({
         data: makeInput({ cat33_rules: undefined }),
+      });
+      expect(result.data.refund.penalty_applied).toBe('0.00');
+      expect(result.data.refund.base_fare_refund).toBe('450.00');
+    });
+
+    it('rules present but no provision matches fare basis: free refund (not fail-closed)', async () => {
+      const result = await agent.execute({
+        data: makeInput({
+          fare_basis: 'ZZZNOMATCH',
+          cat33_rules: {
+            rules: [
+              {
+                fare_basis_pattern: '^ONLYTHIS$',
+                penalty_amount: '999.00',
+                currency: 'USD',
+                forfeit_base_fare: false,
+                notes: 'test fixture — deliberately non-matching',
+              },
+            ],
+          },
+        }),
       });
       expect(result.data.refund.penalty_applied).toBe('0.00');
       expect(result.data.refund.base_fare_refund).toBe('450.00');
@@ -130,6 +151,15 @@ describe('Refund Processing', () => {
       });
       expect(result.data.refund.penalty_applied).toBe('0.00');
       expect(result.data.refund.base_fare_refund).toBe('450.00');
+    });
+
+    it('no Cat33 data + bare waiver_code: still fail-closed for missing waiver_effect', async () => {
+      // Missing Cat data must NOT be conflated with bare-waiver fail-closed.
+      await expect(
+        agent.execute({
+          data: makeInput({ cat33_rules: undefined, waiver_code: 'BARE' }),
+        }),
+      ).rejects.toThrow('waiver_effect');
     });
   });
 

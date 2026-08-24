@@ -122,14 +122,37 @@ describe('Change Management', () => {
     });
   });
 
-  describe('ATPCO default — no Cat31 rules supplied', () => {
-    it('voluntary change with no rules: penalty = 0 (ATPCO default)', async () => {
+  describe('ATPCO default — no Cat31 conditions/charges matched', () => {
+    it('voluntary change with no Cat31 data: free change (not fail-closed)', async () => {
       const result = await agent.execute({
         data: makeInput({ cat31_rules: undefined }),
       });
       expect(result.data.assessment.change_fee).toBe('0.00');
       expect(result.data.assessment.fee_waived).toBe(false);
       expect(result.data.assessment.summary).toContain('ATPCO default');
+    });
+
+    it('rules present but no provision matches fare basis: free change (not fail-closed)', async () => {
+      const result = await agent.execute({
+        data: makeInput({
+          original_ticket: makeOriginal({ fare_basis: 'ZZZNOMATCH' }),
+          cat31_rules: {
+            rules: [
+              {
+                fare_basis_pattern: '^ONLYTHIS$',
+                change_fee: '999.00',
+                currency: 'USD',
+                free_change_hours: 0,
+                forfeit_difference_on_downgrade: false,
+                notes: 'test fixture — deliberately non-matching',
+              },
+            ],
+            reject_patterns: [],
+          },
+        }),
+      });
+      expect(result.data.assessment.change_fee).toBe('0.00');
+      expect(result.data.assessment.action).not.toBe('REJECT');
     });
 
     it('involuntary change with no rules: penalty = 0, fee_waived = true', async () => {
@@ -147,6 +170,15 @@ describe('Change Management', () => {
       });
       expect(result.data.assessment.change_fee).toBe('0.00');
       expect(result.data.assessment.fee_waived).toBe(true);
+    });
+
+    it('no Cat31 data + bare waiver_code: still fail-closed for missing waiver_effect', async () => {
+      // Missing Cat data must NOT be conflated with bare-waiver fail-closed.
+      await expect(
+        agent.execute({
+          data: makeInput({ cat31_rules: undefined, waiver_code: 'BARE' }),
+        }),
+      ).rejects.toThrow('waiver_effect');
     });
   });
 
