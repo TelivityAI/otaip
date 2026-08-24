@@ -229,35 +229,56 @@ describe('PNR Builder', () => {
   });
 
   describe('Infant handling', () => {
-    it('generates infant name linked to adult in Amadeus', async () => {
+    it('attaches Amadeus infant to adult name with DOB (Service Hub form)', async () => {
       const input = makeBaseInput('AMADEUS');
       input.passengers.push({
         last_name: 'Smith',
         first_name: 'Baby',
         passenger_type: 'INF',
         infant_accompanying_adult: 0,
+        date_of_birth: '2025-01-14',
       });
 
       const result = await agent.execute({ data: input });
-      const infCmd = result.data.commands.filter((c) => c.element_type === 'NAME');
-      expect(infCmd.length).toBe(2);
-      expect(infCmd[1]!.command).toContain('(INF)');
+      const nameCmds = result.data.commands.filter((c) => c.element_type === 'NAME');
+      expect(nameCmds.length).toBe(1);
+      expect(nameCmds[0]!.command).toBe('NM1SMITH/JOHN MR(INF/BABY/14JAN25)');
       expect(result.data.infant_count).toBe(1);
     });
 
-    it('generates infant name in Sabre', async () => {
+    it('generates Sabre -I/ infant name and 3INFT when DOB present', async () => {
       const input = makeBaseInput('SABRE');
       input.passengers.push({
         last_name: 'Smith',
         first_name: 'Baby',
         passenger_type: 'INF',
         infant_accompanying_adult: 0,
+        date_of_birth: '2025-01-14',
       });
 
       const result = await agent.execute({ data: input });
-      const infCmd = result.data.commands.find((c) => c.description.includes('Infant'));
+      const infCmd = result.data.commands.find((c) => c.description.includes('Infant:'));
       expect(infCmd).toBeDefined();
-      expect(infCmd!.command).toContain('*INF');
+      expect(infCmd!.command).toBe('-I/SMITH/BABY');
+      const inftSsr = result.data.commands.find(
+        (c) => c.element_type === 'SSR' && c.command.startsWith('3INFT/'),
+      );
+      expect(inftSsr!.command).toBe('3INFT/SMITH/BABY/14JAN25-1.1');
+    });
+
+    it('generates Travelport Apollo infant name with DOB and P-INF01', async () => {
+      const input = makeBaseInput('TRAVELPORT');
+      input.passengers.push({
+        last_name: 'Smith',
+        first_name: 'Baby',
+        passenger_type: 'INF',
+        infant_accompanying_adult: 0,
+        date_of_birth: '2025-01-14',
+      });
+
+      const result = await agent.execute({ data: input });
+      const infCmd = result.data.commands.find((c) => c.description.includes('Infant:'));
+      expect(infCmd!.command).toBe('N:I/SMITH/BABY*14JAN25/P-INF01');
     });
 
     it('warns about infant passengers', async () => {
@@ -267,11 +288,143 @@ describe('PNR Builder', () => {
         first_name: 'Baby',
         passenger_type: 'INF',
         infant_accompanying_adult: 0,
+        date_of_birth: '2025-01-14',
       });
 
       const result = await agent.execute({ data: input });
       expect(result.warnings).toBeDefined();
       expect(result.warnings!.some((w) => w.includes('infant'))).toBe(true);
+    });
+  });
+
+  describe('Child and infant golden strings (KB-verified)', () => {
+    it('Amadeus child with DOB', async () => {
+      const input = makeBaseInput('AMADEUS');
+      input.passengers = [
+        {
+          last_name: 'Lee',
+          first_name: 'Tom',
+          passenger_type: 'CHD',
+          date_of_birth: '2015-06-12',
+        },
+      ];
+
+      const result = await agent.execute({ data: input });
+      const nameCmd = result.data.commands.find((c) => c.element_type === 'NAME');
+      expect(nameCmd!.command).toBe('NM1LEE/TOM(CHD/12JUN15)');
+    });
+
+    it('Amadeus adult+infant different surname', async () => {
+      const input = makeBaseInput('AMADEUS');
+      input.passengers = [
+        { last_name: 'Lee', first_name: 'Ann', title: 'MS', passenger_type: 'ADT' },
+        {
+          last_name: 'Smith',
+          first_name: 'Baby',
+          passenger_type: 'INF',
+          infant_accompanying_adult: 0,
+          date_of_birth: '2022-07-17',
+        },
+      ];
+
+      const result = await agent.execute({ data: input });
+      const nameCmd = result.data.commands.find((c) => c.element_type === 'NAME');
+      expect(nameCmd!.command).toBe('NM1LEE/ANN MS(INFSMITH/BABY/17JUL22)');
+    });
+
+    it('Sabre adult + lap infant golden path', async () => {
+      const input = makeBaseInput('SABRE');
+      input.passengers = [
+        { last_name: 'Lee', first_name: 'Ann', title: 'MS', passenger_type: 'ADT' },
+        {
+          last_name: 'Lee',
+          first_name: 'Baby',
+          passenger_type: 'INF',
+          infant_accompanying_adult: 0,
+          date_of_birth: '2022-07-17',
+        },
+      ];
+
+      const result = await agent.execute({ data: input });
+      const names = result.data.commands.filter((c) => c.element_type === 'NAME').map((c) => c.command);
+      expect(names).toEqual(['-LEE/ANN MS', '-I/LEE/BABY']);
+      expect(
+        result.data.commands.some((c) => c.command === '3INFT/LEE/BABY/17JUL22-1.1'),
+      ).toBe(true);
+    });
+
+    it('Sabre child uses adult-style name only (DQ-N1 — no invented *Cxx)', async () => {
+      const input = makeBaseInput('SABRE');
+      input.passengers = [
+        {
+          last_name: 'Lee',
+          first_name: 'Tom',
+          title: 'MSTR',
+          passenger_type: 'CHD',
+          date_of_birth: '2015-06-12',
+        },
+      ];
+
+      const result = await agent.execute({ data: input });
+      const nameCmd = result.data.commands.find((c) => c.element_type === 'NAME');
+      expect(nameCmd!.command).toBe('-LEE/TOM MSTR');
+      expect(nameCmd!.command).not.toMatch(/\*C/);
+    });
+
+    it('Travelport Apollo child with *P-Cxx from DOB vs first segment', async () => {
+      const input = makeBaseInput('TRAVELPORT');
+      // departure 2026-06-15, DOB 2015-06-12 → age 11
+      input.passengers = [
+        {
+          last_name: 'Lee',
+          first_name: 'Tom',
+          passenger_type: 'CHD',
+          date_of_birth: '2015-06-12',
+        },
+      ];
+
+      const result = await agent.execute({ data: input });
+      const nameCmd = result.data.commands.find((c) => c.element_type === 'NAME');
+      expect(nameCmd!.command).toBe('N:1LEE/TOM*P-C11');
+    });
+
+    it('Travelport Apollo adult + infant golden path', async () => {
+      const input = makeBaseInput('TRAVELPORT');
+      input.passengers = [
+        { last_name: 'Lee', first_name: 'Ann', title: 'MS', passenger_type: 'ADT' },
+        {
+          last_name: 'Lee',
+          first_name: 'Baby',
+          passenger_type: 'INF',
+          infant_accompanying_adult: 0,
+          date_of_birth: '2022-07-17',
+        },
+      ];
+
+      const result = await agent.execute({ data: input });
+      const names = result.data.commands.filter((c) => c.element_type === 'NAME').map((c) => c.command);
+      expect(names).toEqual(['N:1LEE/ANN MS', 'N:I/LEE/BABY*17JUL22/P-INF01']);
+    });
+
+    it('Sabre INFT links to second adult name number when infant_accompanying_adult=1', async () => {
+      const input = makeBaseInput('SABRE');
+      input.passengers = [
+        { last_name: 'Lee', first_name: 'Ann', title: 'MS', passenger_type: 'ADT' },
+        { last_name: 'Lee', first_name: 'Bob', title: 'MR', passenger_type: 'ADT' },
+        {
+          last_name: 'Lee',
+          first_name: 'Baby',
+          passenger_type: 'INF',
+          infant_accompanying_adult: 1,
+          date_of_birth: '2022-07-17',
+        },
+      ];
+      input.segments[0] = { ...input.segments[0]!, quantity: 2 };
+
+      const result = await agent.execute({ data: input });
+      expect(
+        result.data.commands.some((c) => c.command === '3INFT/LEE/BABY/17JUL22-2.1'),
+      ).toBe(true);
     });
   });
 

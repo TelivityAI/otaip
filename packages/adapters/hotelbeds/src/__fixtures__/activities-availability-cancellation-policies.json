@@ -1,0 +1,73 @@
+{
+  "_comment": "Redacted fixture derived from Hotelbeds Activities Cancellation Policies KB example shape (developer.hotelbeds.com/documentation/activities/knowledge-base/cancellation-policies/). No API keys. NOR + stepped cancellationPolicies; destination-local dateFrom.",
+  "activities": [
+    {
+      "code": "E-E10-EXAMPLE-NOR",
+      "name": "Example NOR activity",
+      "description": "Fixture only — not a live product.",
+      "duration": "PT2H",
+      "location": { "latitude": 41.3874, "longitude": 2.1686 },
+      "images": [{ "url": "https://example.invalid/activities/nor.jpg" }],
+      "cancellationPolicy": "NOR",
+      "cancellationPolicies": [
+        {
+          "dateFrom": "2026-06-09T00:00:00.000Z",
+          "amount": 45.0
+        }
+      ],
+      "modalities": [
+        {
+          "code": "STD|EN|1",
+          "name": "Standard",
+          "amount": "45.00",
+          "boxOfficeAmount": "55.00",
+          "currency": "EUR",
+          "maxPax": 20,
+          "schedule": ["10:00"],
+          "rates": [
+            {
+              "rateClass": "NOR",
+              "freeCancellation": false,
+              "rateDetails": [
+                {
+                  "operationDates": [
+                    {
+                      "from": "2026-06-11",
+                      "to": "2026-06-11",
+                      "cancellationPolicies": [
+                        {
+                          "dateFrom": "2026-06-09T00:00:00.000Z",
+                          "amount": 45.0
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "E-E10-EXAMPLE-NRF",
+      "name": "Example NRF activity",
+      "description": "Fixture only — non-refundable rateClass.",
+      "duration": "PT1H",
+      "location": { "latitude": 41.4, "longitude": 2.17 },
+      "images": [],
+      "cancellationPolicy": "NRF",
+      "cancellationPolicies": [],
+      "modalities": [
+        {
+          "code": "NRF|EN|1",
+          "name": "Non-refundable",
+          "amount": "30.00",
+          "currency": "EUR",
+          "maxPax": 10,
+          "rates": [{ "rateClass": "NRF", "freeCancellation": false }]
+        }
+      ]
+    }
+  ]
+}

@@ -242,17 +242,60 @@ describe('HotelbedsAdapter.searchTransfers', () => {
     expect(offers).toEqual([]);
   });
 
-  it('passes GPS-typed location codes through verbatim (DQ-T2)', async () => {
+  it('passes GPS lat,lon codes through verbatim (DQ-T2 CLOSED — ≥3 decimals)', async () => {
     const { calls } = captureFetch([{ status: 200, body: AVAIL_RESPONSE }]);
     await adapter.searchTransfers({
-      from: { type: 'GPS', code: '41.4036,2.1744' },
+      from: { type: 'GPS', code: '41.4036, 2.1744' },
       to: { type: 'ATLAS', code: '1234' },
       outboundDate: '2026-06-01',
       outboundTime: '14:30',
       adults: 1,
     });
     const body = JSON.parse(calls[0]!.init.body as string);
-    expect(body.from).toEqual({ type: 'GPS', code: '41.4036,2.1744' });
+    expect(body.from).toEqual({ type: 'GPS', code: '41.4036, 2.1744' });
+  });
+
+  it('maps official services[] price.netAmount / cancellationPolicies when present', async () => {
+    captureFetch([
+      {
+        status: 200,
+        body: {
+          services: [
+            {
+              rateKey: 'rate-key-redacted',
+              transferType: 'PRIVATE',
+              vehicle: { name: 'Car' },
+              maxPaxCapacity: 3,
+              price: { totalAmount: 54, netAmount: 48.6, currencyId: 'EUR' },
+              pickupInformation: {
+                from: { description: 'BCN T1' },
+                time: '10:00:00',
+                to: { description: 'Hotel' },
+              },
+              cancellationPolicies: [
+                {
+                  amount: 54,
+                  from: '2026-05-07T10:00:00',
+                  utcOffset: '+02:00',
+                  currencyId: 'EUR',
+                },
+              ],
+            },
+          ],
+        },
+      },
+    ]);
+    const offers = await adapter.searchTransfers({
+      from: { type: 'IATA', code: 'BCN' },
+      to: { type: 'ATLAS', code: '57' },
+      outboundDate: '2026-05-08',
+      outboundTime: '10:00',
+      adults: 2,
+    });
+    expect(offers[0]!.price).toEqual({ amount: '48.60', currency: 'EUR' });
+    expect(offers[0]!.totalPrice).toEqual({ amount: '54.00', currency: 'EUR' });
+    expect(offers[0]!.pickupInfo.time).toBe('10:00:00');
+    expect(offers[0]!.cancellationPolicies?.[0]?.utcOffset).toBe('+02:00');
   });
 });
 
@@ -301,7 +344,7 @@ describe('HotelbedsAdapter.bookTransfer', () => {
     });
   });
 
-  it('preserves the ON_REQUEST status', async () => {
+  it('preserves ON_REQUEST when present (DQ-T6 OPEN — Transfers-specific)', async () => {
     captureFetch([
       {
         status: 200,
@@ -322,6 +365,29 @@ describe('HotelbedsAdapter.bookTransfer', () => {
       clientReference: 'AVR-TRF-002',
     });
     expect(result.status).toBe('ON_REQUEST');
+  });
+
+  it('accepts MODIFIED booking status from official Transfers enum', async () => {
+    captureFetch([
+      {
+        status: 200,
+        body: {
+          booking: {
+            reference: 'HB-TRF-3003',
+            clientReference: 'AVR-TRF-003',
+            status: 'MODIFIED',
+            pickup: { location: 'BCN T1', time: '11:00:00' },
+          },
+        },
+      },
+    ]);
+    const result = await adapter.bookTransfer({
+      transferCode: 'trf-mod',
+      holder: { name: 'Jane', surname: 'Doe' },
+      passengers: [{ type: 'ADULT', name: 'Jane', surname: 'Doe' }],
+      clientReference: 'AVR-TRF-003',
+    });
+    expect(result.status).toBe('MODIFIED');
   });
 });
 

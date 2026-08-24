@@ -2,6 +2,7 @@
  * Queue Management Engine — Priority assignment, categorization, routing.
  *
  * Processes GDS queue entries and determines action + priority.
+ * Travelport host commands: docs/knowledge-base/tmc-mid-office-ttl-queues.md
  */
 
 import type {
@@ -13,10 +14,16 @@ import type {
   QueueGdsSystem,
   QueueManagementInput,
   QueueManagementOutput,
+  TravelportHost,
 } from './types.js';
 
 function currentTime(input: QueueManagementInput): Date {
   return input.current_time ? new Date(input.current_time) : new Date();
+}
+
+/** Zulu calendar day YYYY-MM-DD — TTL urgency default (KB). */
+function zuluDateString(instant: Date): string {
+  return instant.toISOString().slice(0, 10);
 }
 
 // ---------------------------------------------------------------------------
@@ -32,6 +39,11 @@ function assignPriority(entry: QueueEntry, now: Date): QueuePriority {
   switch (entry.entry_type) {
     case 'TTL_DEADLINE': {
       if (!entry.deadline) return 'high';
+      const deadline = new Date(entry.deadline);
+      // Deadline-day ADM pattern in Zulu (entire calendar day is urgent).
+      if (zuluDateString(now) === zuluDateString(deadline)) {
+        return 'urgent';
+      }
       const hours = hoursUntilDeadline(entry.deadline, now);
       if (hours < 0) return 'urgent'; // already past deadline
       if (hours < 24) return 'urgent';
@@ -114,7 +126,119 @@ function determineAction(
 // GDS queue commands
 // ---------------------------------------------------------------------------
 
-function buildQueueCommands(gds: QueueGdsSystem, queueNumber: number): QueueCommand[] {
+/**
+ * Travelport place / list / remove / sign-in / count per host.
+ * Source: https://support.travelport.com/webhelp/formats/Content/FormatCompare/Queues.htm
+ *
+ * // TODO: DOMAIN_QUESTION DQ-TQ1: Worldspan sign-out glyph (QX‡I vs QX#I) — omitted until resolved.
+ * // TODO: DOMAIN_QUESTION DQ-TQ2: Is QW truly N/A on Worldspan in all markets?
+ */
+function buildTravelportHostCommands(
+  host: TravelportHost,
+  queueNumber: number,
+): QueueCommand[] {
+  const gds: QueueGdsSystem = 'TRAVELPORT';
+  const commands: QueueCommand[] = [
+    {
+      gds,
+      command: `Q/${queueNumber}`,
+      description: `Sign into queue ${queueNumber} (${host})`,
+    },
+  ];
+
+  switch (host) {
+    case 'APOLLO':
+      commands.push(
+        {
+          gds,
+          command: `QEP/${queueNumber}`,
+          description: `Place PNR on Apollo queue ${queueNumber}`,
+        },
+        {
+          gds,
+          command: 'QW',
+          description: 'List all queues where current PNR resides (Apollo)',
+        },
+        {
+          gds,
+          command: 'QR',
+          description: 'Remove current PNR from queue (Apollo)',
+        },
+        {
+          gds,
+          command: `QC/${queueNumber}`,
+          description: `Queue count for Apollo queue ${queueNumber}`,
+        },
+        {
+          gds,
+          command: 'QXI',
+          description: 'Sign out of queue and ignore last PNR (Apollo)',
+        },
+      );
+      break;
+
+    case 'GALILEO':
+      // Galileo ≡ Travelport+ column in format compare
+      commands.push(
+        {
+          gds,
+          command: `QEB/${queueNumber}`,
+          description: `Place BF on Travelport+/Galileo queue ${queueNumber}`,
+        },
+        {
+          gds,
+          command: 'QW',
+          description: 'List all queues where current BF resides (Travelport+/Galileo)',
+        },
+        {
+          gds,
+          command: 'QR',
+          description: 'Remove current BF from queue (Travelport+/Galileo)',
+        },
+        {
+          gds,
+          command: `QCB/${queueNumber}`,
+          description: `Queue count for Travelport+/Galileo queue ${queueNumber}`,
+        },
+        {
+          gds,
+          command: 'QXI',
+          description: 'Sign out of queue and ignore last BF (Travelport+/Galileo)',
+        },
+      );
+      break;
+
+    case 'WORLDSPAN':
+      commands.push(
+        {
+          gds,
+          command: `QEP/${queueNumber}`,
+          description: `Place BF on Worldspan queue ${queueNumber}`,
+        },
+        // QW is N/A on Worldspan in the public format-compare table (DQ-TQ2).
+        {
+          gds,
+          command: 'QR',
+          description: 'Remove current BF from queue (Worldspan)',
+        },
+        {
+          gds,
+          command: `QC/${queueNumber}`,
+          description: `Queue count for Worldspan queue ${queueNumber}`,
+        },
+        // TODO: DOMAIN_QUESTION DQ-TQ1: Worldspan sign-out QX‡I vs QX#I — omit rather than guess.
+      );
+      break;
+  }
+
+  return commands;
+}
+
+function buildQueueCommands(
+  gds: QueueGdsSystem,
+  queueNumber: number,
+  travelportHost?: TravelportHost,
+): QueueCommand[] {
   switch (gds) {
     case 'AMADEUS':
       return [
@@ -139,15 +263,23 @@ function buildQueueCommands(gds: QueueGdsSystem, queueNumber: number): QueueComm
       ];
 
     case 'TRAVELPORT':
-      // [NEEDS DOMAIN INPUT] Travelport queue commands vary by host system.
-      // Using Galileo/Apollo conventions as default.
-      return [
-        { gds, command: `Q/${queueNumber}`, description: `Read queue ${queueNumber}` },
-        { gds, command: `QC/${queueNumber}`, description: `Count items in queue ${queueNumber}` },
-        { gds, command: `QXI`, description: 'Remove current item from queue' },
-        { gds, command: `QN`, description: 'Move to next item in queue' },
-        { gds, command: `QE`, description: 'Exit queue mode' },
-      ];
+      if (!travelportHost) {
+        // Host required for place/list/remove — emit only shared sign-in + remove (QR).
+        // TODO: DOMAIN_QUESTION: default Travelport host when caller omits travelport_host?
+        return [
+          {
+            gds,
+            command: `Q/${queueNumber}`,
+            description: `Sign into queue ${queueNumber} (Travelport host unspecified)`,
+          },
+          {
+            gds,
+            command: 'QR',
+            description: 'Remove current item from queue (shared across Travelport hosts)',
+          },
+        ];
+      }
+      return buildTravelportHostCommands(travelportHost, queueNumber);
   }
 }
 
@@ -187,7 +319,7 @@ export function processQueue(input: QueueManagementInput): QueueManagementOutput
 
   const commands =
     input.gds && input.queue_number != null
-      ? buildQueueCommands(input.gds, input.queue_number)
+      ? buildQueueCommands(input.gds, input.queue_number, input.travelport_host)
       : undefined;
 
   return { results, commands, summary };

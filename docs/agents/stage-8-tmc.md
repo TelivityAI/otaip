@@ -56,10 +56,12 @@ Corporate travel policy management, negotiated fare lookup, and booking validati
 
 PNR quality checks and ticketing deadline monitoring. Scans PNRs for 10 issue types: TTL urgent/approaching, missing segment status, missing APIS, missing contact/FOP, duplicate PNR, passive segment, policy violation, married segment incomplete.
 
+**TTL policy:** urgency uses **Zulu (UTC)** — Travelport `T.TAU` / `T.TAW` / `ORB` are Zulu; QCC TZ is display-only. Deadline-day ADM pattern treats the entire Zulu calendar day of the deadline as `TTL_URGENT` for open PNRs. See `docs/knowledge-base/tmc-mid-office-ttl-queues.md`.
+
 **Input:**
 - `trigger` -- `'scheduled_sweep' | 'pnr_created' | 'ticket_deadline_approaching' | 'queue_pending' | 'manual_review_request'`
 - `pnrs` -- PNR records with segments, deadlines, APIS/contact/FOP flags
-- `current_datetime?` -- ISO timestamp
+- `current_datetime?` -- ISO timestamp (compared as Zulu)
 
 **Output:**
 - Per-PNR issues with severity (urgent/high/medium/low) and issue codes
