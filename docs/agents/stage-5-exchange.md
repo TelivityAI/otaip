@@ -15,12 +15,14 @@ Voluntary change assessment, ticket reissue, involuntary rebook, and (coming soo
 ATPCO Category 31 voluntary change assessment: change fees, fare difference, residual value, waiver codes, 24-hour free change window detection.
 
 **Input (`ChangeManagementInput`):**
+
 - `original_ticket` -- ticket number, issuing carrier, passenger name, record locator, issue date, base fare, total tax, fare basis, refundable flag, booking date
 - `requested_itinerary` -- new segments (carrier, flight, origin, destination, date, class, fare basis), new fare, new taxes
 - `waiver_code?` -- airline-provided waiver code
 - `current_datetime?` -- ISO datetime
 
 **Output (`ChangeManagementOutput`):**
+
 - `assessment` -- action (`REISSUE | REBOOK | REJECT`), change fee, fare difference, additional collection, residual value, forfeited amount, tax difference, total due, free change flag, summary
 
 ---
@@ -31,9 +33,12 @@ ATPCO Category 31 voluntary change assessment: change fees, fare difference, res
 **Class:** `ExchangeReissue`
 **Status:** Implemented
 
-Ticket reissue with residual value application, tax carryforward, conjunction ticket handling, GDS exchange command generation, and full audit trail.
+Ticket reissue with residual value application, **per-tax** carryforward (`CARRY | RECALCULATE | FORFEIT`), conjunction ticket handling, GDS exchange command generation, and full audit trail.
+
+**Tax carryforward:** Same O&D ≠ keep all TFCs. Reassess per tax code (transport vs sales). YQ/YR are not assumed to carry. IROE ≠ ICER (fare ROE must not be used as tax FX). Amounts come from IATA TTBS / ATPCO / SITA — no invented statutory rates. See `docs/knowledge-base/tax-carryforward-reissue.md` and [IATA Ticket Taxes](https://www.iata.org/en/programs/airline-distribution/taxation/ticket-taxes/). Missing per-code rules **fail closed**.
 
 **Input (`ExchangeReissueInput`):**
+
 - `original_ticket_number`, `conjunction_originals?`, `original_issue_date`
 - `issuing_carrier`, `passenger_name`, `record_locator`
 - `original_base_fare`, `original_taxes` -- from original ticket
@@ -42,12 +47,16 @@ Ticket reissue with residual value application, tax carryforward, conjunction ti
 - `new_fare`, `new_fare_currency`, `new_taxes`, `fare_calculation`
 - `form_of_payment` -- for additional collection
 - `gds?` -- GDS for command generation
-- `same_origin_destination` -- for tax carryforward eligibility
+- `tax_carryforward_context` -- geography (`SAME_AIRPORT | SAME_CITY | DIFFERENT`), validity window flag, flown status, POS unchanged
+- `tax_carryforward_rules` -- per-code rules covering every tax on original ∪ new (nature, min geography, YQ/YR flags, validity expiry action)
+- `same_origin_destination?` -- **deprecated / ignored** for tax decisions (migration warning only)
 
 **Output (`ExchangeReissueOutput`):**
-- `reissue` -- new ticket record with full audit trail, exchange commands, tax carryforward details
+
+- `reissue` -- new ticket record with full audit trail, exchange commands, `tax_decisions` on the audit trail
 - `additional_collection` -- amount due
 - `credit_amount` -- amount refundable if downgrade
+- `tax_decisions` -- `{ tax_code, action: CARRY | RECALCULATE | FORFEIT, reason }[]`
 
 ---
 
@@ -60,6 +69,7 @@ Ticket reissue with residual value application, tax carryforward, conjunction ti
 Carrier-initiated schedule change handling: trigger assessment (time change, routing change, equipment downgrade, cancellation), airline protection logic (same carrier > alliance > interline), and regulatory entitlement flags (EU261, US DOT).
 
 **Input (`InvoluntaryRebookInput`):**
+
 - `original_pnr` -- record locator, passenger, affected segment, issuing carrier, countries, checked-in flag, EU carrier flag
 - `schedule_change` -- change type, original/new times, time change minutes, routing changes, equipment changes
 - `available_flights?` -- protection flight options with carrier/alliance/interline flags
@@ -67,6 +77,7 @@ Carrier-initiated schedule change handling: trigger assessment (time change, rou
 - `is_passenger_no_show?` -- no-show flag
 
 **Output (`InvoluntaryRebookOutput`):**
+
 - `result` -- involuntary flag, trigger type, protection options (ordered by priority), protection path taken, regulatory flags (EU261/US DOT applicability), original routing credit flag, summary
 
 ---
