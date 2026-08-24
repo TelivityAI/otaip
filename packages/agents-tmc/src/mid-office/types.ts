@@ -44,7 +44,16 @@ export interface MockPnr {
   recloc: string;
   passenger_name: string;
   segments: PnrSegment[];
+  /**
+   * Ticketing deadline as ISO instant. For Travelport-originated TTLs
+   * (T.TAU / T.TAW / ORB), treat as Zulu — see docs/knowledge-base/tmc-mid-office-ttl-queues.md.
+   */
   ticket_deadline?: string;
+  /**
+   * When present, ticket already issued. Used for the issued-on-deadline-day
+   * ADM pattern (Zulu calendar day match).
+   */
+  ticket_issued_at?: string;
   apis_complete: boolean;
   contact_present: boolean;
   fop_present: boolean;

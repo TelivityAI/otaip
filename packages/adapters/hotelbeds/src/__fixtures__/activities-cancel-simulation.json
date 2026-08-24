@@ -1,0 +1,9 @@
+{
+  "_comment": "Redacted Activities cancel SIMULATION response shape. Official cancel: DELETE .../bookings/{lang}/{ref}?cancellationFlag=SIMULATION|CANCELLATION. developer.hotelbeds.com/documentation/activities/booking-api/booking-and-post-booking/cancel/",
+  "booking": {
+    "reference": "102-123456798",
+    "cancellationReference": "CXL-102-123456798",
+    "status": "CANCELLED",
+    "totalNet": 0
+  }
+}

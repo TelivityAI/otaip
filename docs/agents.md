@@ -72,7 +72,7 @@
 | ID | Class | Name | Description | Contract |
 |----|-------|------|-------------|----------|
 | 5.1 | `ChangeManagement` | Change Management | ATPCO Category 31 voluntary change assessment: change fees, fare difference, residual value, waiver codes | -- |
-| 5.2 | `ExchangeReissue` | Exchange/Reissue | Ticket reissue with residual value, tax carryforward, GDS exchange command stubs, conjunction ticket handling | -- |
+| 5.2 | `ExchangeReissue` | Exchange/Reissue | Ticket reissue with residual value, per-tax TFC carryforward (CARRY\|RECALCULATE\|FORFEIT), GDS exchange command stubs, conjunction ticket handling | -- |
 | 5.3 | `InvoluntaryRebook` | Involuntary Rebook | Carrier-initiated schedule change handling: trigger assessment, airline protection logic, regulatory entitlements (EU261, US DOT) | -- |
 | 5.4 | `DisruptionResponseAgent` | Disruption Response | Placeholder -- not yet implemented. Requires domain input on disruption priority rules | -- |
 | 5.5 | `SelfServiceRebookingAgent` | Self-Service Rebooking | Placeholder -- not yet implemented. Requires domain input on change fee structures | -- |
