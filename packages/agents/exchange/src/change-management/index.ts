@@ -60,6 +60,8 @@ export class ChangeManagement implements Agent<ChangeManagementInput, ChangeMana
         action: result.assessment.action,
         total_due: result.assessment.total_due,
         fee_waived: result.assessment.fee_waived,
+        us_dot_24h_eligible: result.us_dot_24h.eligible,
+        us_dot_24h_remedy: result.us_dot_24h.carrier_remedy,
       },
     };
   }
@@ -133,6 +135,14 @@ export type {
   RequestedItinerary,
   ChangeFeeRule,
   ChangeAction,
+  UsDot24HourRemedy,
+  UsDot24HourBookingChannel,
+  UsDot24HourIneligibilityReason,
+  UsDot24HourEntitlement,
+  UsDot24HourContext,
+  UsDot24HourAssessment,
+  UsDot24HourCarrierRemedyRow,
+  Cat31Rules,
   WaiverEffect,
   WaiverPenaltyReduction,
   WaiverRefundForm,

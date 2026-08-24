@@ -1,5 +1,6 @@
 /**
- * Change Management Engine — ATPCO Cat 31 voluntary change assessment.
+ * Change Management Engine — ATPCO Cat 31 voluntary change assessment
+ * plus US DOT 14 CFR §259.5(b)(4) 24-hour reservation assessment.
  *
  * No invented penalty amounts.
  *
@@ -10,6 +11,7 @@
  *   public default: voluntary changes are PERMITTED AT NO CHARGE;
  *   involuntary changes have the fee waived.
  *   Source: https://atpco.net/single-blog/what-are-atpco-fare-rules-categories/
+ * - DOT 24h is assessed separately and never sets `is_free_change`.
  *
  * Two separate rules (do not collapse):
  * 1. No Cat 31 data / no matched provision → ATPCO public default = free change
@@ -36,6 +38,7 @@ import type {
   WaiverPenaltyReduction,
 } from './types.js';
 import { WAIVER_EFFECTS } from './types.js';
+import { assessUsDot24Hour } from './us-dot-24h.js';
 
 const AGENT_ID = '5.1';
 
@@ -213,6 +216,8 @@ export function assessChange(input: ChangeManagementInput): ChangeManagementOutp
   const isInvoluntary = input.is_involuntary === true;
   const effect = input.waiver_effect;
 
+  const usDot24h = assessUsDot24Hour(input, now);
+
   // Reject path applies only when filed rules say so.
   if (isRejectFare(input.cat31_rules, orig.fare_basis)) {
     const assessment: ChangeAssessment = {
@@ -233,7 +238,7 @@ export function assessChange(input: ChangeManagementInput): ChangeManagementOutp
       ...(input.waiver_code !== undefined ? { waiver_code: input.waiver_code } : {}),
       ...(effect !== undefined ? { waiver_effect: effect } : {}),
     };
-    return { assessment };
+    return { assessment, us_dot_24h: usDot24h };
   }
 
   const rule = input.cat31_rules
@@ -248,6 +253,7 @@ export function assessChange(input: ChangeManagementInput): ChangeManagementOutp
   const freeChangeHours = rule?.free_change_hours ?? 0;
   const forfeitOnDowngrade = rule?.forfeit_difference_on_downgrade ?? false;
 
+  // Cat 31 filed free-change window ONLY — not US DOT 24h (§259.5(b)(4)).
   const isFreeChange = isWithinFreeChangeWindow(orig.booking_date, now, freeChangeHours);
 
   let effectiveChangeFee: Decimal;
@@ -359,5 +365,5 @@ export function assessChange(input: ChangeManagementInput): ChangeManagementOutp
     is_free_change: isFreeChange,
   };
 
-  return { assessment };
+  return { assessment, us_dot_24h: usDot24h };
 }
