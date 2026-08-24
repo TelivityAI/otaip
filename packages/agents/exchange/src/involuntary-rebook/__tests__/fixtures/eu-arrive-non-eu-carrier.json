@@ -1,6 +1,6 @@
 {
   "id": "eu-arrive-non-eu-carrier",
-  "description": "Art.3(1)(b) negative: third-country departure → EU arrival on a non-Community (non-EU) operating carrier — EU261 does NOT apply.",
+  "description": "Art.3(1)(b) negative: third-country departure → Member State arrival (FR/CDG) on a non-Community (non-EU) operating carrier — EU261 does NOT apply.",
   "source": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32004R0261",
   "expect": {
     "is_involuntary": true,
@@ -18,7 +18,7 @@
         "carrier": "UA",
         "flight_number": "934",
         "origin": "JFK",
-        "destination": "LHR",
+        "destination": "CDG",
         "departure_date": "2026-07-01",
         "departure_time": "19:00",
         "booking_class": "B",
@@ -27,7 +27,7 @@
       },
       "issuing_carrier": "UA",
       "departure_country": "US",
-      "arrival_country": "GB",
+      "arrival_country": "FR",
       "is_checked_in": false,
       "is_eu_carrier": false
     },

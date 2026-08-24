@@ -126,7 +126,9 @@ function assessTrigger(input: InvoluntaryRebookInput): TriggerAssessment {
 // Do NOT silently execute "same carrier first" (Art.8 passenger choice).
 // ---------------------------------------------------------------------------
 
-function classifyFlight(f: ProtectionFlightOption): ProtectionPath | null {
+function classifyFlight(
+  f: ProtectionFlightOption,
+): Exclude<ProtectionPath, 'NONE_AVAILABLE'> {
   const sameOperating = f.is_same_operating_carrier === true || f.is_same_carrier === true;
   if (sameOperating) return 'SAME_OPERATING';
   if (f.is_marketing_carrier === true) return 'MARKETING_CARRIER';
@@ -137,7 +139,7 @@ function classifyFlight(f: ProtectionFlightOption): ProtectionPath | null {
 
 function endorsementAllows(
   f: ProtectionFlightOption,
-  path: ProtectionPath,
+  path: Exclude<ProtectionPath, 'NONE_AVAILABLE'>,
 ): { allowed: boolean; needsInput: boolean } {
   if (path === 'SAME_OPERATING') {
     return { allowed: f.endorsement_allows !== false, needsInput: false };
@@ -176,7 +178,6 @@ function buildProtectionOptions(
 
   for (const f of input.available_flights) {
     const path = classifyFlight(f);
-    if (path === null) continue;
     const { allowed, needsInput } = endorsementAllows(f, path);
     if (needsInput) {
       endorsementWarnings.push(

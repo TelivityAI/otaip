@@ -49,22 +49,24 @@ afterAll(() => {
 });
 
 function makePnr(overrides: Partial<OriginalPnrSummary> = {}): OriginalPnrSummary {
+  // Default: Art.3(1)(a) Member State departure (FR). Post-Brexit GB is not
+  // in eu-countries.json — UK261 is a separate DOMAIN_QUESTION (DQ-IRROP-8).
   return {
     record_locator: 'ABC123',
     passenger_name: 'SMITH/JOHN',
     affected_segment: {
-      carrier: 'BA',
-      flight_number: '115',
-      origin: 'LHR',
+      carrier: 'AF',
+      flight_number: '7',
+      origin: 'CDG',
       destination: 'JFK',
       departure_date: '2026-06-15',
       departure_time: '09:00',
       booking_class: 'Y',
       fare_basis: 'YOWUS',
-      operating_carrier: 'BA',
+      operating_carrier: 'AF',
     },
-    issuing_carrier: 'BA',
-    departure_country: 'GB',
+    issuing_carrier: 'AF',
+    departure_country: 'FR',
     arrival_country: 'US',
     is_checked_in: false,
     is_eu_carrier: true,
@@ -92,8 +94,8 @@ function makeInput(overrides: Partial<InvoluntaryRebookInput> = {}): Involuntary
     thresholds: { time_change_minutes: 90, measurement_point: 'DEPARTURE' },
     available_flights: [
       {
-        carrier: 'BA',
-        flight_number: '117',
+        carrier: 'AF',
+        flight_number: '8',
         departure_date: '2026-06-15',
         departure_time: '14:00',
         booking_class: 'Y',
@@ -103,8 +105,8 @@ function makeInput(overrides: Partial<InvoluntaryRebookInput> = {}): Involuntary
         endorsement_allows: true,
       },
       {
-        carrier: 'AA',
-        flight_number: '100',
+        carrier: 'DL',
+        flight_number: '264',
         departure_date: '2026-06-15',
         departure_time: '15:00',
         booking_class: 'Y',
@@ -277,7 +279,7 @@ describe('Involuntary Rebook', () => {
     it('ranks same operating first (candidate only — not silent execution)', async () => {
       const result = await agent.execute({ data: makeInput() });
       expect(result.data.result.protection_path).toBe('SAME_OPERATING');
-      expect(result.data.result.protection_options[0]!.carrier).toBe('BA');
+      expect(result.data.result.protection_options[0]!.carrier).toBe('AF');
       // Art.8: EU depart → choice required; do not treat ranking as executed rebook.
       expect(result.data.result.art8_passenger_choice_required).toBe(true);
       expect(result.data.result.art8_choices).toEqual([
@@ -502,18 +504,18 @@ describe('Involuntary Rebook', () => {
       const input = makeInput({
         original_pnr: makePnr({
           departure_country: 'US',
-          arrival_country: 'GB',
+          arrival_country: 'FR',
           is_eu_carrier: true,
           affected_segment: {
-            carrier: 'BA',
-            flight_number: '116',
+            carrier: 'AF',
+            flight_number: '8',
             origin: 'JFK',
-            destination: 'LHR',
+            destination: 'CDG',
             departure_date: '2026-06-15',
             departure_time: '21:00',
             booking_class: 'Y',
             fare_basis: 'YOWUS',
-            operating_carrier: 'BA',
+            operating_carrier: 'AF',
           },
         }),
         schedule_change: { change_type: 'FLIGHT_CANCELLATION' },

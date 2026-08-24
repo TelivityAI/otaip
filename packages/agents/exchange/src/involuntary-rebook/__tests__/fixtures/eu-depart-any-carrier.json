@@ -1,6 +1,6 @@
 {
   "id": "eu-depart-any-carrier",
-  "description": "Art.3(1)(a): EU departure on a non-EU operating carrier — EU261 applies to any carrier. Art.8 passenger choice required. Do not silently same-carrier rebook.",
+  "description": "Art.3(1)(a): Member State departure (FR/CDG) on a non-EU operating carrier — EU261 applies to any carrier. Art.8 passenger choice required. Do not silently same-carrier rebook. (GB omitted post-Brexit — see DQ-IRROP-8.)",
   "source": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32004R0261",
   "expect": {
     "is_involuntary": true,
@@ -17,7 +17,7 @@
       "affected_segment": {
         "carrier": "AA",
         "flight_number": "100",
-        "origin": "LHR",
+        "origin": "CDG",
         "destination": "JFK",
         "departure_date": "2026-06-15",
         "departure_time": "10:00",
@@ -26,11 +26,11 @@
         "operating_carrier": "AA"
       },
       "issuing_carrier": "AA",
-      "departure_country": "GB",
+      "departure_country": "FR",
       "arrival_country": "US",
       "is_checked_in": true,
       "is_eu_carrier": false,
-      "endorsement": "VALID AA/BA"
+      "endorsement": "VALID AA/AF"
     },
     "schedule_change": {
       "change_type": "FLIGHT_CANCELLATION",
@@ -49,8 +49,8 @@
         "endorsement_allows": true
       },
       {
-        "carrier": "BA",
-        "flight_number": "117",
+        "carrier": "AF",
+        "flight_number": "7",
         "departure_date": "2026-06-15",
         "departure_time": "16:00",
         "booking_class": "Y",
@@ -62,7 +62,7 @@
       }
     ],
     "eu261_inputs": {
-      "distance_km": 5550,
+      "distance_km": 5850,
       "extraordinary_circumstances": false,
       "notice_days_before_departure": 1
     }

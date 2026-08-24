@@ -58,7 +58,7 @@ Source: Regulation (EC) No 261/2004 **Article 3(1)** — Scope.
 
 | Flight geography | Operating carrier | EU261 applies? |
 | --- | --- | --- |
-| Departs airport in Member State / EEA (territory to which the Treaty applies; CH via bilateral — keep country list in `eu-countries.json`) | **Any** | **Yes** (Art.3(1)(a)) |
+| Departs airport in Member State / EEA (territory to which the Treaty applies; CH via bilateral — keep country list in `eu-countries.json`; **post-Brexit GB is not on this list** — see DQ-IRROP-8) | **Any** | **Yes** (Art.3(1)(a)) |
 | Departs third country → arrives Member State / EEA | **Community (EU) carrier** | **Yes**, unless benefits/compensation/assistance already received in that third country (Art.3(1)(b)) |
 | Departs third country → arrives Member State / EEA | **Non-EU carrier** | **No** |
 | Departs third country → arrives third country | EU or non-EU | **No** (even if marketing/ticketing is EU) |
@@ -143,3 +143,4 @@ Fixtures live under `packages/agents/exchange/src/involuntary-rebook/__tests__/f
 | DQ-IRROP-5 | Carrier-specific original-routing-credit / fare-basis retention on involuntary reprotection. |
 | DQ-IRROP-6 | Equipment-downgrade → involuntary rebook boundary vs Art.10 cabin downgrade reimbursement only. |
 | DQ-IRROP-7 | Marketing vs operating carrier resolution on codeshare PNRs for Community-carrier tests under Art.3(1)(b). |
+| DQ-IRROP-8 | UK retained passenger rights (UK261) after Brexit — whether/how Agent 5.3 should treat GB departures separately from Art.3(1) Member State scope. Do not silently map GB into `eu-countries.json`. |
