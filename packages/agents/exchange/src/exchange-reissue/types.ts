@@ -3,6 +3,9 @@
  *
  * Agent 5.2: Ticket reissue with residual value, tax carryforward,
  * GDS exchange command stubs.
+ *
+ * Tax carryforward: see docs/knowledge-base/tax-carryforward-reissue.md
+ * Same O&D alone is insufficient. Decisions are per tax code.
  */
 
 export type ExchangeGdsSystem = 'AMADEUS' | 'SABRE' | 'TRAVELPORT';
@@ -31,10 +34,75 @@ export interface ExchangeSegment {
 export interface TaxItem {
   /** Tax code */
   code: string;
-  /** Amount (decimal string) */
+  /** Amount (decimal string) — from TTBS/ATPCO/SITA, never invented */
   amount: string;
   /** Currency */
   currency: string;
+}
+
+/** Per-tax carryforward action (KB: tax-carryforward-reissue.md) */
+export type TaxCarryforwardAction = 'CARRY' | 'RECALCULATE' | 'FORFEIT';
+
+/**
+ * Decision for a single tax code on reissue.
+ * Amounts are applied separately from TTBS/ATPCO/SITA — this is the action only.
+ */
+export interface TaxCarryforwardDecision {
+  tax_code: string;
+  action: TaxCarryforwardAction;
+  reason: string;
+}
+
+/** Geography match for this reissue (airport vs city vs different). */
+export type TaxGeographyMatch = 'SAME_AIRPORT' | 'SAME_CITY' | 'DIFFERENT';
+
+/** Flown status of the original ticket relative to the exchange. */
+export type TaxItineraryFlownStatus = 'UNFLOWN' | 'PARTIALLY_FLOWN' | 'FULLY_FLOWN';
+
+/** TTFC nature — transport (journey) vs sales (POS/ticketing). */
+export type TaxNature = 'TRANSPORT' | 'SALES';
+
+/**
+ * Context dimensions for carryforward evaluation.
+ * Same O&D boolean alone is not a substitute for this context.
+ */
+export interface TaxCarryforwardContext {
+  geography_match: TaxGeographyMatch;
+  /**
+   * Caller evaluates published validity windows from TTBS/ATPCO.
+   * Engine does not invent window dates.
+   */
+  within_validity_window: boolean;
+  flown_status: TaxItineraryFlownStatus;
+  /** Point of sale / ticketing location unchanged (sales-tax dimension). */
+  point_of_sale_unchanged: boolean;
+}
+
+/**
+ * Per-tax-code rule from TTBS/ATPCO/SITA (or carrier policy for YQ/YR).
+ * Contains no statutory rates — only carryforward policy dimensions.
+ */
+export interface TaxCarryforwardRule {
+  tax_code: string;
+  nature: TaxNature;
+  /** Minimum geography required before CARRY may apply. */
+  min_geography: 'SAME_AIRPORT' | 'SAME_CITY';
+  /**
+   * When true, never CARRY — always RECALCULATE.
+   * YQ/YR profiles should set this unless explicit_carry_authorized.
+   */
+  carry_never?: boolean;
+  /**
+   * Required before YQ/YR (carrier-imposed) may CARRY.
+   * Without this, YQ/YR always RECALCULATE.
+   */
+  explicit_carry_authorized?: boolean;
+  /** When true, partially flown forces RECALCULATE. */
+  recalculate_when_partially_flown?: boolean;
+  /** Action when validity window does not cover new travel. */
+  on_validity_expired: TaxCarryforwardAction;
+  /** When true (typical for SALES), POS change forces RECALCULATE. */
+  recalculate_when_pos_changed?: boolean;
 }
 
 export interface FormOfPayment {
@@ -69,6 +137,8 @@ export interface ExchangeAuditTrail {
   taxes_carried_forward: TaxItem[];
   /** New taxes collected */
   taxes_new: TaxItem[];
+  /** Per-tax carryforward decisions (CARRY | RECALCULATE | FORFEIT) */
+  tax_decisions: TaxCarryforwardDecision[];
   /** Waiver code (if applied) */
   waiver_code?: string;
 }
@@ -171,7 +241,7 @@ export interface ExchangeReissueInput {
   new_fare: string;
   /** New fare currency */
   new_fare_currency: string;
-  /** New taxes */
+  /** New taxes — amounts from TTBS/ATPCO/SITA, never invented */
   new_taxes: TaxItem[];
   /** Fare calculation line */
   fare_calculation: string;
@@ -181,8 +251,22 @@ export interface ExchangeReissueInput {
   gds?: ExchangeGdsSystem;
   /** Issue date override (ISO) */
   issue_date?: string;
-  /** Whether origin/destination is unchanged (for tax carryforward) */
-  same_origin_destination: boolean;
+  /**
+   * @deprecated Insufficient for tax carryforward. Same O&D ≠ keep all TFCs.
+   * Ignored for carryforward decisions — use tax_carryforward_context + rules.
+   * Retained only so callers can migrate; may be removed in a later major version.
+   */
+  same_origin_destination?: boolean;
+  /**
+   * Carryforward context dimensions (geography, validity, flown, POS).
+   * Required. See docs/knowledge-base/tax-carryforward-reissue.md
+   */
+  tax_carryforward_context: TaxCarryforwardContext;
+  /**
+   * Per-tax-code rules covering every code in original_taxes ∪ new_taxes.
+   * Missing rule → fail closed. No invented statutory rates.
+   */
+  tax_carryforward_rules: TaxCarryforwardRule[];
   /** Ticket number prefix (3-digit) */
   ticket_number_prefix?: string;
 }
@@ -194,4 +278,6 @@ export interface ExchangeReissueOutput {
   additional_collection: string;
   /** Credit note amount if refund due (decimal string) */
   credit_amount: string;
+  /** Per-tax carryforward decisions (also on exchange_audit) */
+  tax_decisions: TaxCarryforwardDecision[];
 }

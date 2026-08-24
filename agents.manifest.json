@@ -2334,7 +2334,7 @@
       "id": "2.2",
       "name": "Fare Construction",
       "stage": "pricing",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "contract_status": "active",
       "has_contract": false,
       "source_path": "packages/agents/pricing/src/fare-construction/index.ts"
@@ -4349,7 +4349,7 @@
       "id": "5.2",
       "name": "Exchange/Reissue",
       "stage": "exchange",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "contract_status": "active",
       "has_contract": false,
       "source_path": "packages/agents/exchange/src/exchange-reissue/index.ts"

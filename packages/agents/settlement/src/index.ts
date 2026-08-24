@@ -19,7 +19,11 @@ export type {
   BspRefundFields,
   ArcRefundFields,
   RefundPenaltyRule,
+  WaiverEffect,
+  WaiverPenaltyReduction,
+  WaiverRefundForm,
 } from './refund-processing/index.js';
+export { WAIVER_EFFECTS } from './refund-processing/index.js';
 
 export {
   ADMPrevention,

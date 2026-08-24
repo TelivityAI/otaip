@@ -2,7 +2,11 @@
  * Involuntary Rebook — Agent 5.3
  *
  * Carrier-initiated schedule change handling: trigger assessment,
- * airline protection logic, regulatory entitlements (EU261, US DOT).
+ * reprotection candidates (not silent same-carrier rebook), regulatory
+ * entitlements (EU261 Art.3/7/8, US DOT IDB oversales-only).
+ *
+ * Domain: docs/knowledge-base/involuntary-rebook-irrop.md
+ * EU261: https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32004R0261
  *
  * Implements the base Agent interface from @otaip/core.
  */
@@ -22,6 +26,7 @@ const VALID_CHANGE_TYPES = new Set([
   'ROUTING_CHANGE',
   'EQUIPMENT_DOWNGRADE',
   'FLIGHT_CANCELLATION',
+  'MISCONNECT',
 ]);
 
 export class InvoluntaryRebook implements Agent<InvoluntaryRebookInput, InvoluntaryRebookOutput> {
@@ -54,6 +59,11 @@ export class InvoluntaryRebook implements Agent<InvoluntaryRebookInput, Involunt
         if (flag.applies) {
           warnings.push(`${flag.framework} regulatory entitlement applies.`);
         }
+      }
+      if (result.result.art8_passenger_choice_required) {
+        warnings.push(
+          'EU261 Art.8 passenger choice required before executing reprotection.',
+        );
       }
     }
     if (result.result.is_no_show) {
@@ -149,10 +159,13 @@ export type {
   InvoluntaryRebookOutput,
   InvoluntaryRebookResult,
   InvoluntaryTrigger,
+  IrropMeasurementPoint,
   ProtectionPath,
+  ProtectionFlightOption,
   ProtectionOption,
   RegulatoryFlag,
   RegulatoryFramework,
+  Art8Choice,
   ScheduleChangeNotification,
   OriginalPnrSummary,
 } from './types.js';

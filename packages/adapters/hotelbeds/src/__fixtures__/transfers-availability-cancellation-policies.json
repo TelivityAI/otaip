@@ -1,0 +1,74 @@
+{
+  "_comment": "Redacted Transfers availability fragment aligned with official Availability Simple response sample (developer.hotelbeds.com). Keys redacted; prices/cancellationPolicies preserve documented field names. cancellationPolicies.from is destination local time; utcOffset included per docs.",
+  "services": [
+    {
+      "id": 0,
+      "rateKey": "ARRIVAL|IATA|BCN|ATLAS|57|2026-05-08|10:00|2026-05-08|10:00|2~0~0||99|||||102|SHRD||SH|STND|24.28||||39|57|SIMPLE|redacted-ratekey",
+      "direction": "ARRIVAL",
+      "transferType": "SHARED",
+      "vehicle": {
+        "code": "SH",
+        "name": "Shuttle"
+      },
+      "maxPaxCapacity": 99,
+      "pickupInformation": {
+        "from": {
+          "code": "BCN",
+          "description": "Barcelona Airport",
+          "type": "IATA"
+        },
+        "to": {
+          "code": "57",
+          "description": "Barcelona Universal",
+          "type": "ATLAS"
+        },
+        "date": "2026-05-08",
+        "time": "10:00:00",
+        "pickup": {
+          "description": "Meet at arrivals hall (fixture text redacted).",
+          "latitude": "41.297475",
+          "longitude": "2.083318"
+        }
+      },
+      "price": {
+        "totalAmount": 24.28,
+        "netAmount": null,
+        "currencyId": "EUR"
+      },
+      "cancellationPolicies": [
+        {
+          "amount": 24.28,
+          "from": "2026-05-07T10:00:00",
+          "utcOffset": "+02:00",
+          "currencyId": "EUR"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "rateKey": "ARRIVAL|IATA|BCN|ATLAS|57|2026-05-08|10:00|PRIVATE|redacted",
+      "transferType": "PRIVATE",
+      "vehicle": { "code": "CR", "name": "Car" },
+      "maxPaxCapacity": 3,
+      "pickupInformation": {
+        "from": { "code": "BCN", "description": "Barcelona Airport", "type": "IATA" },
+        "to": { "code": "57", "description": "Barcelona Universal", "type": "ATLAS" },
+        "date": "2026-05-08",
+        "time": "10:00:00"
+      },
+      "price": {
+        "totalAmount": 54.0,
+        "netAmount": 48.6,
+        "currencyId": "EUR"
+      },
+      "cancellationPolicies": [
+        {
+          "amount": 54.0,
+          "from": "2026-05-06T10:00:00",
+          "utcOffset": "+02:00",
+          "currencyId": "EUR"
+        }
+      ]
+    }
+  ]
+}

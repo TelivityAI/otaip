@@ -14,6 +14,7 @@ import { processQueue } from './queue-engine.js';
 
 const RECORD_LOCATOR_RE = /^[A-Z0-9]{6}$/;
 const VALID_GDS = new Set(['AMADEUS', 'SABRE', 'TRAVELPORT']);
+const VALID_TRAVELPORT_HOSTS = new Set(['APOLLO', 'GALILEO', 'WORLDSPAN']);
 const VALID_ENTRY_TYPES = new Set([
   'TTL_DEADLINE',
   'SCHEDULE_CHANGE',
@@ -122,6 +123,14 @@ export class QueueManagement implements Agent<QueueManagementInput, QueueManagem
     if (data.gds && !VALID_GDS.has(data.gds)) {
       throw new AgentInputValidationError(this.id, 'gds', `Invalid GDS for commands: ${data.gds}`);
     }
+
+    if (data.travelport_host != null && !VALID_TRAVELPORT_HOSTS.has(data.travelport_host)) {
+      throw new AgentInputValidationError(
+        this.id,
+        'travelport_host',
+        `Invalid Travelport host: ${data.travelport_host}`,
+      );
+    }
   }
 }
 
@@ -135,5 +144,6 @@ export type {
   QueuePriority,
   QueueItemStatus,
   QueueGdsSystem,
+  TravelportHost,
   QueueAction,
 } from './types.js';
