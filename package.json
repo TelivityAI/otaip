@@ -35,14 +35,20 @@
   "pnpm": {
     "onlyBuiltDependencies": [],
     "overrides": {
-      "hono": ">=4.12.25",
-      "ip-address": ">=10.3.1",
-      "fast-uri": ">=4.1.2",
+      "hono": ">=4.13.5",
+      "ip-address": ">=10.5.1",
+      "fast-uri": ">=4.1.4",
+      "browserslist": ">=4.28.7",
+      "baseline-browser-mapping": ">=2.11.21",
       "vite": "^8.0.16",
       "esbuild": ">=0.28.1",
-      "qs": ">=6.15.2",
+      "qs": ">=6.16.1",
       "postcss": ">=8.5.18",
-      "brace-expansion": ">=5.0.9",
+      "brace-expansion": ">=5.0.12",
+      "proxy-addr": ">=2.0.8",
+      "source-map-js": ">=1.2.2",
+      "@humanfs/node": ">=0.16.8 <0.17.0",
+      "postcss-selector-parser": ">=6.1.4 <7",
       "find-my-way": ">=9.7.0",
       "@fastify/static": ">=10.1.1",
       "@hono/node-server": ">=2.0.5",
@@ -61,6 +67,6 @@
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vite": "^6.4.2",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.12"
   }
 }
