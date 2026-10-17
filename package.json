@@ -34,6 +34,11 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [],
+    "auditConfig": {
+      "ignoreGhsas": [
+        "GHSA-vfj7-8cjw-p6xm"
+      ]
+    },
     "overrides": {
       "hono": ">=4.13.5",
       "ip-address": ">=10.5.1",
