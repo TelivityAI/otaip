@@ -34,11 +34,6 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [],
-    "auditConfig": {
-      "ignoreGhsas": [
-        "GHSA-vfj7-8cjw-p6xm"
-      ]
-    },
     "overrides": {
       "hono": ">=4.13.5",
       "ip-address": ">=10.5.1",
@@ -53,7 +48,6 @@
       "proxy-addr": ">=2.0.8",
       "source-map-js": ">=1.2.2",
       "@humanfs/node": ">=0.16.8 <0.17.0",
-      "postcss-selector-parser": ">=6.1.4 <7",
       "find-my-way": ">=9.7.0",
       "@fastify/static": ">=10.1.1",
       "@hono/node-server": ">=2.0.5",
