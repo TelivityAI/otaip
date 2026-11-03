@@ -64,7 +64,7 @@ importers:
     dependencies:
       '@anthropic-ai/sdk':
         specifier: ^0.91.1
-        version: 0.91.1(zod@4.3.6)
+        version: 0.91.1(zod@4.6.6)
       '@otaip/adapter-duffel':
         specifier: workspace:*
         version: link:../packages/adapters/duffel
@@ -223,8 +223,8 @@ importers:
         specifier: ^10.6.0
         version: 10.6.0
       zod:
-        specifier: ^4.3.6
-        version: 4.3.6
+        specifier: ^4.6.6
+        version: 4.6.6
 
   packages/agents-tmc:
     dependencies:
@@ -235,8 +235,8 @@ importers:
         specifier: ^10.6.0
         version: 10.6.0
       zod:
-        specifier: ^4.3.6
-        version: 4.3.6
+        specifier: ^4.6.6
+        version: 4.6.6
 
   packages/agents/booking:
     dependencies:
@@ -259,8 +259,8 @@ importers:
         specifier: ^10.6.0
         version: 10.6.0
       zod:
-        specifier: ^4.3.6
-        version: 4.3.6
+        specifier: ^4.6.6
+        version: 4.6.6
 
   packages/agents/exchange:
     dependencies:
@@ -277,8 +277,8 @@ importers:
         specifier: ^10.6.0
         version: 10.6.0
       zod:
-        specifier: ^4.3.6
-        version: 4.3.6
+        specifier: ^4.6.6
+        version: 4.6.6
 
   packages/agents/lodging:
     dependencies:
@@ -301,8 +301,8 @@ importers:
         specifier: ^10.6.0
         version: 10.6.0
       zod:
-        specifier: ^4.3.6
-        version: 4.3.6
+        specifier: ^4.6.6
+        version: 4.6.6
 
   packages/agents/reconciliation:
     dependencies:
@@ -316,8 +316,8 @@ importers:
         specifier: ^10.6.0
         version: 10.6.0
       zod:
-        specifier: ^4.3.6
-        version: 4.3.6
+        specifier: ^4.6.6
+        version: 4.6.6
 
   packages/agents/reference:
     dependencies:
@@ -328,8 +328,8 @@ importers:
         specifier: ^7.2.0
         version: 7.2.0
       zod:
-        specifier: ^4.3.6
-        version: 4.3.6
+        specifier: ^4.6.6
+        version: 4.6.6
 
   packages/agents/search:
     dependencies:
@@ -343,8 +343,8 @@ importers:
         specifier: ^10.6.0
         version: 10.6.0
       zod:
-        specifier: ^4.3.6
-        version: 4.3.6
+        specifier: ^4.6.6
+        version: 4.6.6
 
   packages/agents/settlement:
     dependencies:
@@ -358,8 +358,8 @@ importers:
         specifier: ^10.6.0
         version: 10.6.0
       zod:
-        specifier: ^4.3.6
-        version: 4.3.6
+        specifier: ^4.6.6
+        version: 4.6.6
 
   packages/agents/ticketing:
     dependencies:
@@ -373,8 +373,8 @@ importers:
         specifier: ^10.6.0
         version: 10.6.0
       zod:
-        specifier: ^4.3.6
-        version: 4.3.6
+        specifier: ^4.6.6
+        version: 4.6.6
 
   packages/cli:
     dependencies:
@@ -389,7 +389,7 @@ importers:
     dependencies:
       '@modelcontextprotocol/sdk':
         specifier: ^1.32.1
-        version: 1.32.1(zod@4.3.6)
+        version: 1.32.1(zod@4.6.6)
       '@otaip/core':
         specifier: workspace:*
         version: link:../core
@@ -400,8 +400,8 @@ importers:
         specifier: ^10.6.0
         version: 10.6.0
       zod:
-        specifier: ^4.3.6
-        version: 4.3.6
+        specifier: ^4.6.6
+        version: 4.6.6
 
   packages/core:
     dependencies:
@@ -412,8 +412,8 @@ importers:
         specifier: ^10.6.0
         version: 10.6.0
       zod:
-        specifier: ^4.3.6
-        version: 4.3.6
+        specifier: ^4.6.6
+        version: 4.6.6
     optionalDependencies:
       js-tiktoken:
         specifier: ^1.0.21
@@ -2659,16 +2659,16 @@ packages:
     peerDependencies:
       zod: ^3.25.28 || ^4
 
-  zod@4.3.6:
-    resolution: {integrity: sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg==}
+  zod@4.6.6:
+    resolution: {integrity: sha512-4UmzQUF5fxvfcYHlbjBmejU+w+hbDnWFx4aS8kBx7nPBHcO2SqPbpAG8snbdg+Xse4pRefR98hgjFgIMCI/UhA==}
 
 snapshots:
 
-  '@anthropic-ai/sdk@0.91.1(zod@4.3.6)':
+  '@anthropic-ai/sdk@0.91.1(zod@4.6.6)':
     dependencies:
       json-schema-to-ts: 3.1.1
     optionalDependencies:
-      zod: 4.3.6
+      zod: 4.6.6
 
   '@babel/runtime@7.29.2': {}
 
@@ -2896,7 +2896,7 @@ snapshots:
 
   '@lukeed/ms@2.0.2': {}
 
-  '@modelcontextprotocol/sdk@1.32.1(zod@4.3.6)':
+  '@modelcontextprotocol/sdk@1.32.1(zod@4.6.6)':
     dependencies:
       '@hono/node-server': 2.0.12(hono@4.13.13)
       ajv: 8.18.0
@@ -2913,8 +2913,8 @@ snapshots:
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.1
       raw-body: 3.0.2
-      zod: 4.3.6
-      zod-to-json-schema: 3.25.2(zod@4.3.6)
+      zod: 4.6.6
+      zod-to-json-schema: 3.25.2(zod@4.6.6)
     transitivePeerDependencies:
       - supports-color
 
@@ -4620,8 +4620,8 @@ snapshots:
 
   yocto-queue@0.1.0: {}
 
-  zod-to-json-schema@3.25.2(zod@4.3.6):
+  zod-to-json-schema@3.25.2(zod@4.6.6):
     dependencies:
-      zod: 4.3.6
+      zod: 4.6.6
 
-  zod@4.3.6: {}
+  zod@4.6.6: {}
