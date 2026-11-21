@@ -25,7 +25,7 @@
     "@modelcontextprotocol/sdk": "^1.32.1",
     "amadeus": "^11.0.0",
     "decimal.js": "^10.6.0",
-    "zod": "^4.3.6"
+    "zod": "^4.6.6"
   },
   "peerDependencies": {
     "@otaip/core": "workspace:*"
